@@ -2,11 +2,15 @@
  * ROBBY VISUAL SYSTEM — Contact-sheet archaeology.
  * A gallery of two-sided photographic objects. The central stage renders one
  * face only; its adjacent trace is evidence of the current object's making.
+ * Build 05 adds a Rust/WASM workbench without replacing the approved gallery.
  */
 
-import { gallery } from "@/lib/demoData";
+import SourceEditor from "@/components/SourceEditor";
+import { gallery, type TraceStep } from "@/lib/demoData";
+import { type RobbyIr } from "@/lib/robbyCompiler";
 import {
   Check,
+  BookOpen,
   ChevronLeft,
   ChevronRight,
   CircleDotDashed,
@@ -18,6 +22,7 @@ import {
   ShieldX,
   Sparkles,
 } from "lucide-react";
+import { Link } from "wouter";
 import { useEffect, useState } from "react";
 import initRobbyCompiler, {
   compile_source_json,
@@ -32,6 +37,16 @@ function shortHash(value: string) {
   return `${value.slice(0, 16)}…${value.slice(-8)}`;
 }
 
+function traceFromIr(ir: RobbyIr): TraceStep[] {
+  const trace: TraceStep[] = [{ stage: "01", label: "Base canvas", code: `base("${ir.canvas.base}")`, detail: "live Rust IR · validated source" }];
+  ir.cutouts.forEach((cutout, index) => trace.push({ stage: String(index + 2).padStart(2, "0"), label: "Extract subject", code: `cutout(mask: "${cutout.mask}")`, detail: `${cutout.id} · ${cutout.source}` }));
+  ir.layers.forEach((layer, index) => trace.push({ stage: String(trace.length + 1).padStart(2, "0"), label: "Place layer", code: `place(x: ${layer.x}, y: ${layer.y})`, detail: `${layer.blend} · ${layer.scale} scale · ${layer.rotation}° rotation`, color: index === 0 ? "#E3442F" : undefined }));
+  if (ir.palette) trace.push({ stage: String(trace.length + 1).padStart(2, "0"), label: "Calculate palette", code: `palette(k: ${ir.palette.k})`, detail: "live IR palette declaration" });
+  ir.reverse.forEach((reverse) => trace.push({ stage: String(trace.length + 1).padStart(2, "0"), label: "Render inverse", code: `reverse("${reverse.mode}")`, detail: reverse.k ? `palette grid · k=${reverse.k}` : "provenance declaration" }));
+  trace.push({ stage: String(trace.length + 1).padStart(2, "0"), label: "Write manifest", code: `output(…${ir.output.manifest})`, detail: "static deployment · image render pending" });
+  return trace;
+}
+
 export default function Home() {
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [face, setFace] = useState<"obverse" | "inverse">("obverse");
@@ -39,8 +54,13 @@ export default function Home() {
   const [credentialOpen, setCredentialOpen] = useState(false);
   const [compilerState, setCompilerState] = useState<"checking" | "verified" | "error">("checking");
   const [compilerLabel, setCompilerLabel] = useState("RUST CORE · LOADING");
+  const [compiledEdit, setCompiledEdit] = useState<{ specimenId: string; ir: RobbyIr; source: string } | null>(null);
   const selected = gallery[selectedIndex];
   const activeFace = face;
+  const liveIr = compiledEdit?.specimenId === selected.id ? compiledEdit.ir : null;
+  const trace = liveIr ? traceFromIr(liveIr) : selected.trace;
+  const liveScriptHash = liveIr?.meta.script_sha256 ?? selected.scriptHash;
+  const liveReverseMode = liveIr?.reverse.map((item) => item.k ? `${item.mode} (k=${item.k})` : item.mode).join(" + ") ?? selected.reverseMode;
 
   const selectImage = (nextIndex: number) => {
     if (isFlipping) return;
@@ -48,6 +68,7 @@ export default function Home() {
     setFace("obverse");
     setIsFlipping(false);
     setCredentialOpen(false);
+    setCompiledEdit(null);
   };
 
   const turnOver = () => {
@@ -96,6 +117,11 @@ export default function Home() {
     };
   }, [selected.id, selected.script]);
 
+  const applyCompiledSource = (ir: RobbyIr, source: string) => {
+    setCompiledEdit({ specimenId: selected.id, ir, source });
+    setFace("obverse");
+  };
+
   return (
     <main className="min-h-screen overflow-hidden bg-[#f4efe1] text-[#1c1a19]">
       <header className="site-header">
@@ -109,6 +135,7 @@ export default function Home() {
           <span className="mono text-[10px] tracking-[0.14em]">GALLERY · 05 OBJECTS</span>
         </div>
         <div className="header-actions">
+          <Link className="manual-link" href="/manual"><BookOpen size={13} strokeWidth={2.5} /> LANGUAGE MANUAL</Link>
           <a className="source-download" href="https://github.com/thecont1/robby/archive/refs/heads/dev/ananya.zip" target="_blank" rel="noreferrer">
             <Download size={13} strokeWidth={2.5} /> DOWNLOAD RUST SOURCE
           </a>
@@ -186,6 +213,7 @@ export default function Home() {
                 </div>
               </div>
               <p className="signature-tension">One signature is cryptographic. One is visual. Only one is human-readable.</p>
+              {liveIr && <p className="static-artifact-note">STATIC ARTIFACT · RENDER PENDING — the live Rust IR changes this trace and manifest target; bitmap faces remain the selected pre-rendered specimen.</p>}
             </div>
             <button type="button" className="flip-control" onClick={turnOver} disabled={isFlipping} aria-label={face === "inverse" ? `Return ${selected.title} to its obverse` : `Flip ${selected.title} to its inverse`}>
               {face === "inverse" ? <RotateCcw size={18} /> : <FlipHorizontal2 size={18} />}
@@ -220,13 +248,15 @@ export default function Home() {
               ))}
             </ol>
           </nav>
+
+          <SourceEditor specimenId={selected.id} title={selected.title} source={selected.script} onCompiled={applyCompiledSource} />
         </section>
 
         <aside className="trace-panel" aria-label={`Compilation trace for ${selected.title}`}>
-          <div className="trace-heading"><div><CircleDotDashed size={15} /><MonoLabel>Compilation trace</MonoLabel></div><span>{selected.trace.length} STEPS</span></div>
+          <div className="trace-heading"><div><CircleDotDashed size={15} /><MonoLabel>Compilation trace</MonoLabel></div><span>{trace.length} STEPS</span></div>
           <div className="trace-title"><p className="eyebrow">Evidence beside object</p><h3>{selected.title}<br /><em>/ {activeFace}</em></h3></div>
           <div className="trace-steps">
-            {selected.trace.map((step) => (
+            {trace.map((step) => (
               <article className="trace-step" key={step.stage}>
                 <span className="trace-number">{step.stage}</span>
                 <div><strong>{step.label}</strong><code>{step.code}</code><p>{step.detail}</p></div>
@@ -242,9 +272,9 @@ export default function Home() {
             <dl>
               <div><dt>credential_signature</dt><dd>C2PA ABSENT · {selected.credentialSignature.sourceSha256.slice(0, 14)}…</dd></div>
               <div><dt>colour_signature</dt><dd>px:{selected.colourSignature.pixelSha256.slice(0, 12)}… · pal:{selected.colourSignature.paletteSha256.slice(0, 12)}…</dd></div>
-              <div><dt>reverse_mode</dt><dd>{selected.reverseMode}</dd></div>
-              <div><dt>script_hash</dt><dd title={selected.scriptHash}>{shortHash(selected.scriptHash)}</dd></div>
-              <div><dt>output_sha256</dt><dd title={selected.outputHash}>{shortHash(selected.outputHash)}</dd></div>
+              <div><dt>reverse_mode</dt><dd>{liveReverseMode}</dd></div>
+              <div><dt>script_hash</dt><dd title={liveScriptHash}>{shortHash(liveScriptHash)}</dd></div>
+              {liveIr ? <><div><dt>output_target</dt><dd>{liveIr.output.obverse}</dd></div><div><dt>manifest_target</dt><dd>{liveIr.output.manifest}</dd></div></> : <div><dt>output_sha256</dt><dd title={selected.outputHash}>{shortHash(selected.outputHash)}</dd></div>}
             </dl>
           </div>
         </aside>
@@ -252,7 +282,7 @@ export default function Home() {
 
       <section className="manifest-strip" aria-label="Gallery manifest record">
         <div className="manifest-identity"><FileJson2 size={18} /><span>MANIFEST / PROCESS GRAPH</span></div>
-        <div className="manifest-fields"><span>LIBRARY <b>5 COMPILED OBJECTS</b></span><span>ACTIVE FACE <b>{activeFace.toUpperCase()} · MUTUALLY EXCLUSIVE</b></span><span>CORE <b>RUST · robby-compiler-v0.1</b></span><span>EXECUTOR <b>CPU · PILLOW / OPENCV</b></span></div>
+        <div className="manifest-fields"><span>LIBRARY <b>5 COMPILED OBJECTS</b></span><span>ACTIVE FACE <b>{activeFace.toUpperCase()} · MUTUALLY EXCLUSIVE</b></span><span>CORE <b>RUST · robby-compiler-v0.1</b></span><span>EXECUTOR <b>{liveIr ? "STATIC ARTIFACT · RENDER PENDING" : "CPU · PILLOW / OPENCV"}</b></span></div>
         <img src="/manus-storage/robby-palette-study_ad20752b.png" alt="Abstract palette study" />
         <Sparkles className="manifest-spark" size={18} />
       </section>

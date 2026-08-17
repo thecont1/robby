@@ -38,3 +38,12 @@
 - [x] Exercise thumbnail, previous/next, and keyboard navigation plus obverse/inverse flips for every specimen.
 - [x] Verify or repair script hashes and output checksums against actual bytes, recording any intentionally unavailable values.
 - [x] Run final native, WebAssembly, browser, and production-build regressions and publish a concise Build 04 findings report.
+
+## Build 05 — source editor and language manual
+
+- [x] Audit the Rust/WASM compiler exports, structured diagnostics, current gallery state, and static executor boundary.
+- [x] Define an editor state contract that updates trace and manifest from real Rust IR while labelling any unchanged pre-rendered image artifact honestly.
+- [x] Add a real Rust/WASM source editor with line-aware success and failure feedback for the active specimen script.
+- [x] Add a persistent versioned language manual covering the six supported commands with current grammar, defaults, values, and real examples.
+- [x] Verify source edits compile through Rust/WASM, invalid source shows a human-readable error, and gallery/flip/signature behavior remains intact.
+- [x] Document the Build 05 runtime boundary and evidence that no JavaScript parser fallback serves the editor.
