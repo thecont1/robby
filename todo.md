@@ -57,4 +57,4 @@
 - [x] Review ITO-QA comments second and commit validated source-identity fixes. (One medium finding; browser literals now match canonical source bytes for all five specimens.)
 - [x] Recompile the repaired Night duality browser source through Rust/WASM and confirm it reports native hash `249ff423…988581`.
 - [x] Invoke the repaired Night duality source through the live Rust/WASM compiler from the gallery editor.
-- [ ] Re-run affected regressions, push all review fixes, and report the unmerged pull request outcome.
+- [x] Re-run affected regressions, push all review fixes, and report the unmerged pull request outcome.
