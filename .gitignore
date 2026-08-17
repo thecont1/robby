@@ -1,6 +1,13 @@
 # Dependencies
 **/node_modules
 .pnpm-store/
+.venv/
+
+# Compiler and executor artifacts
+target/
+output/
+__pycache__/
+*.pyc
 
 # Build outputs
 dist/

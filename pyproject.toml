@@ -1,0 +1,11 @@
+[project]
+name = "robby-executor"
+version = "0.1.0"
+description = "CPU image executor for Robby v1 IR"
+requires-python = ">=3.11"
+dependencies = [
+    "numpy>=2.4.6",
+    "opencv-python-headless>=5.0.0.93",
+    "pillow>=12.3.0",
+]
+

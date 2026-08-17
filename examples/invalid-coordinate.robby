@@ -1,0 +1,6 @@
+base("night-street.jpg")
+cutout(source: "courier.png", mask: "person", id: "courier")
+place(cutout: "courier", x: 1.2, y: 0.45)
+reverse(mode: "provenance-map")
+output(obverse: "bad.png", reverse: "bad-reverse.png", manifest: "bad.json")
+
