@@ -47,3 +47,12 @@
 - [x] Add a persistent versioned language manual covering the six supported commands with current grammar, defaults, values, and real examples.
 - [x] Verify source edits compile through Rust/WASM, invalid source shows a human-readable error, and gallery/flip/signature behavior remains intact.
 - [x] Document the Build 05 runtime boundary and evidence that no JavaScript parser fallback serves the editor.
+
+## Pull request review workflow
+
+- [ ] Verify the `dev/ananya` working tree is clean and that its existing commits form logical batches.
+- [ ] File a detailed, unmerged pull request from `dev/ananya` and confirm its remote branch is current.
+- [ ] Wait one hour for CodeRabbit and ITO-QA review activity.
+- [ ] Review CodeRabbit comments first and commit any validated fixes.
+- [ ] Review ITO-QA comments second and commit any validated fixes.
+- [ ] Re-run affected regressions, push all review fixes, and report the unmerged pull request outcome.
