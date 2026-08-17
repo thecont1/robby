@@ -10,7 +10,9 @@
         "manifest_script_hash_matches": true,
         "manifest_obverse_hash_matches": true,
         "gallery_script_hash_matches": true,
-        "gallery_output_hash_matches": true
+        "gallery_output_hash_matches": true,
+        "browser_source_bytes_match": true,
+        "browser_source_hash_matches": true
       }
     },
     {
@@ -22,7 +24,9 @@
         "manifest_script_hash_matches": true,
         "manifest_obverse_hash_matches": true,
         "gallery_script_hash_matches": true,
-        "gallery_output_hash_matches": true
+        "gallery_output_hash_matches": true,
+        "browser_source_bytes_match": true,
+        "browser_source_hash_matches": true
       }
     },
     {
@@ -34,7 +38,9 @@
         "manifest_script_hash_matches": true,
         "manifest_obverse_hash_matches": true,
         "gallery_script_hash_matches": true,
-        "gallery_output_hash_matches": true
+        "gallery_output_hash_matches": true,
+        "browser_source_bytes_match": true,
+        "browser_source_hash_matches": true
       }
     },
     {
@@ -46,7 +52,9 @@
         "manifest_script_hash_matches": true,
         "manifest_obverse_hash_matches": true,
         "gallery_script_hash_matches": true,
-        "gallery_output_hash_matches": true
+        "gallery_output_hash_matches": true,
+        "browser_source_bytes_match": true,
+        "browser_source_hash_matches": true
       }
     },
     {
@@ -58,7 +66,9 @@
         "manifest_script_hash_matches": true,
         "manifest_obverse_hash_matches": true,
         "gallery_script_hash_matches": true,
-        "gallery_output_hash_matches": true
+        "gallery_output_hash_matches": true,
+        "browser_source_bytes_match": true,
+        "browser_source_hash_matches": true
       }
     }
   ]

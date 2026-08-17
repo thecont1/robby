@@ -50,9 +50,11 @@
 
 ## Pull request review workflow
 
-- [ ] Verify the `dev/ananya` working tree is clean and that its existing commits form logical batches.
-- [ ] File a detailed, unmerged pull request from `dev/ananya` and confirm its remote branch is current.
-- [ ] Wait one hour for CodeRabbit and ITO-QA review activity.
-- [ ] Review CodeRabbit comments first and commit any validated fixes.
-- [ ] Review ITO-QA comments second and commit any validated fixes.
+- [x] Verify the `dev/ananya` working tree is clean and that its existing commits form logical batches.
+- [x] File a detailed, unmerged pull request from `dev/ananya` and confirm its remote branch is current.
+- [x] Wait one hour for CodeRabbit and ITO-QA review activity.
+- [x] Review CodeRabbit comments first and commit any validated fixes. (No CodeRabbit review record was posted during the requested window.)
+- [x] Review ITO-QA comments second and commit validated source-identity fixes. (One medium finding; browser literals now match canonical source bytes for all five specimens.)
+- [x] Recompile the repaired Night duality browser source through Rust/WASM and confirm it reports native hash `249ff423…988581`.
+- [x] Invoke the repaired Night duality source through the live Rust/WASM compiler from the gallery editor.
 - [ ] Re-run affected regressions, push all review fixes, and report the unmerged pull request outcome.

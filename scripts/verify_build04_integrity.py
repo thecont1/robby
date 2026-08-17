@@ -6,6 +6,7 @@ import argparse
 import hashlib
 import json
 from pathlib import Path
+import re
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -14,6 +15,7 @@ DEMO_DATA = (ROOT / "client/src/lib/demoData.ts").read_text(encoding="utf-8")
 SPECIMENS = [
     {
         "id": "night-duality",
+        "gallery_key": "night",
         "script": ROOT / "examples/night-duality.robby",
         "source": Path("/home/ubuntu/webdev-static-assets/robby-demo/assets/night-street.jpg"),
         "obverse": Path("/home/ubuntu/webdev-static-assets/robby-demo/output/night-obverse.png"),
@@ -21,6 +23,7 @@ SPECIMENS = [
     },
     {
         "id": "ayodhya-mural",
+        "gallery_key": "ayodhya",
         "script": ROOT / "examples/ayodhya-mural.robby",
         "source": Path("/home/ubuntu/webdev-static-assets/robby-gallery/assets/MS202401-Ayodhya0041.webp"),
         "obverse": Path("/home/ubuntu/webdev-static-assets/robby-gallery/output/ayodhya-mural-obverse.png"),
@@ -28,6 +31,7 @@ SPECIMENS = [
     },
     {
         "id": "urban-fantasy",
+        "gallery_key": "urban",
         "script": ROOT / "examples/urban-fantasy.robby",
         "source": Path("/home/ubuntu/webdev-static-assets/robby-gallery/assets/_DSF0739-Enhanced-NR.webp"),
         "obverse": Path("/home/ubuntu/webdev-static-assets/robby-gallery/output/urban-fantasy-obverse.png"),
@@ -35,6 +39,7 @@ SPECIMENS = [
     },
     {
         "id": "murgeshpalya-passage",
+        "gallery_key": "murgeshpalya",
         "script": ROOT / "examples/murgeshpalya-passage.robby",
         "source": Path("/home/ubuntu/webdev-static-assets/robby-gallery/assets/MS201901-Murgeshpalya0018.webp"),
         "obverse": Path("/home/ubuntu/webdev-static-assets/robby-gallery/output/murgeshpalya-passage-obverse.png"),
@@ -42,6 +47,7 @@ SPECIMENS = [
     },
     {
         "id": "uganda-diptych",
+        "gallery_key": "uganda",
         "script": ROOT / "examples/uganda-diptych.robby",
         "source": Path("/home/ubuntu/webdev-static-assets/robby-gallery/assets/MS201508-Uganda0016.webp"),
         "obverse": Path("/home/ubuntu/webdev-static-assets/robby-gallery/output/uganda-diptych-obverse.png"),
@@ -59,24 +65,39 @@ def c2pa_marker_state(path: Path) -> str:
     return "unverified-marker" if b"c2pa" in value or b"jumb" in value else "absent"
 
 
+def gallery_script(key: str) -> str:
+    """Return the exact String.raw gallery literal for a named specimen."""
+    pattern = re.compile(rf"{re.escape(key)}: String\.raw`(.*?)`,", re.DOTALL)
+    match = pattern.search(DEMO_DATA)
+    if match is None:
+        raise SystemExit(f"Missing gallery script literal for {key!r}")
+    return match.group(1)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Verify Robby Build 04 integrity evidence.")
     parser.add_argument("--out", type=Path, required=True)
     arguments = parser.parse_args()
 
     results: list[dict[str, object]] = []
+    failures: list[str] = []
     for specimen in SPECIMENS:
         script_hash = digest(specimen["script"])
         output_hash = digest(specimen["obverse"])
+        native_script_bytes = specimen["script"].read_bytes()
+        browser_script = gallery_script(specimen["gallery_key"])
+        browser_script_bytes = browser_script.encode("utf-8")
         manifest = json.loads(specimen["manifest"].read_text(encoding="utf-8"))
         checks = {
             "manifest_script_hash_matches": manifest["script_sha256"] == script_hash,
             "manifest_obverse_hash_matches": manifest["outputs"]["obverse"]["sha256"] == output_hash,
             "gallery_script_hash_matches": script_hash in DEMO_DATA,
             "gallery_output_hash_matches": output_hash in DEMO_DATA,
+            "browser_source_bytes_match": browser_script_bytes == native_script_bytes,
+            "browser_source_hash_matches": hashlib.sha256(browser_script_bytes).hexdigest() == script_hash,
         }
         if not all(checks.values()):
-            raise SystemExit(f"Integrity failure for {specimen['id']}: {checks}")
+            failures.append(f"{specimen['id']}: {checks}")
         results.append(
             {
                 "id": specimen["id"],
@@ -89,6 +110,8 @@ def main() -> None:
 
     payload = {"version": "robby-build-04-integrity-v1", "specimens": results}
     arguments.out.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+    if failures:
+        raise SystemExit("Integrity failures:\n" + "\n".join(failures))
     print(f"Verified {len(results)} specimens: all manifest and gallery hashes match actual bytes.")
 
 

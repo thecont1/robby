@@ -67,24 +67,28 @@ reverse(mode: "provenance-map")
 reverse(mode: "palette-grid", k: 8)
 
 output(obverse: "night-obverse.png", reverse: "night-reverse.png", manifest: "night-manifest.json")
+
 `,
   ayodhya: String.raw`# A base-only visual object: its reverse is a palette audit of the obverse.
 base("MS202401-Ayodhya0041.webp")
 palette(k: 8)
 reverse(mode: "palette-grid", k: 8)
 output(obverse: "ayodhya-mural-obverse.png", reverse: "ayodhya-mural-reverse.png", manifest: "ayodhya-mural-manifest.json")
+
 `,
   urban: String.raw`# A base-only visual object: the compiler records its colour evidence.
 base("_DSF0739-Enhanced-NR.webp")
 palette(k: 8)
 reverse(mode: "palette-grid", k: 8)
 output(obverse: "urban-fantasy-obverse.png", reverse: "urban-fantasy-reverse.png", manifest: "urban-fantasy-manifest.json")
+
 `,
   murgeshpalya: String.raw`# A base-only visual object: the reverse exposes the obverse’s dominant colours.
 base("MS201901-Murgeshpalya0018.webp")
 palette(k: 8)
 reverse(mode: "palette-grid", k: 8)
 output(obverse: "murgeshpalya-passage-obverse.png", reverse: "murgeshpalya-passage-reverse.png", manifest: "murgeshpalya-passage-manifest.json")
+
 `,
   uganda: String.raw`# A base-only visual object: its reverse is a calculated palette plate.
 base("MS201508-Uganda0016.webp")
