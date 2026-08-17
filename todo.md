@@ -58,3 +58,7 @@
 - [x] Recompile the repaired Night duality browser source through Rust/WASM and confirm it reports native hash `249ff423…988581`.
 - [x] Invoke the repaired Night duality source through the live Rust/WASM compiler from the gallery editor.
 - [x] Re-run affected regressions, push all review fixes, and report the unmerged pull request outcome.
+
+## Post-review follow-up
+
+- [x] Manually trigger CodeRabbit on open PR #1 and confirm the request without merging. (Requested via https://github.com/thecont1/robby/pull/1#issuecomment-5319949918)
