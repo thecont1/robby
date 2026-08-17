@@ -6,21 +6,22 @@
 
 import { gallery } from "@/lib/demoData";
 import {
-  ArrowLeft,
-  ArrowRight,
   Check,
   ChevronLeft,
   ChevronRight,
   CircleDotDashed,
   Code2,
+  Download,
   FileJson2,
   FlipHorizontal2,
-  Layers3,
   RotateCcw,
-  ScanLine,
   Sparkles,
 } from "lucide-react";
 import { useEffect, useState } from "react";
+import initRobbyCompiler, {
+  compile_source_json,
+  compiler_version,
+} from "../wasm/robby_compiler";
 
 function MonoLabel({ children }: { children: React.ReactNode }) {
   return <span className="mono-label">{children}</span>;
@@ -30,6 +31,8 @@ export default function Home() {
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [isInverse, setIsInverse] = useState(false);
   const [isTurning, setIsTurning] = useState(false);
+  const [compilerState, setCompilerState] = useState<"checking" | "verified" | "error">("checking");
+  const [compilerLabel, setCompilerLabel] = useState("RUST CORE · LOADING");
   const selected = gallery[selectedIndex];
   const activeFace = isInverse ? "inverse" : "obverse";
   const activeImage = isInverse ? selected.reverse : selected.obverse;
@@ -55,6 +58,30 @@ export default function Home() {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [selectedIndex]);
 
+  useEffect(() => {
+    let active = true;
+    setCompilerState("checking");
+    setCompilerLabel("RUST CORE · VERIFYING");
+
+    initRobbyCompiler()
+      .then(() => {
+        const ir = JSON.parse(compile_source_json(selected.script)) as { version?: string };
+        if (!active) return;
+        if (ir.version !== "robby-ir-v1") throw new Error("Unexpected IR version");
+        setCompilerState("verified");
+        setCompilerLabel(`VALID IR · ${compiler_version().replace("robby-compiler-", "RUST ")}`);
+      })
+      .catch(() => {
+        if (!active) return;
+        setCompilerState("error");
+        setCompilerLabel("RUST CORE · CHECK FAILED");
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [selected.id, selected.script]);
+
   return (
     <main className="min-h-screen overflow-hidden bg-[#f4efe1] text-[#1c1a19]">
       <header className="site-header">
@@ -67,7 +94,12 @@ export default function Home() {
           <span className="header-dot" />
           <span className="mono text-[10px] tracking-[0.14em]">GALLERY · 05 OBJECTS</span>
         </div>
-        <div className="compile-status"><Check size={13} strokeWidth={3} /> COMPILED LIBRARY</div>
+        <div className="header-actions">
+          <a className="source-download" href="https://github.com/thecont1/robby/tree/dev/ananya" target="_blank" rel="noreferrer">
+            <Download size={13} strokeWidth={2.5} /> DOWNLOAD RUST SOURCE
+          </a>
+          <div className={`compile-status ${compilerState}`}><Check size={13} strokeWidth={3} /> {compilerLabel}</div>
+        </div>
       </header>
 
       <section className="gallery-intro">
@@ -163,14 +195,14 @@ export default function Home() {
 
       <section className="manifest-strip" aria-label="Gallery manifest record">
         <div className="manifest-identity"><FileJson2 size={18} /><span>MANIFEST / PROCESS GRAPH</span></div>
-        <div className="manifest-fields"><span>LIBRARY <b>5 COMPILED OBJECTS</b></span><span>ACTIVE FACE <b>{activeFace.toUpperCase()} · MUTUALLY EXCLUSIVE</b></span><span>EXECUTOR <b>CPU · PILLOW / OPENCV</b></span></div>
+        <div className="manifest-fields"><span>LIBRARY <b>5 COMPILED OBJECTS</b></span><span>ACTIVE FACE <b>{activeFace.toUpperCase()} · MUTUALLY EXCLUSIVE</b></span><span>CORE <b>RUST · robby-compiler-v0.1</b></span><span>EXECUTOR <b>CPU · PILLOW / OPENCV</b></span></div>
         <img src="/manus-storage/robby-palette-study_ad20752b.png" alt="Abstract palette study" />
         <Sparkles className="manifest-spark" size={18} />
       </section>
 
       <footer className="site-footer">
         <p>The trace remains alongside the object, but the image has only one visible face. <em>Observation is a choice.</em></p>
-        <span className="mono text-[10px]">OBVERSE ↔ INVERSE / MANIFEST</span>
+        <span className="mono text-[10px]">RUST CORE ↔ PYTHON EXECUTOR / MANIFEST</span>
       </footer>
     </main>
   );

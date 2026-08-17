@@ -29,6 +29,7 @@ export type GalleryItem = {
   outputHash: string;
   palette: readonly string[];
   trace: readonly TraceStep[];
+  script: string;
 };
 
 const paletteTrace = (source: string, dimensions: string): readonly TraceStep[] => [
@@ -37,6 +38,45 @@ const paletteTrace = (source: string, dimensions: string): readonly TraceStep[] 
   { stage: "03", label: "Render inverse", code: 'reverse("palette-grid")', detail: "palette plate derived from the rendered obverse" },
   { stage: "04", label: "Write manifest", code: "output(…manifest.json)", detail: "process graph and output checksums recorded" },
 ];
+
+const galleryScripts = {
+  night: String.raw`# A one-layer composition using the supplied street photograph as its base.
+base("night-street.jpg", width: 1440, height: 1080)
+
+cutout(source: "courier.png", mask: "person", id: "courier")
+place(cutout: "courier", x: 0.72, y: 0.64, scale: 0.92, rotation: -2, opacity: 0.96, blend: "normal")
+
+palette(k: 8)
+reverse(mode: "provenance-map")
+reverse(mode: "palette-grid", k: 8)
+
+output(obverse: "night-obverse.png", reverse: "night-reverse.png", manifest: "night-manifest.json")
+`,
+  ayodhya: String.raw`# A base-only visual object: its reverse is a palette audit of the obverse.
+base("MS202401-Ayodhya0041.webp")
+palette(k: 8)
+reverse(mode: "palette-grid", k: 8)
+output(obverse: "ayodhya-mural-obverse.png", reverse: "ayodhya-mural-reverse.png", manifest: "ayodhya-mural-manifest.json")
+`,
+  urban: String.raw`# A base-only visual object: the compiler records its colour evidence.
+base("_DSF0739-Enhanced-NR.webp")
+palette(k: 8)
+reverse(mode: "palette-grid", k: 8)
+output(obverse: "urban-fantasy-obverse.png", reverse: "urban-fantasy-reverse.png", manifest: "urban-fantasy-manifest.json")
+`,
+  murgeshpalya: String.raw`# A base-only visual object: the reverse exposes the obverse’s dominant colours.
+base("MS201901-Murgeshpalya0018.webp")
+palette(k: 8)
+reverse(mode: "palette-grid", k: 8)
+output(obverse: "murgeshpalya-passage-obverse.png", reverse: "murgeshpalya-passage-reverse.png", manifest: "murgeshpalya-passage-manifest.json")
+`,
+  uganda: String.raw`# A base-only visual object: its reverse is a calculated palette plate.
+base("MS201508-Uganda0016.webp")
+palette(k: 8)
+reverse(mode: "palette-grid", k: 8)
+output(obverse: "uganda-diptych-obverse.png", reverse: "uganda-diptych-reverse.png", manifest: "uganda-diptych-manifest.json")
+`,
+} as const;
 
 export const gallery: readonly GalleryItem[] = [
   {
@@ -55,6 +95,7 @@ export const gallery: readonly GalleryItem[] = [
     scriptHash: "249ff423dff23260…49388581",
     outputHash: "6c73907fa9ea…f3597d89f",
     palette: ["#424047", "#649BE8", "#BEA3DB", "#15161B", "#7A777B", "#AAB0A6", "#D7DDE6", "#3A57C6"],
+    script: galleryScripts.night,
     trace: [
       { stage: "01", label: "Base canvas", code: 'base("night-street.jpg")', detail: "1440 × 1080 · source checksum recorded" },
       { stage: "02", label: "Extract subject", code: 'cutout(mask: "person")', detail: "courier.png · auto-foreground mask" },
@@ -79,6 +120,7 @@ export const gallery: readonly GalleryItem[] = [
     scriptHash: "c692e96c1e1361b8…05b64c915",
     outputHash: "executor output · checksum recorded",
     palette: ["#4C4A40", "#CCB38D", "#D6D3D2", "#1E202A", "#726F5A", "#9A997A", "#C15942", "#167BB8"],
+    script: galleryScripts.ayodhya,
     trace: paletteTrace("MS202401-Ayodhya0041.webp", "2048 × 1536"),
   },
   {
@@ -97,6 +139,7 @@ export const gallery: readonly GalleryItem[] = [
     scriptHash: "75c1cdf2b074ebfd…aa2289f53",
     outputHash: "executor output · checksum recorded",
     palette: ["#0F94C7", "#594F34", "#C1D7DE", "#1C2419", "#939A99", "#5FB1DB", "#4E6E79", "#AC8536"],
+    script: galleryScripts.urban,
     trace: paletteTrace("_DSF0739-Enhanced-NR.webp", "2048 × 1536"),
   },
   {
@@ -115,6 +158,7 @@ export const gallery: readonly GalleryItem[] = [
     scriptHash: "4a190307c6e4391a…18cc86b23",
     outputHash: "executor output · checksum recorded",
     palette: ["#161617", "#393738", "#5C5858", "#7C7675", "#959395", "#B2B1AE", "#CAEBFC", "#C5CCD2"],
+    script: galleryScripts.murgeshpalya,
     trace: paletteTrace("MS201901-Murgeshpalya0018.webp", "2048 × 1536"),
   },
   {
@@ -133,7 +177,7 @@ export const gallery: readonly GalleryItem[] = [
     scriptHash: "764c5592c202ac42…df22ad5d6",
     outputHash: "executor output · checksum recorded",
     palette: ["#E4E4E4", "#070707", "#BEBEBE", "#8E8E8E", "#707070", "#515151", "#363636", "#1A1A1A"],
+    script: galleryScripts.uganda,
     trace: paletteTrace("MS201508-Uganda0016.webp", "2048 × 1365"),
   },
 ] as const;
-
