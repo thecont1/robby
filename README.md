@@ -102,6 +102,18 @@ pnpm build
 
 The generated `client/src/wasm/` package is intentionally committed because it is the deployable adapter from the Rust source, not a parallel TypeScript implementation of Robby.
 
+## Build 03 signature layer
+
+Every active gallery specimen now exposes two distinct signatures. The **credential signature** is a conservative local scan of the original asset bytes for C2PA/JUMBF markers. The five supplied originals have no detected embedded marker, so the UI correctly reports `C2PA ABSENT`; it does not fabricate issuer, edit-history, or capture assertions. A future full C2PA validator is required before any asset can be labelled `C2PA VERIFIED`.
+
+The **colour signature** is real pixel-derived data from the active compiled obverse: a SHA-256 fingerprint of raw RGB pixels, a SHA-256 fingerprint of its deterministic eight-colour palette, and the displayed palette itself. Regenerate the committed evidence record with:
+
+```bash
+uv run python scripts/derive_signatures.py --out docs/build-03-signatures.json
+```
+
+The source-byte audit, signature values, flip-state model, and verification notes are in [`docs/build-03-audit.md`](docs/build-03-audit.md) and [`docs/build-03-signatures.json`](docs/build-03-signatures.json). The C2PA absence state and the colour signature are real local data; no credential assertion in this build is stubbed.
+
 ## Known v1 boundaries
 
 Version 1 deliberately excludes a custom mask editor, nested groups, text/vector layers, animation, and GPU acceleration. The target is a small, inspectable compiler pipeline whose artifacts are easy to understand and extend.
@@ -110,4 +122,4 @@ The **compiler core** is Rust. The separate image executor remains Python/Pillow
 
 ## Verification
 
-The current implementation is covered by Rust lexer/parser/validator/IR tests, release-binary CLI checks, browser WebAssembly compilation checks, and end-to-end command paths for six valid examples. See [`docs/testing.md`](docs/testing.md) for the core checks, [`docs/build-02-web.md`](docs/build-02-web.md) for the shared browser compiler proof, [`docs/gallery-revision.md`](docs/gallery-revision.md) for the gallery interaction contract, and the explicit limitations of the deterministic mask adapters.
+The current implementation is covered by Rust lexer/parser/validator/IR tests, release-binary CLI checks, browser WebAssembly compilation checks, deterministic signature regeneration, and end-to-end command paths for six valid examples. See [`docs/testing.md`](docs/testing.md) for the core checks, [`docs/build-02-web.md`](docs/build-02-web.md) for the shared browser compiler proof, [`docs/build-03-audit.md`](docs/build-03-audit.md) for signature and flip verification, [`docs/gallery-revision.md`](docs/gallery-revision.md) for the gallery interaction contract, and the explicit limitations of the deterministic mask adapters.

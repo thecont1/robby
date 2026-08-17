@@ -10,11 +10,12 @@ import {
   ChevronLeft,
   ChevronRight,
   CircleDotDashed,
-  Code2,
   Download,
   FileJson2,
+  Fingerprint,
   FlipHorizontal2,
   RotateCcw,
+  ShieldX,
   Sparkles,
 } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -29,23 +30,32 @@ function MonoLabel({ children }: { children: React.ReactNode }) {
 
 export default function Home() {
   const [selectedIndex, setSelectedIndex] = useState(0);
-  const [isInverse, setIsInverse] = useState(false);
-  const [isTurning, setIsTurning] = useState(false);
+  const [face, setFace] = useState<"obverse" | "inverse">("obverse");
+  const [isFlipping, setIsFlipping] = useState(false);
+  const [credentialOpen, setCredentialOpen] = useState(false);
   const [compilerState, setCompilerState] = useState<"checking" | "verified" | "error">("checking");
   const [compilerLabel, setCompilerLabel] = useState("RUST CORE · LOADING");
   const selected = gallery[selectedIndex];
-  const activeFace = isInverse ? "inverse" : "obverse";
-  const activeImage = isInverse ? selected.reverse : selected.obverse;
+  const activeFace = face;
 
   const selectImage = (nextIndex: number) => {
+    if (isFlipping) return;
     setSelectedIndex((nextIndex + gallery.length) % gallery.length);
-    setIsInverse(false);
-    setIsTurning(false);
+    setFace("obverse");
+    setIsFlipping(false);
+    setCredentialOpen(false);
   };
 
   const turnOver = () => {
-    setIsTurning(true);
-    setIsInverse((current) => !current);
+    if (isFlipping) return;
+    setIsFlipping(true);
+    setFace((current) => current === "obverse" ? "inverse" : "obverse");
+  };
+
+  const settleFlip = (event: React.TransitionEvent<HTMLDivElement>) => {
+    if (event.target === event.currentTarget && event.propertyName === "transform") {
+      setIsFlipping(false);
+    }
   };
 
   useEffect(() => {
@@ -56,7 +66,7 @@ export default function Home() {
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [selectedIndex]);
+  }, [selectedIndex, isFlipping]);
 
   useEffect(() => {
     let active = true;
@@ -122,33 +132,68 @@ export default function Home() {
             <span className="mono text-[10px]">{selected.dimensions} · {activeFace.toUpperCase()}</span>
           </div>
 
-          <div className={`two-sided-object ${selected.ratio} ${isTurning ? "turning" : ""}`} onAnimationEnd={() => setIsTurning(false)}>
-            <img
-              src={activeImage}
-              alt={isInverse ? `${selected.title} inverse: ${selected.reverseDescription}` : `${selected.title} obverse`}
-              className="object-image"
-            />
-            <span className="face-stamp">{isInverse ? "I" : "O"}</span>
+          <div className={`two-sided-object ${selected.ratio}`} aria-busy={isFlipping}>
+            <div className="object-turner" data-face={face} onTransitionEnd={settleFlip}>
+              <div className="object-face object-face-obverse" aria-hidden={face !== "obverse"}>
+                <img src={selected.obverse} alt={`${selected.title} obverse`} className="object-image" />
+                <span className="face-stamp">O</span>
+              </div>
+              <div className="object-face object-face-inverse" aria-hidden={face !== "inverse"}>
+                <img src={selected.reverse} alt={`${selected.title} inverse: ${selected.reverseDescription}`} className="object-image" />
+                <span className="face-stamp">I</span>
+              </div>
+            </div>
             <span className="face-corner top-left" /><span className="face-corner top-right" /><span className="face-corner bottom-left" /><span className="face-corner bottom-right" />
           </div>
 
           <div className="stage-caption">
-            <div>
-              <p className="caption-face">{isInverse ? selected.reverseKind : "Obverse"}</p>
+            <div className="caption-record">
+              <p className="caption-face">{face === "inverse" ? selected.reverseKind : "Obverse"}</p>
               <h2 id="object-title">{selected.title}</h2>
-              <p className="caption-detail">{isInverse ? selected.reverseDescription : selected.subtitle}</p>
+              <p className="caption-detail">{face === "inverse" ? selected.reverseDescription : selected.subtitle}</p>
+              <div className="signature-row" aria-label="Specimen signatures">
+                <div className="credential-wrap">
+                  <button
+                    type="button"
+                    className="credential-badge absent"
+                    onClick={() => setCredentialOpen((current) => !current)}
+                    aria-expanded={credentialOpen}
+                    aria-controls="credential-summary"
+                  >
+                    <ShieldX size={14} strokeWidth={2.2} /> C2PA ABSENT
+                  </button>
+                  <div id="credential-summary" className={`credential-popover ${credentialOpen ? "open" : ""}`} role="status">
+                    <strong>Credential signature</strong>
+                    <p>{selected.credentialSignature.note}</p>
+                    <dl>
+                      <div><dt>issuer</dt><dd>no embedded record</dd></div>
+                      <div><dt>edit history</dt><dd>no embedded record</dd></div>
+                      <div><dt>capture info</dt><dd>no embedded record</dd></div>
+                      <div><dt>source sha</dt><dd>{selected.credentialSignature.sourceSha256.slice(0, 16)}…</dd></div>
+                    </dl>
+                  </div>
+                </div>
+                <div className="colour-badge">
+                  <Fingerprint size={14} strokeWidth={2.2} />
+                  <span>COLOUR SIGNATURE</span>
+                  <i className="inline-swatches" aria-label="Eight-colour signature">
+                    {selected.palette.map((color) => <b key={color} style={{ backgroundColor: color }} />)}
+                  </i>
+                </div>
+              </div>
+              <p className="signature-tension">One signature is cryptographic. One is visual. Only one is human-readable.</p>
             </div>
-            <button type="button" className="flip-control" onClick={turnOver} aria-label={isInverse ? `Return ${selected.title} to its obverse` : `Flip ${selected.title} to its inverse`}>
-              {isInverse ? <RotateCcw size={18} /> : <FlipHorizontal2 size={18} />}
-              <span>{isInverse ? "Return to obverse" : "Turn to inverse"}</span>
+            <button type="button" className="flip-control" onClick={turnOver} disabled={isFlipping} aria-label={face === "inverse" ? `Return ${selected.title} to its obverse` : `Flip ${selected.title} to its inverse`}>
+              {face === "inverse" ? <RotateCcw size={18} /> : <FlipHorizontal2 size={18} />}
+              <span>{isFlipping ? "Turning object" : face === "inverse" ? "Return to obverse" : "Turn to inverse"}</span>
               <small>F</small>
             </button>
           </div>
 
           <div className="stage-navigation">
-            <button type="button" onClick={() => selectImage(selectedIndex - 1)} aria-label="Previous image"><ChevronLeft size={17} /> Previous</button>
+            <button type="button" onClick={() => selectImage(selectedIndex - 1)} disabled={isFlipping} aria-label="Previous image"><ChevronLeft size={17} /> Previous</button>
             <span className="navigation-current">{selected.serial}</span>
-            <button type="button" onClick={() => selectImage(selectedIndex + 1)} aria-label="Next image">Next <ChevronRight size={17} /></button>
+            <button type="button" onClick={() => selectImage(selectedIndex + 1)} disabled={isFlipping} aria-label="Next image">Next <ChevronRight size={17} /></button>
           </div>
 
           <nav className="bottom-filmstrip" aria-label="Gallery navigation">
@@ -160,6 +205,7 @@ export default function Home() {
                     type="button"
                     className={index === selectedIndex ? "gallery-thumb selected" : "gallery-thumb"}
                     onClick={() => selectImage(index)}
+                    disabled={isFlipping}
                     aria-current={index === selectedIndex ? "true" : undefined}
                     aria-label={`Select ${item.title}`}
                   >
@@ -185,10 +231,17 @@ export default function Home() {
             ))}
           </div>
           <div className="trace-evidence">
-            <div className="palette-row" aria-label="Calculated palette">
+            <div className="signature-label"><Fingerprint size={13} /> <MonoLabel>Colour signature</MonoLabel></div>
+            <div className="palette-row" aria-label="Calculated palette signature">
               {selected.palette.map((color) => <span key={color} style={{ backgroundColor: color }} title={color} />)}
             </div>
-            <dl><div><dt>Script hash</dt><dd>{selected.scriptHash}</dd></div><div><dt>Output</dt><dd>{selected.outputHash}</dd></div></dl>
+            <dl>
+              <div><dt>credential_signature</dt><dd>C2PA ABSENT · {selected.credentialSignature.sourceSha256.slice(0, 14)}…</dd></div>
+              <div><dt>colour_signature</dt><dd>px:{selected.colourSignature.pixelSha256.slice(0, 12)}… · pal:{selected.colourSignature.paletteSha256.slice(0, 12)}…</dd></div>
+              <div><dt>reverse_mode</dt><dd>{selected.reverseMode}</dd></div>
+              <div><dt>script hash</dt><dd>{selected.scriptHash}</dd></div>
+              <div><dt>output</dt><dd>{selected.outputHash}</dd></div>
+            </dl>
           </div>
         </aside>
       </section>

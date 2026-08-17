@@ -20,3 +20,12 @@
 - [x] Compile the same Rust parser/validator/IR source to WebAssembly and use it in the viewer rather than parallel TypeScript logic.
 - [x] Add a persistent site link to the actual Rust source on the `dev/ananya` repository branch and state the Rust core explicitly in the footer/manifest area.
 - [x] Record remaining non-Rust runtime responsibilities and Build 02 verification results.
+
+## Build 03 — credential and colour signature layer
+
+- [x] Audit the five source assets for embedded C2PA indicators and record exactly what can be verified locally.
+- [x] Derive and record a real pixel-based colour signature for every gallery specimen.
+- [x] Add per-specimen credential and colour signature fields to the trace and manifest presentation.
+- [x] Replace the flip animation with a locked, declarative `face` / `isFlipping` state machine and preloaded 3D faces.
+- [x] Verify flip stability, signature updates, gallery cycling, source-data provenance, and responsive presentation.
+- [x] Document C2PA verification limits and distinguish real asset-derived data from UI-only absence states.

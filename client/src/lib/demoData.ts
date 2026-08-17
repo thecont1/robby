@@ -12,6 +12,19 @@ export type TraceStep = {
   color?: string;
 };
 
+export type CredentialSignature = {
+  status: "absent";
+  sourceSha256: string;
+  markerScan: string;
+  note: string;
+};
+
+export type ColourSignature = {
+  pixelSha256: string;
+  paletteSha256: string;
+  algorithm: string;
+};
+
 export type GalleryItem = {
   id: string;
   serial: string;
@@ -23,6 +36,7 @@ export type GalleryItem = {
   ratio: "four-three" | "three-two";
   obverse: string;
   reverse: string;
+  reverseMode: "provenance-map" | "palette-grid";
   reverseKind: string;
   reverseDescription: string;
   scriptHash: string;
@@ -30,6 +44,8 @@ export type GalleryItem = {
   palette: readonly string[];
   trace: readonly TraceStep[];
   script: string;
+  credentialSignature: CredentialSignature;
+  colourSignature: ColourSignature;
 };
 
 const paletteTrace = (source: string, dimensions: string): readonly TraceStep[] => [
@@ -78,6 +94,19 @@ output(obverse: "uganda-diptych-obverse.png", reverse: "uganda-diptych-reverse.p
 `,
 } as const;
 
+const absentCredential = (sourceSha256: string): CredentialSignature => ({
+  status: "absent",
+  sourceSha256,
+  markerScan: "C2PA/JUMBF byte marker scan",
+  note: "No embedded C2PA or JUMBF marker detected in the local source bytes.",
+});
+
+const colourSignature = (pixelSha256: string, paletteSha256: string): ColourSignature => ({
+  pixelSha256,
+  paletteSha256,
+  algorithm: "robby-executor-v1 deterministic k-means palette",
+});
+
 export const gallery: readonly GalleryItem[] = [
   {
     id: "night-duality",
@@ -90,12 +119,15 @@ export const gallery: readonly GalleryItem[] = [
     ratio: "four-three",
     obverse: "/manus-storage/night-obverse_8af6fb66.png",
     reverse: "/manus-storage/night-reverse-provenance-map_6ff6b825.png",
+    reverseMode: "provenance-map",
     reverseKind: "Provenance map",
     reverseDescription: "A spatial contribution map: vermilion identifies the placed courier layer.",
     scriptHash: "249ff423dff23260…49388581",
     outputHash: "6c73907fa9ea…f3597d89f",
     palette: ["#424047", "#649BE8", "#BEA3DB", "#15161B", "#7A777B", "#AAB0A6", "#D7DDE6", "#3A57C6"],
     script: galleryScripts.night,
+    credentialSignature: absentCredential("261639173101e8b07f8b77da5104206c2deb7db4e7c42bad2d78b461907c7302"),
+    colourSignature: colourSignature("9c178fbb61496cadc7599558cc1bbeef32d1507698398f12a5e6a02e85386af5", "60f267562ff6fd9002ccb4380e0baf287bd1ed7001df6751d6b24b3d559795b6"),
     trace: [
       { stage: "01", label: "Base canvas", code: 'base("night-street.jpg")', detail: "1440 × 1080 · source checksum recorded" },
       { stage: "02", label: "Extract subject", code: 'cutout(mask: "person")', detail: "courier.png · auto-foreground mask" },
@@ -115,12 +147,15 @@ export const gallery: readonly GalleryItem[] = [
     ratio: "four-three",
     obverse: "/manus-storage/ayodhya-mural-obverse_f17a84d1.png",
     reverse: "/manus-storage/ayodhya-mural-reverse_1ef067ec.png",
+    reverseMode: "palette-grid",
     reverseKind: "Palette plate",
     reverseDescription: "Eight calculated colour clusters compress the mural, crowd, and concourse into a companion plate.",
     scriptHash: "c692e96c1e1361b8…05b64c915",
     outputHash: "executor output · checksum recorded",
     palette: ["#4C4A40", "#CCB38D", "#D6D3D2", "#1E202A", "#726F5A", "#9A997A", "#C15942", "#167BB8"],
     script: galleryScripts.ayodhya,
+    credentialSignature: absentCredential("7b97c159e3eb5b021e18cf76d9b3efd3704bf4f1990f985a460524c3d98926c8"),
+    colourSignature: colourSignature("78ee78cb60c8b774f1292a30b619645e3f38482f4e0440ff1732535a2421e852", "83c583bdaa06e1566972d0d25751a55b238c7816036784550596688c7c412cd2"),
     trace: paletteTrace("MS202401-Ayodhya0041.webp", "2048 × 1536"),
   },
   {
@@ -134,12 +169,15 @@ export const gallery: readonly GalleryItem[] = [
     ratio: "four-three",
     obverse: "/manus-storage/urban-fantasy-obverse_56663e81.png",
     reverse: "/manus-storage/urban-fantasy-reverse_3e90b386.png",
+    reverseMode: "palette-grid",
     reverseKind: "Palette plate",
     reverseDescription: "The inverse resolves the image’s competing cyan, corrugated metal, and gold tones into calculated blocks.",
     scriptHash: "75c1cdf2b074ebfd…aa2289f53",
     outputHash: "executor output · checksum recorded",
     palette: ["#0F94C7", "#594F34", "#C1D7DE", "#1C2419", "#939A99", "#5FB1DB", "#4E6E79", "#AC8536"],
     script: galleryScripts.urban,
+    credentialSignature: absentCredential("5f975d0b13563d5bc54e3fd98c559644a21a0219191afb6ca8e2c3a9c6d8e3a1"),
+    colourSignature: colourSignature("a5af195c48a5f8dbcd4da9cd87e5330b9e33a2b709ce6e4bcfdea3929f38d493", "eed0dcb55666e74c9a0dbec4160c5be5ad2f0143e07650b6bc47aca4ba03df8c"),
     trace: paletteTrace("_DSF0739-Enhanced-NR.webp", "2048 × 1536"),
   },
   {
@@ -153,12 +191,15 @@ export const gallery: readonly GalleryItem[] = [
     ratio: "four-three",
     obverse: "/manus-storage/murgeshpalya-passage-obverse_19d791cd.png",
     reverse: "/manus-storage/murgeshpalya-passage-reverse_0e6c60ca.png",
+    reverseMode: "palette-grid",
     reverseKind: "Palette plate",
     reverseDescription: "The inverse reduces a tangled street scene to eight hues without reproducing its spatial arrangement.",
     scriptHash: "4a190307c6e4391a…18cc86b23",
     outputHash: "executor output · checksum recorded",
     palette: ["#161617", "#393738", "#5C5858", "#7C7675", "#959395", "#B2B1AE", "#CAEBFC", "#C5CCD2"],
     script: galleryScripts.murgeshpalya,
+    credentialSignature: absentCredential("a5f88d9555f6b76272ca6975ed05f7b65bc7cf0fb9ce10afe1d512af85b977b5"),
+    colourSignature: colourSignature("587bfb208c90ec9c19c1d20582a4da7a17a1d5e421778ae6bec2857bfdb1dac0", "2926615217bcc00932c889d164a3d7a1994fba5f35c9e3551f4bf94747feb3ac"),
     trace: paletteTrace("MS201901-Murgeshpalya0018.webp", "2048 × 1536"),
   },
   {
@@ -172,12 +213,15 @@ export const gallery: readonly GalleryItem[] = [
     ratio: "three-two",
     obverse: "/manus-storage/uganda-diptych-obverse_6ac779bf.png",
     reverse: "/manus-storage/uganda-diptych-reverse_36b1aea2.png",
+    reverseMode: "palette-grid",
     reverseKind: "Palette plate",
     reverseDescription: "A monochrome palette plate carries the tonal evidence of the two paintings and their bearers.",
     scriptHash: "764c5592c202ac42…df22ad5d6",
     outputHash: "executor output · checksum recorded",
     palette: ["#E4E4E4", "#070707", "#BEBEBE", "#8E8E8E", "#707070", "#515151", "#363636", "#1A1A1A"],
     script: galleryScripts.uganda,
+    credentialSignature: absentCredential("02ab6db06a282c4362d30f5afc7922ece8c72c50a595acaf2c1e0ce936fbee8a"),
+    colourSignature: colourSignature("fb72924d45ec7b3832fc6c92f87b764cfcad460b11819d2fdf3a799c269858e9", "44034e1180b32729e124977c4787b968c511775a099aa831e0c356c9246ab928"),
     trace: paletteTrace("MS201508-Uganda0016.webp", "2048 × 1365"),
   },
 ] as const;
