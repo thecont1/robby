@@ -84,27 +84,6 @@ export default function Home() {
       </section>
 
       <section id="gallery" className="gallery-workspace" aria-label="Robby image-object gallery">
-        <aside className="gallery-rail" aria-label="Gallery navigation">
-          <div className="rail-heading"><MonoLabel>Image library</MonoLabel><span>{selected.serial}</span></div>
-          <ol className="gallery-list">
-            {gallery.map((item, index) => (
-              <li key={item.id}>
-                <button
-                  type="button"
-                  className={index === selectedIndex ? "gallery-thumb selected" : "gallery-thumb"}
-                  onClick={() => selectImage(index)}
-                  aria-current={index === selectedIndex ? "true" : undefined}
-                  aria-label={`Select ${item.title}`}
-                >
-                  <img src={item.obverse} alt="" />
-                  <span><b>{String(index + 1).padStart(2, "0")}</b><em>{item.title}</em></span>
-                </button>
-              </li>
-            ))}
-          </ol>
-          <div className="rail-foot"><span className="rail-line" /><p>All faces are compiler artifacts. Navigate an obverse; turn it over only when you choose.</p></div>
-        </aside>
-
         <section className="object-stage" aria-labelledby="object-title">
           <div className="stage-topline">
             <div><MonoLabel>Selected image-object</MonoLabel><span className="object-serial">{selected.serial}</span></div>
@@ -139,6 +118,26 @@ export default function Home() {
             <span className="navigation-current">{selected.serial}</span>
             <button type="button" onClick={() => selectImage(selectedIndex + 1)} aria-label="Next image">Next <ChevronRight size={17} /></button>
           </div>
+
+          <nav className="bottom-filmstrip" aria-label="Gallery navigation">
+            <div className="filmstrip-heading"><MonoLabel>Image library</MonoLabel><span>{selected.serial}</span></div>
+            <ol className="gallery-list">
+              {gallery.map((item, index) => (
+                <li key={item.id}>
+                  <button
+                    type="button"
+                    className={index === selectedIndex ? "gallery-thumb selected" : "gallery-thumb"}
+                    onClick={() => selectImage(index)}
+                    aria-current={index === selectedIndex ? "true" : undefined}
+                    aria-label={`Select ${item.title}`}
+                  >
+                    <img src={item.obverse} alt="" />
+                    <span><b>{String(index + 1).padStart(2, "0")}</b><em>{item.title}</em></span>
+                  </button>
+                </li>
+              ))}
+            </ol>
+          </nav>
         </section>
 
         <aside className="trace-panel" aria-label={`Compilation trace for ${selected.title}`}>
@@ -176,4 +175,3 @@ export default function Home() {
     </main>
   );
 }
-
