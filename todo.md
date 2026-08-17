@@ -29,3 +29,12 @@
 - [x] Replace the flip animation with a locked, declarative `face` / `isFlipping` state machine and preloaded 3D faces.
 - [x] Verify flip stability, signature updates, gallery cycling, source-data provenance, and responsive presentation.
 - [x] Document C2PA verification limits and distinguish real asset-derived data from UI-only absence states.
+
+## Build 04 — verification and hardening
+
+- [x] Verify the public Rust source link and build the crate from a clean clone using the documented native CLI path.
+- [x] Confirm every gallery specimen compiles through the same Rust/WASM source with no JavaScript parser or IR fallback.
+- [x] Audit credential and colour signature values, source metadata badge states, and palette changes across all five specimens.
+- [x] Exercise thumbnail, previous/next, and keyboard navigation plus obverse/inverse flips for every specimen.
+- [x] Verify or repair script hashes and output checksums against actual bytes, recording any intentionally unavailable values.
+- [x] Run final native, WebAssembly, browser, and production-build regressions and publish a concise Build 04 findings report.

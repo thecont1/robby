@@ -1,0 +1,65 @@
+{
+  "version": "robby-build-04-integrity-v1",
+  "specimens": [
+    {
+      "id": "night-duality",
+      "credential_marker_state": "absent",
+      "script_sha256": "249ff423dff23260416298d0b3bf286fb8af3074761fe3bf21f2f32349388581",
+      "obverse_sha256": "6c73907fa9ead7e85ad69e0c043ff2d576c6b0f19fc1b9bde63cb62f3597d89f",
+      "checks": {
+        "manifest_script_hash_matches": true,
+        "manifest_obverse_hash_matches": true,
+        "gallery_script_hash_matches": true,
+        "gallery_output_hash_matches": true
+      }
+    },
+    {
+      "id": "ayodhya-mural",
+      "credential_marker_state": "absent",
+      "script_sha256": "c692e96c1e1361b8189ad6f1da8a5590048f841bbc76dc9eaeae83205b64c915",
+      "obverse_sha256": "64aedad386d543a1a77871112249073463c53e038e554365347b8640463699d5",
+      "checks": {
+        "manifest_script_hash_matches": true,
+        "manifest_obverse_hash_matches": true,
+        "gallery_script_hash_matches": true,
+        "gallery_output_hash_matches": true
+      }
+    },
+    {
+      "id": "urban-fantasy",
+      "credential_marker_state": "absent",
+      "script_sha256": "75c1cdf2b074ebfdf569264cfcfb06649232c7ecad57d2edd0796b9aa2289f53",
+      "obverse_sha256": "06157b187295d6d12405276b0227523913c8e43c67df7edadb443bd8fcdcdc4b",
+      "checks": {
+        "manifest_script_hash_matches": true,
+        "manifest_obverse_hash_matches": true,
+        "gallery_script_hash_matches": true,
+        "gallery_output_hash_matches": true
+      }
+    },
+    {
+      "id": "murgeshpalya-passage",
+      "credential_marker_state": "absent",
+      "script_sha256": "4a190307c6e4391a87adb1db6db222e5bc3eea5cb9517cd661dab6818cc86b23",
+      "obverse_sha256": "6c5ce68c16197666fec7dfe0f923b3bdc04278455df6fd9d184c3b89103cc8b8",
+      "checks": {
+        "manifest_script_hash_matches": true,
+        "manifest_obverse_hash_matches": true,
+        "gallery_script_hash_matches": true,
+        "gallery_output_hash_matches": true
+      }
+    },
+    {
+      "id": "uganda-diptych",
+      "credential_marker_state": "absent",
+      "script_sha256": "764c5592c202ac42160f4c107c682f8385b7abca21b924c32738323df22ad5d6",
+      "obverse_sha256": "1e66213b9c7d71aabe6ba81daf5322c34bde0c37cb069604484f5fbecee7d6b6",
+      "checks": {
+        "manifest_script_hash_matches": true,
+        "manifest_obverse_hash_matches": true,
+        "gallery_script_hash_matches": true,
+        "gallery_output_hash_matches": true
+      }
+    }
+  ]
+}

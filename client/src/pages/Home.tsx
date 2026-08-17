@@ -28,6 +28,10 @@ function MonoLabel({ children }: { children: React.ReactNode }) {
   return <span className="mono-label">{children}</span>;
 }
 
+function shortHash(value: string) {
+  return `${value.slice(0, 16)}…${value.slice(-8)}`;
+}
+
 export default function Home() {
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [face, setFace] = useState<"obverse" | "inverse">("obverse");
@@ -105,7 +109,7 @@ export default function Home() {
           <span className="mono text-[10px] tracking-[0.14em]">GALLERY · 05 OBJECTS</span>
         </div>
         <div className="header-actions">
-          <a className="source-download" href="https://github.com/thecont1/robby/tree/dev/ananya" target="_blank" rel="noreferrer">
+          <a className="source-download" href="https://github.com/thecont1/robby/archive/refs/heads/dev/ananya.zip" target="_blank" rel="noreferrer">
             <Download size={13} strokeWidth={2.5} /> DOWNLOAD RUST SOURCE
           </a>
           <div className={`compile-status ${compilerState}`}><Check size={13} strokeWidth={3} /> {compilerLabel}</div>
@@ -239,8 +243,8 @@ export default function Home() {
               <div><dt>credential_signature</dt><dd>C2PA ABSENT · {selected.credentialSignature.sourceSha256.slice(0, 14)}…</dd></div>
               <div><dt>colour_signature</dt><dd>px:{selected.colourSignature.pixelSha256.slice(0, 12)}… · pal:{selected.colourSignature.paletteSha256.slice(0, 12)}…</dd></div>
               <div><dt>reverse_mode</dt><dd>{selected.reverseMode}</dd></div>
-              <div><dt>script hash</dt><dd>{selected.scriptHash}</dd></div>
-              <div><dt>output</dt><dd>{selected.outputHash}</dd></div>
+              <div><dt>script_hash</dt><dd title={selected.scriptHash}>{shortHash(selected.scriptHash)}</dd></div>
+              <div><dt>output_sha256</dt><dd title={selected.outputHash}>{shortHash(selected.outputHash)}</dd></div>
             </dl>
           </div>
         </aside>
