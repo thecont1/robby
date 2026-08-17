@@ -1,0 +1,5 @@
+# A base-only visual object: its reverse is a calculated palette plate.
+base("MS201508-Uganda0016.webp")
+palette(k: 8)
+reverse(mode: "palette-grid", k: 8)
+output(obverse: "uganda-diptych-obverse.png", reverse: "uganda-diptych-reverse.png", manifest: "uganda-diptych-manifest.json")

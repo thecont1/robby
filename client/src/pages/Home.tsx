@@ -1,216 +1,179 @@
 /**
  * ROBBY VISUAL SYSTEM — Contact-sheet archaeology.
- * An asymmetric editorial workspace where obverse and reverse are equal image
- * objects; warm paper, charcoal rules, vermilion provenance and mono metadata
- * make every compiler action readable as a photographic trace.
+ * A gallery of two-sided photographic objects. The central stage renders one
+ * face only; its adjacent trace is evidence of the current object's making.
  */
 
-import { compiledExample, type ReverseMode } from "@/lib/demoData";
+import { gallery } from "@/lib/demoData";
 import {
-  ArrowDownRight,
+  ArrowLeft,
+  ArrowRight,
   Check,
+  ChevronLeft,
   ChevronRight,
   CircleDotDashed,
   Code2,
-  Eye,
   FileJson2,
-  Focus,
+  FlipHorizontal2,
   Layers3,
+  RotateCcw,
   ScanLine,
   Sparkles,
 } from "lucide-react";
-import { useState } from "react";
-
-const reverseLabels: Record<ReverseMode, { eyebrow: string; description: string }> = {
-  "provenance-map": {
-    eyebrow: "Reverse 01 · Spatial audit",
-    description: "Every vermilion pixel identifies the placed courier layer.",
-  },
-  "palette-grid": {
-    eyebrow: "Reverse 02 · Colour evidence",
-    description: "Eight dominant clusters, calculated from the rendered obverse.",
-  },
-};
+import { useEffect, useState } from "react";
 
 function MonoLabel({ children }: { children: React.ReactNode }) {
   return <span className="mono-label">{children}</span>;
 }
 
 export default function Home() {
-  const [activeNode, setActiveNode] = useState("layer-1");
-  const [reverseMode, setReverseMode] = useState<ReverseMode>("provenance-map");
-  const activeLayer = activeNode === "layer-1";
-  const reverse = reverseLabels[reverseMode];
+  const [selectedIndex, setSelectedIndex] = useState(0);
+  const [isInverse, setIsInverse] = useState(false);
+  const [isTurning, setIsTurning] = useState(false);
+  const selected = gallery[selectedIndex];
+  const activeFace = isInverse ? "inverse" : "obverse";
+  const activeImage = isInverse ? selected.reverse : selected.obverse;
+
+  const selectImage = (nextIndex: number) => {
+    setSelectedIndex((nextIndex + gallery.length) % gallery.length);
+    setIsInverse(false);
+    setIsTurning(false);
+  };
+
+  const turnOver = () => {
+    setIsTurning(true);
+    setIsInverse((current) => !current);
+  };
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "ArrowLeft") selectImage(selectedIndex - 1);
+      if (event.key === "ArrowRight") selectImage(selectedIndex + 1);
+      if (event.key.toLowerCase() === "f") turnOver();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [selectedIndex]);
 
   return (
     <main className="min-h-screen overflow-hidden bg-[#f4efe1] text-[#1c1a19]">
       <header className="site-header">
-        <a className="brand-lockup" href="#composition" aria-label="Robby composition viewer">
+        <a className="brand-lockup" href="#gallery" aria-label="Robby gallery">
           <img src="/manus-storage/robby-registration-mark_658aceee.png" alt="Robby split registration disc" />
           <span>robby<span className="brand-suffix">/ v1</span></span>
         </a>
         <div className="header-center">
           <span className="header-kicker">Explainable visual composition compiler</span>
           <span className="header-dot" />
-          <span className="mono text-[10px] tracking-[0.14em]">SEGFAULT 2026 · BUILD 01</span>
+          <span className="mono text-[10px] tracking-[0.14em]">GALLERY · 05 OBJECTS</span>
         </div>
-        <div className="compile-status"><Check size={13} strokeWidth={3} /> VALID IR</div>
+        <div className="compile-status"><Check size={13} strokeWidth={3} /> COMPILED LIBRARY</div>
       </header>
 
-      <section className="masthead">
-        <div className="masthead-index" aria-hidden="true">
-          <span>01</span><span>—</span><span>COMPILED</span>
+      <section className="gallery-intro">
+        <div className="intro-index" aria-hidden="true"><span>01</span><span>—</span><span>GALLERY</span></div>
+        <div className="intro-copy">
+          <p className="eyebrow">Obverse / inverse image library</p>
+          <h1>One object.<br />One face <em>at a time.</em></h1>
         </div>
-        <div className="masthead-copy">
-          <p className="eyebrow">A tiny compiler for visual composition</p>
-          <h1>Every picture<br />has a <em>reverse.</em></h1>
-        </div>
-        <div className="masthead-note">
+        <div className="intro-note">
           <span className="note-rule" />
-          <p>The obverse is a constructed image. The reverse makes the construction visible without becoming a debug screen.</p>
-          <span className="mono text-[10px] tracking-[0.13em]">{compiledExample.irVersion}</span>
+          <p>Like a postcard or coin, Robby’s image-object cannot reveal its obverse and inverse together. Turn it over; keep the trace in view.</p>
+          <span className="mono text-[10px] tracking-[0.13em]">← → TO CYCLE · F TO FLIP</span>
         </div>
       </section>
 
-      <section id="composition" className="composition-sheet" aria-label="Compiled composition">
-        <aside className="specimen-rail">
-          <div className="rail-marker"><span>SPECIMEN</span><span>01 / 01</span></div>
-          <div className="rail-copy">
-            <MonoLabel>Script</MonoLabel>
-            <p>{compiledExample.title}</p>
-            <span className="mono text-[10px]">SHA {compiledExample.sourceHash}</span>
-          </div>
-          <img className="rail-art" src="/manus-storage/robby-provenance-pattern_b9e25bd6.png" alt="Abstract provenance study" />
+      <section id="gallery" className="gallery-workspace" aria-label="Robby image-object gallery">
+        <aside className="gallery-rail" aria-label="Gallery navigation">
+          <div className="rail-heading"><MonoLabel>Image library</MonoLabel><span>{selected.serial}</span></div>
+          <ol className="gallery-list">
+            {gallery.map((item, index) => (
+              <li key={item.id}>
+                <button
+                  type="button"
+                  className={index === selectedIndex ? "gallery-thumb selected" : "gallery-thumb"}
+                  onClick={() => selectImage(index)}
+                  aria-current={index === selectedIndex ? "true" : undefined}
+                  aria-label={`Select ${item.title}`}
+                >
+                  <img src={item.obverse} alt="" />
+                  <span><b>{String(index + 1).padStart(2, "0")}</b><em>{item.title}</em></span>
+                </button>
+              </li>
+            ))}
+          </ol>
+          <div className="rail-foot"><span className="rail-line" /><p>All faces are compiler artifacts. Navigate an obverse; turn it over only when you choose.</p></div>
         </aside>
 
-        <article className="image-object obverse-object">
-          <div className="object-meta">
-            <div><MonoLabel>Obverse</MonoLabel><span className="object-index">01</span></div>
-            <span className="mono text-[10px]">COMPOSITE · 1440 × 1080</span>
+        <section className="object-stage" aria-labelledby="object-title">
+          <div className="stage-topline">
+            <div><MonoLabel>Selected image-object</MonoLabel><span className="object-serial">{selected.serial}</span></div>
+            <span className="mono text-[10px]">{selected.dimensions} · {activeFace.toUpperCase()}</span>
           </div>
-          <div className="image-frame obverse-frame">
-            <img src={compiledExample.obverse} alt="Night street composited with a transformed courier cutout" />
-            {activeLayer && (
-              <button
-                className="layer-region"
-                onClick={() => setActiveNode("layer-1")}
-                aria-label="Selected region: courier layer"
-              >
-                <span>01</span>
-                <i />
-              </button>
-            )}
-          </div>
-          <div className="object-caption">
-            <p>Night Street / courier placement</p>
-            <span><Focus size={13} /> LAYER 01 ACTIVE</span>
-          </div>
-        </article>
 
-        <article className="image-object reverse-object">
-          <div className="object-meta">
-            <div><MonoLabel>Reverse</MonoLabel><span className="object-index">{reverseMode === "provenance-map" ? "01" : "02"}</span></div>
-            <span className="mono text-[10px]">{reverse.eyebrow.toUpperCase()}</span>
+          <div className={`two-sided-object ${selected.ratio} ${isTurning ? "turning" : ""}`} onAnimationEnd={() => setIsTurning(false)}>
+            <img
+              src={activeImage}
+              alt={isInverse ? `${selected.title} inverse: ${selected.reverseDescription}` : `${selected.title} obverse`}
+              className="object-image"
+            />
+            <span className="face-stamp">{isInverse ? "I" : "O"}</span>
+            <span className="face-corner top-left" /><span className="face-corner top-right" /><span className="face-corner bottom-left" /><span className="face-corner bottom-right" />
           </div>
-          <div className="reverse-tabs" role="tablist" aria-label="Reverse image mode">
-            {(Object.keys(compiledExample.reverses) as ReverseMode[]).map((mode) => (
-              <button
-                key={mode}
-                role="tab"
-                aria-selected={reverseMode === mode}
-                className={reverseMode === mode ? "active" : ""}
-                onClick={() => setReverseMode(mode)}
-              >
-                {mode === "provenance-map" ? "Provenance" : "Palette"}
-              </button>
+
+          <div className="stage-caption">
+            <div>
+              <p className="caption-face">{isInverse ? selected.reverseKind : "Obverse"}</p>
+              <h2 id="object-title">{selected.title}</h2>
+              <p className="caption-detail">{isInverse ? selected.reverseDescription : selected.subtitle}</p>
+            </div>
+            <button type="button" className="flip-control" onClick={turnOver} aria-label={isInverse ? `Return ${selected.title} to its obverse` : `Flip ${selected.title} to its inverse`}>
+              {isInverse ? <RotateCcw size={18} /> : <FlipHorizontal2 size={18} />}
+              <span>{isInverse ? "Return to obverse" : "Turn to inverse"}</span>
+              <small>F</small>
+            </button>
+          </div>
+
+          <div className="stage-navigation">
+            <button type="button" onClick={() => selectImage(selectedIndex - 1)} aria-label="Previous image"><ChevronLeft size={17} /> Previous</button>
+            <span className="navigation-current">{selected.serial}</span>
+            <button type="button" onClick={() => selectImage(selectedIndex + 1)} aria-label="Next image">Next <ChevronRight size={17} /></button>
+          </div>
+        </section>
+
+        <aside className="trace-panel" aria-label={`Compilation trace for ${selected.title}`}>
+          <div className="trace-heading"><div><CircleDotDashed size={15} /><MonoLabel>Compilation trace</MonoLabel></div><span>{selected.trace.length} STEPS</span></div>
+          <div className="trace-title"><p className="eyebrow">Evidence beside object</p><h3>{selected.title}<br /><em>/ {activeFace}</em></h3></div>
+          <div className="trace-steps">
+            {selected.trace.map((step) => (
+              <article className="trace-step" key={step.stage}>
+                <span className="trace-number">{step.stage}</span>
+                <div><strong>{step.label}</strong><code>{step.code}</code><p>{step.detail}</p></div>
+                {step.color && <i style={{ backgroundColor: step.color }} aria-label="Vermilion provenance colour" />}
+              </article>
             ))}
           </div>
-          <div className="image-frame reverse-frame">
-            <img src={compiledExample.reverses[reverseMode]} alt={reverse.description} />
-            {activeLayer && reverseMode === "provenance-map" && <div className="reverse-pulse" aria-hidden="true" />}
+          <div className="trace-evidence">
+            <div className="palette-row" aria-label="Calculated palette">
+              {selected.palette.map((color) => <span key={color} style={{ backgroundColor: color }} title={color} />)}
+            </div>
+            <dl><div><dt>Script hash</dt><dd>{selected.scriptHash}</dd></div><div><dt>Output</dt><dd>{selected.outputHash}</dd></div></dl>
           </div>
-          <div className="object-caption reverse-caption">
-            <p>{reverse.description}</p>
-            <span><Eye size={13} /> INSPECTABLE OUTPUT</span>
-          </div>
-        </article>
+        </aside>
       </section>
 
-      <section className="trace-section" aria-labelledby="trace-title">
-        <div className="trace-intro">
-          <span className="section-number">02</span>
-          <div>
-            <p className="eyebrow">Process graph</p>
-            <h2 id="trace-title">Trace the light<br />back to its source.</h2>
-          </div>
-          <p className="trace-summary">Click a compiler step. The provenance swatch and selected region follow the same record stored in the generated manifest.</p>
-        </div>
-
-        <div className="trace-layout">
-          <section className="source-panel" aria-labelledby="source-title">
-            <div className="panel-heading">
-              <div><Code2 size={15} /><MonoLabel>Source language</MonoLabel></div>
-              <span className="mono text-[10px]">night-duality.robby</span>
-            </div>
-            <ol className="source-code" id="source-title">
-              {compiledExample.script.map((line, index) => (
-                <li key={line} className={index === 2 ? "active-line" : ""}>
-                  <span>{String(index + 1).padStart(2, "0")}</span><code>{line}</code>
-                </li>
-              ))}
-            </ol>
-          </section>
-
-          <section className="nodes-panel" aria-label="Compilation steps">
-            <div className="panel-heading"><div><CircleDotDashed size={15} /><MonoLabel>Compilation trace</MonoLabel></div><span className="mono text-[10px]">6 NODES · 7 EDGES</span></div>
-            <div className="node-list">
-              {compiledExample.nodes.map((node, index) => {
-                const isActive = activeNode === node.id;
-                return (
-                  <button
-                    type="button"
-                    key={node.id}
-                    onClick={() => setActiveNode(node.id)}
-                    className={`trace-node ${isActive ? "selected" : ""}`}
-                  >
-                    <span className="node-order">{String(index + 1).padStart(2, "0")}</span>
-                    <span className="node-icon">{node.type === "source" ? <ScanLine /> : node.type === "layer" ? <Layers3 /> : node.type === "output" ? <ArrowDownRight /> : <ChevronRight />}</span>
-                    <span className="node-copy"><strong>{node.label}</strong><code>{node.code}</code><small>{node.detail}</small></span>
-                    {"color" in node && node.color && <i className="provenance-swatch" style={{ backgroundColor: node.color }} />}
-                  </button>
-                );
-              })}
-            </div>
-          </section>
-
-          <aside className="evidence-panel" aria-label="Selected layer evidence">
-            <div className="evidence-disc" style={{ backgroundColor: compiledExample.layer.color }}><span>01</span></div>
-            <MonoLabel>Selected evidence</MonoLabel>
-            <h3>{compiledExample.layer.cutout}<br />/ person</h3>
-            <dl>
-              <div><dt>Mask strategy</dt><dd>{compiledExample.layer.strategy}</dd></div>
-              <div><dt>Region</dt><dd>{compiledExample.layer.bounds}</dd></div>
-              <div><dt>Source</dt><dd>{compiledExample.layer.source}</dd></div>
-            </dl>
-            <div className="palette-row" aria-label="Calculated dominant palette">
-              {compiledExample.palette.map((color) => <span key={color} style={{ backgroundColor: color }} title={color} />)}
-            </div>
-            <p className="evidence-foot">One layer is selected. Its vermilion is reused in the reverse map and this process record.</p>
-          </aside>
-        </div>
-      </section>
-
-      <section className="manifest-strip" aria-label="Manifest record">
+      <section className="manifest-strip" aria-label="Gallery manifest record">
         <div className="manifest-identity"><FileJson2 size={18} /><span>MANIFEST / PROCESS GRAPH</span></div>
-        <div className="manifest-fields"><span>VERSION <b>{compiledExample.manifestVersion}</b></span><span>OUTPUT SHA <b>{compiledExample.outputHash}</b></span><span>EXECUTOR <b>CPU · PILLOW / OPENCV</b></span></div>
+        <div className="manifest-fields"><span>LIBRARY <b>5 COMPILED OBJECTS</b></span><span>ACTIVE FACE <b>{activeFace.toUpperCase()} · MUTUALLY EXCLUSIVE</b></span><span>EXECUTOR <b>CPU · PILLOW / OPENCV</b></span></div>
         <img src="/manus-storage/robby-palette-study_ad20752b.png" alt="Abstract palette study" />
         <Sparkles className="manifest-spark" size={18} />
       </section>
 
       <footer className="site-footer">
-        <p>Robby treats the process graph as a photographic reverse: <em>not proof of perfection, but evidence of a making.</em></p>
-        <span className="mono text-[10px]">OBVERSE / REVERSE / MANIFEST</span>
+        <p>The trace remains alongside the object, but the image has only one visible face. <em>Observation is a choice.</em></p>
+        <span className="mono text-[10px]">OBVERSE ↔ INVERSE / MANIFEST</span>
       </footer>
     </main>
   );
 }
+

@@ -79,13 +79,13 @@ If a script requests two reverse modes, the executor writes `-provenance-map` an
 
 ## Run the viewer
 
-The React viewer is intentionally static: it displays a compiled example checked into its public data model and lets the reader select process nodes to highlight their provenance colour.
+The React viewer is intentionally static: it displays a compiled library of image-objects and keeps the selected record’s process trace alongside the image stage.
 
 ```bash
 pnpm dev
 ```
 
-The viewer’s supplied example is generated from `examples/night-duality.robby`; its images and manifest are also surfaced in the project’s web preview.
+The gallery starts on an obverse. Selecting another record also starts that record on its obverse. The **Turn to inverse** control (or the `F` key) replaces the stage image with its compiled reverse; the faces are never shown side by side. Left and right arrow keys cycle the library. The supplied examples are generated from `examples/night-duality.robby`, `examples/ayodhya-mural.robby`, `examples/urban-fantasy.robby`, `examples/murgeshpalya-passage.robby`, and `examples/uganda-diptych.robby`.
 
 ## Known v1 boundaries
 
@@ -93,4 +93,4 @@ Version 1 deliberately excludes a custom mask editor, nested groups, text/vector
 
 ## Verification
 
-The current implementation is covered by four Rust parser/validator tests and an end-to-end command path for both valid examples. See [`docs/testing.md`](docs/testing.md) for the exact checks and the explicit limitations of the deterministic mask adapters.
+The current implementation is covered by four Rust parser/validator tests and end-to-end command paths for six valid examples. See [`docs/testing.md`](docs/testing.md) for the core checks, [`docs/gallery-revision.md`](docs/gallery-revision.md) for the gallery interaction contract, and the explicit limitations of the deterministic mask adapters.

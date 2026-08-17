@@ -1,0 +1,6 @@
+# A base-only visual object: the compiler records its colour evidence.
+base("_DSF0739-Enhanced-NR.webp")
+palette(k: 8)
+reverse(mode: "palette-grid", k: 8)
+output(obverse: "urban-fantasy-obverse.png", reverse: "urban-fantasy-reverse.png", manifest: "urban-fantasy-manifest.json")
+
