@@ -6,6 +6,7 @@
  */
 
 import SourceEditor from "@/components/SourceEditor";
+import { verifiedCompilerStatus } from "@/lib/compilerStatus";
 import { gallery, type TraceStep } from "@/lib/demoData";
 import { type RobbyIr } from "@/lib/robbyCompiler";
 import {
@@ -26,7 +27,6 @@ import { Link } from "wouter";
 import { useEffect, useState } from "react";
 import initRobbyCompiler, {
   compile_source_json,
-  compiler_version,
 } from "../wasm/robby_compiler";
 
 function MonoLabel({ children }: { children: React.ReactNode }) {
@@ -109,7 +109,7 @@ export default function Home() {
         if (!active) return;
         if (ir.version !== "robby-ir-v1") throw new Error("Unexpected IR version");
         setCompilerState("verified");
-        setCompilerLabel(`VALID IR · ${compiler_version().replace("robby-compiler-", "RUST ")}`);
+        setCompilerLabel(verifiedCompilerStatus);
       })
       .catch(() => {
         if (!active) return;

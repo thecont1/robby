@@ -67,3 +67,8 @@
 - [x] Verify in-browser that an invalid recompile withholds the prior live trace, source hash, and output projection.
 - [x] Establish a valid Night duality live projection, then prepare the unsupported-mask browser draft for the error-state check.
 - [x] Reset the invalid Night draft and submit a fresh canonical compile to verify post-error projection recovery.
+
+## Trace and toolchain-status refinement
+
+- [x] Reduce the compilation-trace step-number cell width by 50 percent.
+- [x] Replace the ambiguous header compiler label with the verified Rust toolchain version.
