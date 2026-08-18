@@ -15,8 +15,10 @@ from PIL import Image
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+sys.path.insert(0, str(ROOT / "scripts"))
 
 from executor.run import kmeans_palette
+from gallery_sources import SOURCES
 
 
 def sha256_file(path: Path) -> str:
@@ -47,19 +49,7 @@ def main() -> None:
     parser.add_argument("--out", type=Path, required=True)
     arguments = parser.parse_args()
 
-    mapping = {
-        "MS201306-BipashaAashish0192": ("MS201306-BipashaAashish0192.jpg", "MS201306-BipashaAashish0192-obverse.png"),
-        "MS201412-AddisAbaba0315": ("MS201412-AddisAbaba0315.jpg", "MS201412-AddisAbaba0315-obverse.png"),
-        "MS201508-Uganda0016": ("MS201508-Uganda0016.jpg", "MS201508-Uganda0016-obverse.png"),
-        "MS201804-FIDHGuinea0264": ("MS201804-FIDHGuinea0264.jpg", "MS201804-FIDHGuinea0264-obverse.png"),
-        "MS201901-Murgeshpalya0018": ("MS201901-Murgeshpalya0018.jpg", "MS201901-Murgeshpalya0018-obverse.png"),
-        "MS201904-Kashmir0594": ("MS201904-Kashmir0594.jpg", "MS201904-Kashmir0594-obverse.png"),
-        "MS201910-Ghana9243": ("MS201910-Ghana9243.jpg", "MS201910-Ghana9243-obverse.png"),
-        "MS201912-Nagaland1300": ("MS201912-Nagaland1300.jpg", "MS201912-Nagaland1300-obverse.png"),
-        "MS202309-HongKong0469-Enhanced-NR": ("MS202309-HongKong0469-Enhanced-NR.jpg", "MS202309-HongKong0469-Enhanced-NR-obverse.png"),
-        "MS202401-Ayodhya0041": ("MS202401-Ayodhya0041.jpg", "MS202401-Ayodhya0041-obverse.png"),
-        "MS202308-Bangalore0739-Enhanced-NR": ("MS202308-Bangalore0739-Enhanced-NR.jpg", "MS202308-Bangalore0739-Enhanced-NR-obverse.png"),
-    }
+    mapping = {slug: (filename, f"{slug}-obverse.png") for slug, filename in SOURCES}
     records = {
         specimen: signature(arguments.assets_root / source, arguments.renders_root / output)
         for specimen, (source, output) in mapping.items()
