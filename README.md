@@ -4,7 +4,7 @@
 
 > **Pipeline:** source script → AST → validation → JSON IR → image execution → obverse, reverse, manifest.
 
-> **Build 02:** `robby-compiler-v0.1.0` is a portable Rust crate. The same Rust lexer, parser, validator, and `robby-ir-v1` lowerer power the native CLI and the browser WebAssembly adapter. The compiler source is available on the [`dev/ananya` branch](https://github.com/thecont1/robby/tree/dev/ananya).
+> **Build 02:** `robby-compiler-v0.1.0` is a portable Rust crate. The same Rust lexer, parser, validator, and `robby-ir-v1` lowerer power the native CLI and the browser WebAssembly adapter. Download the compiler source as the [`dev/ananya` branch archive](https://github.com/thecont1/robby/archive/refs/heads/dev/ananya.zip).
 
 The v1 compiler keeps its grammar deliberately small. It is designed to make a photographic composition traceable, not to become a general-purpose graphics program.
 

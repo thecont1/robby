@@ -9,7 +9,7 @@ The live browser verification confirmed all of the following:
 | Surface | Observed state |
 | --- | --- |
 | Browser compiler status | `VALID IR · RUST v0.1.0` |
-| Source access | Persistent `DOWNLOAD RUST SOURCE` link to `https://github.com/thecont1/robby/tree/dev/ananya` |
+| Source access | Persistent `DOWNLOAD RUST SOURCE` link to `https://github.com/thecont1/robby/archive/refs/heads/dev/ananya.zip` |
 | Manifest strip | `CORE: RUST · robby-compiler-v0.1` alongside the separate CPU/Pillow/OpenCV executor declaration |
 | Web artifact | Vite production build emits the generated `robby_compiler_bg.wasm` asset |
 

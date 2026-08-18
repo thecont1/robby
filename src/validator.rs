@@ -22,6 +22,7 @@ pub fn validate(script: &Script) -> CompileResult<()> {
     let mut output_seen = false;
     let mut palette_seen = false;
     let mut reverse_count = 0;
+    let mut reverse_modes = HashSet::new();
     let mut cutout_ids = HashSet::new();
 
     for (index, command) in script.commands.iter().enumerate() {
@@ -48,7 +49,10 @@ pub fn validate(script: &Script) -> CompileResult<()> {
                 if reverse_count > 2 {
                     return Err(error(command, "v1 supports at most two `reverse(...)` commands."));
                 }
-                validate_reverse(command, palette_seen)?;
+                let mode = validate_reverse(command)?;
+                if !reverse_modes.insert(mode.clone()) {
+                    return Err(error(command, format!("Duplicate reverse mode `{mode}`. Declare each reverse mode at most once.")));
+                }
             }
             "output" => {
                 if output_seen {
@@ -144,7 +148,7 @@ fn validate_place(command: &Command, ids: &HashSet<String>) -> CompileResult<()>
     Ok(())
 }
 
-fn validate_reverse(command: &Command, palette_seen: bool) -> CompileResult<()> {
+fn validate_reverse(command: &Command) -> CompileResult<String> {
     let values = named(command, &["mode", "k"])?;
     let mode = required_string(&values, "mode", command)?;
     if !["provenance-map", "palette-grid"].contains(&mode) {
@@ -155,9 +159,8 @@ fn validate_reverse(command: &Command, palette_seen: bool) -> CompileResult<()> 
     }
     if mode == "palette-grid" {
         validate_palette_k(&values, "k", command)?;
-        let _ = palette_seen;
     }
-    Ok(())
+    Ok(mode.to_string())
 }
 
 fn named<'a>(command: &'a Command, allowed: &[&str]) -> CompileResult<HashMap<String, &'a Value>> {
@@ -176,7 +179,7 @@ fn named<'a>(command: &'a Command, allowed: &[&str]) -> CompileResult<HashMap<St
     Ok(values)
 }
 
-fn named_base<'a>(command: &'a Command) -> CompileResult<HashMap<String, &'a Value>> {
+fn named_base(command: &Command) -> CompileResult<HashMap<String, &Value>> {
     let mut values = HashMap::new();
     for argument in &command.arguments {
         let Some(name) = &argument.name else { continue };

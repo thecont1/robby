@@ -7,7 +7,7 @@
 
 import SourceEditor from "@/components/SourceEditor";
 import { gallery, type TraceStep } from "@/lib/demoData";
-import { type RobbyIr } from "@/lib/robbyCompiler";
+import { compileWithRust, rustCompilerVersion, type RobbyIr } from "@/lib/robbyCompiler";
 import {
   Check,
   BookOpen,
@@ -24,10 +24,6 @@ import {
 } from "lucide-react";
 import { Link } from "wouter";
 import { useEffect, useState } from "react";
-import initRobbyCompiler, {
-  compile_source_json,
-  compiler_version,
-} from "../wasm/robby_compiler";
 
 function MonoLabel({ children }: { children: React.ReactNode }) {
   return <span className="mono-label">{children}</span>;
@@ -47,7 +43,7 @@ function traceFromIr(ir: RobbyIr): TraceStep[] {
   return trace;
 }
 
-type ProjectionState = "gallery" | "compiling" | "error" | "live";
+type ProjectionState = "gallery" | "draft" | "compiling" | "error" | "live";
 
 export default function Home() {
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -61,7 +57,7 @@ export default function Home() {
   const selected = gallery[selectedIndex];
   const activeFace = face;
   const liveIr = projectionState === "live" && compiledEdit?.specimenId === selected.id ? compiledEdit.ir : null;
-  const projectionUnavailable = projectionState === "compiling" || projectionState === "error";
+  const projectionUnavailable = projectionState === "draft" || projectionState === "compiling" || projectionState === "error";
   const trace = projectionUnavailable ? [] : liveIr ? traceFromIr(liveIr) : selected.trace;
   const liveScriptHash = projectionUnavailable ? null : liveIr?.meta.script_sha256 ?? selected.scriptHash;
   const liveReverseMode = projectionUnavailable ? null : liveIr?.reverse.map((item) => item.k ? `${item.mode} (k=${item.k})` : item.mode).join(" + ") ?? selected.reverseMode;
@@ -90,6 +86,8 @@ export default function Home() {
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (target?.isContentEditable || target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || target instanceof HTMLSelectElement) return;
       if (event.key === "ArrowLeft") selectImage(selectedIndex - 1);
       if (event.key === "ArrowRight") selectImage(selectedIndex + 1);
       if (event.key.toLowerCase() === "f") turnOver();
@@ -103,13 +101,12 @@ export default function Home() {
     setCompilerState("checking");
     setCompilerLabel("RUST CORE · VERIFYING");
 
-    initRobbyCompiler()
-      .then(() => {
-        const ir = JSON.parse(compile_source_json(selected.script)) as { version?: string };
+    compileWithRust(selected.script)
+      .then(() => rustCompilerVersion())
+      .then((version) => {
         if (!active) return;
-        if (ir.version !== "robby-ir-v1") throw new Error("Unexpected IR version");
         setCompilerState("verified");
-        setCompilerLabel(`VALID IR · ${compiler_version().replace("robby-compiler-", "RUST ")}`);
+        setCompilerLabel(`VALID IR · ${version.replace("robby-compiler-", "RUST ")}`);
       })
       .catch(() => {
         if (!active) return;
@@ -136,6 +133,16 @@ export default function Home() {
   const markProjectionUnavailable = () => {
     setCompiledEdit(null);
     setProjectionState("error");
+  };
+
+  const markDraftProjectionUnavailable = () => {
+    setCompiledEdit(null);
+    setProjectionState("draft");
+  };
+
+  const resetLiveProjection = () => {
+    setCompiledEdit(null);
+    setProjectionState("gallery");
   };
 
   return (
@@ -272,19 +279,21 @@ export default function Home() {
             onCompiled={applyCompiledSource}
             onCompileStart={clearLiveProjection}
             onCompileError={markProjectionUnavailable}
+            onDraftChange={markDraftProjectionUnavailable}
+            onReset={resetLiveProjection}
           />
         </section>
 
         <aside className="trace-panel" aria-label={`Compilation trace for ${selected.title}`}>
-          <div className="trace-heading"><div><CircleDotDashed size={15} /><MonoLabel>Compilation trace</MonoLabel></div><span>{projectionState === "compiling" ? "VALIDATING" : projectionState === "error" ? "UNAVAILABLE" : `${trace.length} STEPS`}</span></div>
+          <div className="trace-heading"><div><CircleDotDashed size={15} /><MonoLabel>Compilation trace</MonoLabel></div><span>{projectionState === "draft" ? "DRAFT" : projectionState === "compiling" ? "VALIDATING" : projectionState === "error" ? "UNAVAILABLE" : `${trace.length} STEPS`}</span></div>
           <div className="trace-title"><p className="eyebrow">Evidence beside object</p><h3>{selected.title}<br /><em>/ {activeFace}</em></h3></div>
           {projectionUnavailable ? (
             <div className="projection-unavailable" role="status">
               <CircleDotDashed size={18} aria-hidden="true" />
               <div>
                 <p className="mono-label">Live projection withheld</p>
-                <strong>{projectionState === "compiling" ? "Validating the current Rust source." : "The current source did not compile."}</strong>
-                <p>{projectionState === "compiling" ? "Previous trace, hash, and output targets are hidden until validation finishes." : "Previous trace, hash, and output targets remain hidden. Fix the source and compile again for a new projection."}</p>
+                <strong>{projectionState === "draft" ? "The source changed after its last successful compile." : projectionState === "compiling" ? "Validating the current Rust source." : "The current source did not compile."}</strong>
+                <p>{projectionState === "draft" ? "Previous trace, hash, and output targets are hidden until this draft is compiled." : projectionState === "compiling" ? "Previous trace, hash, and output targets are hidden until validation finishes." : "Previous trace, hash, and output targets remain hidden. Fix the source and compile again for a new projection."}</p>
               </div>
             </div>
           ) : (

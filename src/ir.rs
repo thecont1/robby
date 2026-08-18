@@ -68,7 +68,7 @@ pub struct Meta {
 }
 
 /// `lower` assumes `validator::validate` has already accepted this script.
-pub fn lower(script: &Script, source: &str) -> Ir {
+pub(crate) fn lower(script: &Script, source: &str) -> Ir {
     let base = command(script, "base");
     let base_values = named(base);
     let base_path = base

@@ -2,7 +2,7 @@
 
 use std::env;
 use std::fs;
-use std::path::Path;
+use std::path::PathBuf;
 
 use robby_compiler::{compile_source, COMPILER_VERSION};
 
@@ -18,13 +18,13 @@ fn main() {
         println!("{COMPILER_VERSION}");
         return;
     }
-    let Some(command) = arguments.first() else {
-        usage();
-        std::process::exit(2);
-    };
-    let Some(script_path) = arguments.get(1) else {
-        usage();
-        std::process::exit(2);
+    let (script_path, output_path) = match arguments.as_slice() {
+        [command, script] if command == "check" => (script, None),
+        [command, script, flag, output] if command == "compile" && flag == "--out" => (script, Some(PathBuf::from(output))),
+        _ => {
+            usage();
+            std::process::exit(2);
+        }
     };
     let source = match fs::read_to_string(script_path) {
         Ok(value) => value,
@@ -41,14 +41,9 @@ fn main() {
         }
     };
 
-    match command.as_str() {
-        "check" => println!("Valid Robby v1 script: `{script_path}`"),
-        "compile" => {
-            if arguments.len() != 4 || arguments[2] != "--out" {
-                usage();
-                std::process::exit(2);
-            }
-            let output_path = Path::new(&arguments[3]);
+    match output_path {
+        None => println!("Valid Robby v1 script: `{script_path}`"),
+        Some(output_path) => {
             if let Some(parent) = output_path.parent() {
                 if let Err(error) = fs::create_dir_all(parent) {
                     eprintln!("Error: Could not create `{}`: {error}", parent.display());
@@ -56,15 +51,11 @@ fn main() {
                 }
             }
             let json = serde_json::to_string_pretty(&ir).expect("IR should always serialize");
-            if let Err(error) = fs::write(output_path, format!("{json}\n")) {
+            if let Err(error) = fs::write(&output_path, format!("{json}\n")) {
                 eprintln!("Error: Could not write `{}`: {error}", output_path.display());
                 std::process::exit(1);
             }
             println!("Compiled `{script_path}` → `{}`", output_path.display());
-        }
-        _ => {
-            usage();
-            std::process::exit(2);
         }
     }
 }

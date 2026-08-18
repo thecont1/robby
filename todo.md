@@ -67,3 +67,17 @@
 - [x] Verify in-browser that an invalid recompile withholds the prior live trace, source hash, and output projection.
 - [x] Establish a valid Night duality live projection, then prepare the unsupported-mask browser draft for the error-state check.
 - [x] Reset the invalid Night draft and submit a fresh canonical compile to verify post-error projection recovery.
+
+## Fresh external review round
+
+- [x] Review and resolve the new CodeRabbit findings first. (Addressed all nine inline findings, the editable-shortcut finding, and the directly related robustness notes.)
+- [x] Review and resolve the new ITO-QA findings second. (Draft edits now invalidate obsolete live evidence and supersede prior compile generations.)
+- [ ] Validate, push, and report the latest unmerged PR review outcome.
+- [x] Verify editor shortcut isolation and reset projection behavior in the rebuilt browser preview.
+- [x] Focus the Night source editor and issue ArrowRight as the editable-target shortcut regression input. (Night remained selected on its obverse face.)
+- [x] Send `f` while the source editor retained focus as the flip-shortcut isolation regression input. (Night remained on its obverse face.)
+- [x] Reset the editor after the focused-key regression to restore the canonical Night source.
+- [x] Compile the canonical Night source live, then invoke Reset to test that the parent discards the live projection.
+- [x] Verify that editing a successfully compiled source immediately withholds its obsolete live projection.
+- [x] Establish a valid live Night projection, then replace its editor draft with a distinct valid k=7 source without compiling it.
+- [x] Compile the edited k=7 draft, confirm the current live trace, then reset the temporary browser draft to the canonical specimen source.

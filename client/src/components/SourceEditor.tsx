@@ -21,9 +21,11 @@ type SourceEditorProps = {
   onCompiled: (ir: RobbyIr, source: string) => void;
   onCompileStart: () => void;
   onCompileError: () => void;
+  onDraftChange: () => void;
+  onReset: () => void;
 };
 
-export default function SourceEditor({ specimenId, title, source, onCompiled, onCompileStart, onCompileError }: SourceEditorProps) {
+export default function SourceEditor({ specimenId, title, source, onCompiled, onCompileStart, onCompileError, onDraftChange, onReset }: SourceEditorProps) {
   const [draft, setDraft] = useState(source);
   const [state, setState] = useState<EditorState>({ kind: "idle" });
   const compileGeneration = useRef(0);
@@ -51,11 +53,25 @@ export default function SourceEditor({ specimenId, title, source, onCompiled, on
     }
   };
 
+  const reset = () => {
+    compileGeneration.current += 1;
+    setDraft(source);
+    setState({ kind: "idle" });
+    onReset();
+  };
+
+  const updateDraft = (nextDraft: string) => {
+    if (nextDraft === draft) return;
+    compileGeneration.current += 1;
+    setDraft(nextDraft);
+    onDraftChange();
+  };
+
   const lineCount = Math.max(1, draft.split("\n").length);
 
   return (
     <section className="source-workbench" aria-labelledby="source-editor-title">
-      <div className="source-workbench-heading">
+      <div id="source-editor-title" className="source-workbench-heading">
         <div><Code2 size={15} /><span className="mono-label">Live source / Rust compiler</span></div>
         <span className="mono">{title.toUpperCase()} · {lineCount} LINES</span>
       </div>
@@ -67,14 +83,14 @@ export default function SourceEditor({ specimenId, title, source, onCompiled, on
           aria-label={`Robby source editor for ${title}`}
           spellCheck="false"
           value={draft}
-          onChange={(event) => setDraft(event.target.value)}
+          onChange={(event) => updateDraft(event.target.value)}
         />
       </div>
       <div className="source-editor-actions">
         <button type="button" className="compile-source" onClick={compile} disabled={state.kind === "compiling"}>
           <Play size={14} fill="currentColor" /> {state.kind === "compiling" ? "Compiling in Rust…" : "Compile with Rust"}
         </button>
-        <button type="button" className="reset-source" onClick={() => { setDraft(source); setState({ kind: "idle" }); }} disabled={state.kind === "compiling"}>
+        <button type="button" className="reset-source" onClick={reset} disabled={state.kind === "compiling"}>
           <RotateCcw size={13} /> Reset specimen source
         </button>
         <span className="source-boundary">WASM bridge → Rust lexer / parser / validator / IR</span>
