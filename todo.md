@@ -241,3 +241,15 @@
 - [x] Move the full-screen activation control to the left of the dimensions in the lower-right stage metadata area.
 - [x] Constrain full-screen artwork above the bottom orange information separator with a dedicated safe image area.
 - [x] Verify the activation control and full-screen image containment on desktop and mobile.
+
+## Authentic gallery refresh and sequencing
+
+- [x] Inspect newly uploaded immutable originals and identify the removed previous specimen.
+- [x] Reconcile the active gallery catalogue, immutable-original allowlist, and source metadata without transforming source JPEGs.
+- [x] Add clear documentation identifying the exact gallery-order control point for future sequencing changes.
+- [x] Verify each refreshed gallery specimen, navigation sequence, and source integrity metadata.
+
+## Native-dimension live rendering
+
+- [x] Accept Rust compiler IR canvas dimensions emitted as null when a base-only script intentionally preserves the source image’s native size.
+- [x] Add regression coverage for native-dimension refreshed gallery IR through the live-render validator.

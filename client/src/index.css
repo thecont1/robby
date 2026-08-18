@@ -61,6 +61,7 @@
 .credential-badge:hover, .credential-badge[aria-expanded="true"] { background: #1c1a19; color: #f4efe1; }
 .credential-badge.absent { border-color: #8b6a48; }
 .credential-badge.present { background:#e1eadb; border-color:#4e7a5b; }
+.credential-badge.candidate { background:#f4e4bf; border-color:#ba762d; }
 .colour-badge { background: rgba(255,255,255,.2); }
 .inline-swatches { display: inline-flex; margin-left: 2px; }
 .inline-swatches b { border: 1px solid #f4efe1; height: 10px; margin-left: -2px; width: 10px; }

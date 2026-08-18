@@ -27,3 +27,11 @@ The full-screen viewer now has two explicit rows: an upper artwork-safe viewport
 The opened viewer exposes its title, swipe/escape guidance, and close action as a distinct information rail; none of these controls is rendered over the artwork bitmap.
 
 Measured final mobile-viewer geometry confirms the artwork is reduced to `432 × 324px` and ends **18px above** the image viewport’s lower edge. That edge meets the information rail’s 2px orange separator exactly, so the image remains fully above the rule and cannot overlap the bottom information.
+
+## Gallery refresh — 2026-08-18
+
+The active gallery now starts with **Bipasha & Aashish** rather than the retired Night duality study. Its first rendered face and adjacent trace load from a regenerated Rust compiler → Python executor artifact set, and its base-canvas trace records the preserved source filename and native `2048 × 1535` geometry.
+
+The live gallery control exposed `01 / 10` for Bipasha & Aashish and advanced successfully to the second refreshed specimen, Uganda diptych. The normal gallery slide remained available during this first refreshed navigation transition.
+
+The live server renderer accepted the fresh Bipasha & Aashish IR after its native-dimension compatibility fix, revalidated the immutable source SHA-256, and returned newly generated obverse, inverse, and manifest URLs with an HTTP `201` response.

@@ -91,7 +91,11 @@ The web application displays a compiled library of image-objects and keeps the s
 pnpm dev
 ```
 
-The gallery starts on an obverse. Selecting another record also starts that record on its obverse. The **Turn to inverse** control (or the `F` key) replaces the stage image with its compiled reverse; the faces are never shown side by side. Left and right arrow keys cycle the library. The supplied examples are generated from `examples/night-duality.robby`, `examples/ayodhya-mural.robby`, `examples/urban-fantasy.robby`, `examples/murgeshpalya-passage.robby`, and `examples/uganda-diptych.robby`.
+The gallery starts on an obverse. Selecting another record also starts that record on its obverse. The **Turn to inverse** control (or the `F` key) replaces the stage image with its compiled reverse; the faces are never shown side by side. Left and right arrow keys cycle the library. The historical `examples/*.robby` files remain compact compiler fixtures; the active gallery records are regenerated from the immutable current source set with `scripts/build_refreshed_gallery.py`.
+
+### Change gallery order
+
+The active gallery sequence is controlled in **`client/src/lib/demoData.ts`**, in the exported `galleryOrder` list. Move an image id earlier or later in that list to change the filmstrip, serial numbers, Previous/Next behavior, keyboard cycling, and full-screen swipe order. Remove an id from that list to hide the specimen without deleting its immutable original or stored derivatives.
 
 The viewer validates the selected `.robby` script with the generated **Rust WebAssembly** adapter before it reports `VALID IR · RUST <toolchain>`. The value is not hardcoded in the UI: `build.rs` runs the same `rustc --version` used by Cargo while building the native/WASM compiler and embeds that toolchain label in the generated adapter. The separate `robby-compiler-v0.1.0` value remains the crate release, not the Rust toolchain. Rebuild the adapter from the same library after changing compiler code or the installed Rust toolchain:
 
@@ -112,15 +116,13 @@ The current live endpoint supports the gallery’s **base-only** scripts and the
 
 Authentic source images are **user data, not repository files**. Store them through the web app’s **Authentic originals** intake or the Management UI File Storage panel. The intake accepts original JPEG byte streams only; it does not crop, resize, decode/re-encode, strip metadata, or rename the original basename. Each object is content-addressed by SHA-256 and an immutable metadata record stores its filename, byte length, storage key, and provenance status. The `gallery/` path is ignored intentionally.
 
-The active replacement originals have C2PA manifests. Robby records their source-byte SHA-256 values and surfaces a `C2PA PRESENT` badge, while retaining the local verifier warning that its signing credential is not trusted by the configured trust store. This is deliberately more conservative than claiming a fully trusted credential.
+The refreshed gallery records an honest raw-byte credential scan beside every source SHA-256. A source without a C2PA/JUMBF marker is labeled `C2PA ABSENT`; a raw marker without an available cryptographic validation pass is labeled `C2PA CANDIDATE`, never as a verified claim. This keeps the gallery’s credential language conservative while preserving every supplied JPEG byte-for-byte.
 
-The **colour signature** is real pixel-derived data from the active compiled obverse: a SHA-256 fingerprint of raw RGB pixels, a SHA-256 fingerprint of its deterministic eight-colour palette, and the displayed palette itself. Recompute the authentic-source gallery signature record with:
+The **colour signature** is real pixel-derived data from the active compiled obverse: a SHA-256 fingerprint of raw RGB pixels, a SHA-256 fingerprint of its deterministic eight-colour palette, and the displayed palette itself. The current-gallery compiler/executor record and measured catalogue can be regenerated with:
 
 ```bash
-uv run python scripts/derive_authentic_gallery_signatures.py \
-  --assets-root /path/to/immutable-originals \
-  --renders-root /path/to/rendered-derivatives \
-  --out /tmp/robby-authentic-signatures.json
+python3 scripts/build_refreshed_gallery.py
+python3 scripts/derive_refreshed_gallery_catalog.py
 ```
 
 The source-byte audit, signature values, flip-state model, and verification notes remain available in the Build 03 records. No credential assertion in the gallery is stubbed.

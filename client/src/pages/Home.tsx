@@ -39,6 +39,7 @@ import {
   Lightbulb,
   Maximize2,
   Minimize2,
+  ShieldAlert,
   ShieldCheck,
   ShieldX,
 } from "lucide-react";
@@ -101,7 +102,10 @@ export default function Home() {
   const compileHistory = useRef<Record<string, CompileSnapshot[]>>({});
   const { theme, toggleTheme } = useTheme();
   const selected = gallery[selectedIndex];
-  const hasEmbeddedCredential = selected.credentialSignature.status === "present";
+  const credentialStatus = selected.credentialSignature.status;
+  const hasEmbeddedCredential = credentialStatus === "present";
+  const hasCredentialCandidate = credentialStatus === "candidate";
+  const credentialLabel = hasEmbeddedCredential ? "C2PA PRESENT" : hasCredentialCandidate ? "C2PA CANDIDATE" : "C2PA ABSENT";
   const activeFace = face;
   const liveIr = projectionState === "live" && compiledEdit?.specimenId === selected.id ? compiledEdit.ir : null;
   const activeDerivative = liveDerivative?.specimenId === selected.id ? liveDerivative.result : null;
@@ -389,19 +393,19 @@ export default function Home() {
                 <div className="credential-wrap">
                   <button
                     type="button"
-                    className={`credential-badge ${hasEmbeddedCredential ? "present" : "absent"}`}
+                    className={`credential-badge ${credentialStatus}`}
                     onClick={() => setCredentialOpen((current) => !current)}
                     aria-expanded={credentialOpen}
                     aria-controls="credential-summary"
                   >
-                    {hasEmbeddedCredential ? <ShieldCheck size={14} strokeWidth={2.2} /> : <ShieldX size={14} strokeWidth={2.2} />} {hasEmbeddedCredential ? "C2PA PRESENT" : "C2PA ABSENT"}
+                    {hasEmbeddedCredential ? <ShieldCheck size={14} strokeWidth={2.2} /> : hasCredentialCandidate ? <ShieldAlert size={14} strokeWidth={2.2} /> : <ShieldX size={14} strokeWidth={2.2} />} {credentialLabel}
                   </button>
                   <div id="credential-summary" className={`credential-popover ${credentialOpen ? "open" : ""}`} role="status">
                     <strong>Credential signature</strong>
                     <p>{selected.credentialSignature.note}</p>
                     <dl>
                       <div><dt>issuer</dt><dd>{selected.credentialSignature.claimGenerator ?? "no embedded record"}</dd></div>
-                      <div><dt>validation</dt><dd>{hasEmbeddedCredential ? "manifest present · trust warning" : "no embedded record"}</dd></div>
+                      <div><dt>validation</dt><dd>{hasEmbeddedCredential ? "manifest present · trust warning" : hasCredentialCandidate ? "marker present · validation pending" : "no embedded record"}</dd></div>
                       <div><dt>audit</dt><dd>{selected.credentialSignature.markerScan}</dd></div>
                       <div><dt>source sha</dt><dd>{selected.credentialSignature.sourceSha256.slice(0, 16)}…</dd></div>
                     </dl>

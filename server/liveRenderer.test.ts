@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { normalizeLiveRenderableIr, renderFingerprint } from "./liveRenderer";
 
 const liveIr = (paletteK: number, reverseMode: "palette-grid" | "provenance-map") => ({
-  version: "robby-ir-v1", canvas: { base: "IMG_20210916_185510.jpg", width: 1440, height: 1080 }, cutouts: [], layers: [], palette: { k: paletteK }, reverse: [{ mode: reverseMode, ...(reverseMode === "palette-grid" ? { k: paletteK } : {}) }], output: { obverse: "ignored.png", reverse: "ignored.png", manifest: "ignored.json" },
+  version: "robby-ir-v1", canvas: { base: "MS201306-BipashaAashish0192.jpg", width: 2048, height: 1535 }, cutouts: [], layers: [], palette: { k: paletteK }, reverse: [{ mode: reverseMode, ...(reverseMode === "palette-grid" ? { k: paletteK } : {}) }], output: { obverse: "ignored.png", reverse: "ignored.png", manifest: "ignored.json" },
 });
 
 describe("live image render configuration", () => {
@@ -16,6 +16,14 @@ describe("live image render configuration", () => {
     const provenance = normalizeLiveRenderableIr(liveIr(8, "provenance-map"));
     expect(renderFingerprint(paletteEight)).not.toBe(renderFingerprint(paletteNine));
     expect(renderFingerprint(paletteEight)).not.toBe(renderFingerprint(provenance));
+  });
+
+  it("accepts Rust base-only IR that leaves native canvas dimensions unspecified", () => {
+    const nativeDimensionIr = {
+      ...liveIr(8, "palette-grid"),
+      canvas: { base: "MS201306-BipashaAashish0192.jpg", width: null, height: null },
+    };
+    expect(normalizeLiveRenderableIr(nativeDimensionIr).canvas).toEqual({ base: "MS201306-BipashaAashish0192.jpg" });
   });
 
   it("rejects programs that need unregistered live cutout assets", () => {

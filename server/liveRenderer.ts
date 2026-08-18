@@ -34,7 +34,9 @@ export function normalizeLiveRenderableIr(value: unknown): LiveRenderableIr {
   }
   const width = value.canvas.width;
   const height = value.canvas.height;
-  if ((width !== undefined && (!Number.isInteger(width) || Number(width) < 1 || Number(width) > 4096)) || (height !== undefined && (!Number.isInteger(height) || Number(height) < 1 || Number(height) > 4096)) || (Number(width ?? 1) * Number(height ?? 1) > 12_000_000)) {
+  const hasWidth = width !== undefined && width !== null;
+  const hasHeight = height !== undefined && height !== null;
+  if ((hasWidth && (!Number.isInteger(width) || Number(width) < 1 || Number(width) > 4096)) || (hasHeight && (!Number.isInteger(height) || Number(height) < 1 || Number(height) > 4096)) || (Number(width ?? 1) * Number(height ?? 1) > 12_000_000)) {
     throw new LiveRenderValidationError("Live canvas dimensions must be whole numbers within the 12-megapixel execution limit.");
   }
   if (value.palette !== undefined && (!isRecord(value.palette) || !validK(value.palette.k))) throw new LiveRenderValidationError("Palette k must be an integer from 2 through 16.");
@@ -46,7 +48,7 @@ export function normalizeLiveRenderableIr(value: unknown): LiveRenderableIr {
   return {
     ...value,
     version: "robby-ir-v1",
-    canvas: { base: value.canvas.base, ...(width ? { width: Number(width) } : {}), ...(height ? { height: Number(height) } : {}) },
+    canvas: { base: value.canvas.base, ...(hasWidth ? { width: Number(width) } : {}), ...(hasHeight ? { height: Number(height) } : {}) },
     cutouts: [],
     layers: [],
     palette: value.palette ? { k: Number(value.palette.k) } : undefined,
