@@ -122,3 +122,4 @@ client/public/__manus__/version.json
 
 # User-owned authentic originals are immutable object-storage data, never source files.
 gallery/
+manus-storage/
