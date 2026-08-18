@@ -6,8 +6,10 @@
  */
 
 import SourceEditor from "@/components/SourceEditor";
-import { CompilationTraceModes, ProvenanceModule, type CompileSnapshot, type RuntimeRecord, type TraceMode } from "@/components/Build06Panels";
+import { CompilationTraceModes, ProvenanceModule, type RuntimeRecord, type TraceMode } from "@/components/Build06Panels";
+import { loadCompileHistory, persistCompileSnapshot, type CompileSnapshot } from "@/lib/compileHistory";
 import { verifiedCompilerStatus } from "@/lib/compilerStatus";
+import { createSignedRegistrarRecord, downloadSignedRegistrarJson, downloadSignedRegistrarPdf } from "@/lib/registrarExport";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -86,6 +88,8 @@ export default function Home() {
   const [traceMode, setTraceMode] = useState<TraceMode>("evidence");
   const [failureMessage, setFailureMessage] = useState<string | null>(null);
   const [runtimeRecord, setRuntimeRecord] = useState<RuntimeRecord | null>(null);
+  const [historyReady, setHistoryReady] = useState(false);
+  const [, setHistoryRevision] = useState(0);
   const [imageOnly, setImageOnly] = useState(false);
   const [artworkView, setArtworkView] = useState(false);
   const artworkTouchStartX = useRef<number | null>(null);
@@ -106,6 +110,23 @@ export default function Home() {
     const digest = await crypto.subtle.digest("SHA-256", bytes);
     return Array.from(new Uint8Array(digest)).map(byte => byte.toString(16).padStart(2, "0")).join("");
   };
+
+  useEffect(() => {
+    let active = true;
+    Promise.all(gallery.map(async item => [item.id, await loadCompileHistory(item.id)] as const))
+      .then(entries => {
+        if (!active) return;
+        compileHistory.current = Object.fromEntries(entries);
+        setHistoryRevision(current => current + 1);
+        setHistoryReady(true);
+      })
+      .catch(() => {
+        if (!active) return;
+        compileHistory.current = {};
+        setHistoryReady(true);
+      });
+    return () => { active = false; };
+  }, []);
 
   const selectImage = (nextIndex: number) => {
     if (isFlipping) return;
@@ -153,6 +174,7 @@ export default function Home() {
   }, [selectedIndex, isFlipping, imageOnly, artworkView]);
 
   useEffect(() => {
+    if (!historyReady) return;
     let active = true;
     setCompilerState("checking");
     setCompilerLabel("RUST CORE · VERIFYING");
@@ -164,8 +186,13 @@ export default function Home() {
         const compiledAt = new Date().toISOString();
         const irHash = await hashValue(JSON.stringify(ir));
         if (!active) return;
-        const baseline: CompileSnapshot = { specimenId: selected.id, source: selected.script, ir, trace: traceFromIr(ir), compiledAt, irHash };
-        if (!compileHistory.current[selected.id]?.length) compileHistory.current[selected.id] = [baseline];
+        const baseline: CompileSnapshot = { id: `${selected.id}-${irHash}`, specimenId: selected.id, source: selected.script, ir, trace: traceFromIr(ir), compiledAt, irHash, origin: "baseline" };
+        if (!compileHistory.current[selected.id]?.length) {
+          const persistedHistory = await persistCompileSnapshot(baseline);
+          if (!active) return;
+          compileHistory.current[selected.id] = persistedHistory;
+          setHistoryRevision(current => current + 1);
+        }
         setCompilerState("verified");
         setCompilerLabel(verifiedCompilerStatus(toolchain));
         setRuntimeRecord({ compiledAt, irHash, toolchain });
@@ -179,14 +206,14 @@ export default function Home() {
     return () => {
       active = false;
     };
-  }, [selected.id, selected.script]);
+  }, [selected.id, selected.script, historyReady]);
 
   const applyCompiledSource = async (ir: RobbyIr, source: string) => {
     const compiledAt = new Date().toISOString();
     const irHash = await hashValue(JSON.stringify(ir));
-    const snapshot: CompileSnapshot = { specimenId: selected.id, source, ir, trace: traceFromIr(ir), compiledAt, irHash };
-    const existing = compileHistory.current[selected.id] ?? [];
-    compileHistory.current[selected.id] = [...existing, snapshot].slice(-6);
+    const snapshot: CompileSnapshot = { id: `${selected.id}-${irHash}`, specimenId: selected.id, source, ir, trace: traceFromIr(ir), compiledAt, irHash, origin: "editor" };
+    compileHistory.current[selected.id] = await persistCompileSnapshot(snapshot);
+    setHistoryRevision(current => current + 1);
     setCompiledEdit({ specimenId: selected.id, ir, source });
     setProjectionState("live");
     setFace("obverse");
@@ -223,6 +250,13 @@ export default function Home() {
     const reverseStage = trace.find(step => step.code.startsWith("reverse("))?.stage;
     if (!reverseStage) return;
     requestAnimationFrame(() => document.getElementById(`trace-step-${reverseStage}`)?.scrollIntoView({ behavior: "smooth", block: "center" }));
+  };
+
+  const exportRegistrar = async (format: "json" | "pdf") => {
+    const record = await createSignedRegistrarRecord({ item: selected, runtime: runtimeRecord, history: compileHistory.current[selected.id] ?? [] });
+    const filename = `robby-${selected.id}-registrar-${record.issuedAt.replaceAll(":", "-")}`;
+    if (format === "json") downloadSignedRegistrarJson(record, filename);
+    else await downloadSignedRegistrarPdf(record, filename);
   };
 
   const handleArtworkTouchStart = (event: React.TouchEvent<HTMLDivElement>) => {
@@ -375,7 +409,7 @@ export default function Home() {
         <aside className="trace-panel" aria-label={`Compilation trace for ${selected.title}`} inert={imageOnly}>
           <div className="trace-heading"><div><CircleDotDashed size={15} /><MonoLabel>Compilation trace</MonoLabel></div><span>{projectionState === "draft" ? "DRAFT" : projectionState === "compiling" ? "VALIDATING" : projectionState === "error" ? "UNAVAILABLE" : `${trace.length} STEPS`}</span></div>
           <div className="trace-title"><p className="eyebrow">Evidence beside object</p><h3>{selected.title}<br /><em>/ {activeFace}</em></h3></div>
-          <CompilationTraceModes item={selected} trace={trace} activeMode={traceMode} onModeChange={setTraceMode} projectionState={projectionState} failureMessage={failureMessage} history={currentHistory} runtime={runtimeRecord} />
+          <CompilationTraceModes item={selected} trace={trace} activeMode={traceMode} onModeChange={setTraceMode} projectionState={projectionState} failureMessage={failureMessage} history={currentHistory} runtime={runtimeRecord} onExportRegistrar={exportRegistrar} />
         </aside>
         <div className="source-workbench-wrap" inert={imageOnly}>
           <SourceEditor

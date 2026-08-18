@@ -177,3 +177,11 @@
 
 - [x] Cycle to a second specimen and verify the provenance and runtime tabs refresh with that specimen’s source and checksum data.
 - [x] Deliver a Build 06 report distinguishing real per-specimen records, browser-session/simulated trace content, and the persistent history work still required.
+
+## Persistent compilation history and signed registrar export
+
+- [x] Persist successful Rust/WASM compilation snapshots across browser sessions using IndexedDB.
+- [x] Load persistent specimen history into Diff mode without changing approved gallery or editor mechanics.
+- [x] Generate and persist a browser-local signing key for registrar attestation, with clear scope labeling.
+- [x] Add Registrar controls to download signed JSON and PDF records.
+- [x] Verify stored history reload, signed export structure, download actions, and full regressions.

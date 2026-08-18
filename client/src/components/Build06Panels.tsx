@@ -1,19 +1,11 @@
-import { CheckCircle2, ClipboardList, FileDiff, Fingerprint, GraduationCap, History, ShieldCheck, ShieldX, TriangleAlert } from "lucide-react";
+import { CheckCircle2, ClipboardList, Download, FileDiff, Fingerprint, GraduationCap, History, ShieldCheck, ShieldX, TriangleAlert } from "lucide-react";
 import { useState } from "react";
 import type { GalleryItem, TraceStep } from "@/lib/demoData";
 import type { RobbyIr } from "@/lib/robbyCompiler";
+import type { CompileSnapshot } from "@/lib/compileHistory";
 
 export type ProvenanceTab = "provenance" | "runtime" | "reverse";
 export type TraceMode = "diff" | "evidence" | "registrar" | "pedagogic" | "failure";
-
-export type CompileSnapshot = {
-  specimenId: string;
-  source: string;
-  ir: RobbyIr;
-  trace: readonly TraceStep[];
-  compiledAt: string;
-  irHash: string;
-};
 
 export type RuntimeRecord = Pick<CompileSnapshot, "compiledAt" | "irHash"> & {
   toolchain: string;
@@ -77,7 +69,7 @@ function TraceList({ trace, pedagogic = false }: { trace: readonly TraceStep[]; 
 }
 
 export function CompilationTraceModes({
-  item, trace, activeMode, onModeChange, projectionState, failureMessage, history, runtime,
+  item, trace, activeMode, onModeChange, projectionState, failureMessage, history, runtime, onExportRegistrar,
 }: {
   item: GalleryItem;
   trace: readonly TraceStep[];
@@ -87,10 +79,12 @@ export function CompilationTraceModes({
   failureMessage: string | null;
   history: readonly CompileSnapshot[];
   runtime: RuntimeRecord | null;
+  onExportRegistrar: (format: "json" | "pdf") => Promise<void>;
 }) {
   const unavailable = projectionState === "draft" || projectionState === "compiling" || projectionState === "error";
+  const diffCurrent = projectionState === "live" ? trace : history.at(-1)?.trace ?? trace;
   const prior = history.length > 1 ? history.at(-2)?.trace : undefined;
-  const diff = traceDiff(prior, trace);
+  const diff = traceDiff(prior, diffCurrent);
   const byteLength = new TextEncoder().encode(item.script).byteLength;
   const simulatedLine = item.script.split("\n").findIndex(line => line.startsWith("palette(")) + 1;
   const modeTabs: Array<{ id: TraceMode; label: string }> = [
@@ -103,8 +97,8 @@ export function CompilationTraceModes({
     </div>
     {activeMode === "evidence" && (unavailable ? <div className="projection-unavailable" role="status"><History size={18} aria-hidden="true" /><div><p className="mono-label">Live projection withheld</p><strong>{projectionState === "draft" ? "The source changed after its last successful compile." : projectionState === "compiling" ? "Validating the current Rust source." : "The current source did not compile."}</strong><p>{projectionState === "error" ? "The editor’s live diagnostic is retained below. Correct the source and compile again for a new evidence record." : "Previous trace, hash, and output targets stay hidden until the current source compiles."}</p></div></div> : <TraceList trace={trace} />)}
     {activeMode === "pedagogic" && (unavailable ? <div className="mode-notice"><GraduationCap size={17} /><p>Teaching annotations return after the current source has a valid Rust compilation.</p></div> : <TraceList trace={trace} pedagogic />)}
-    {activeMode === "diff" && <div className="trace-mode-body">{diff.kind === "none" ? <div className="mode-notice"><FileDiff size={17} /><p>No prior compilation to diff against. The first successful editor recompile is retained in this browser session; the next one will compare against it.</p></div> : diff.rows.length === 0 ? <div className="mode-notice"><CheckCircle2 size={17} /><p>No trace-step changes between the last two successful compilations for this specimen.</p></div> : <div className="diff-list">{diff.rows.map(({ state, step }) => <article key={`${state}-${step.stage}-${step.code}`} className={`diff-row ${state}`}><span>{state.toUpperCase()}</span><div><strong>{step.stage} · {step.label}</strong><code>{step.code}</code><p>{step.detail}</p></div></article>)}</div>}</div>}
-    {activeMode === "registrar" && <div className="trace-mode-body registrar-record"><p className="mode-intro"><ClipboardList size={16} /> Registry reading of the active specimen. Values update with the active artifact; no legal certification is implied.</p><dl><div><dt>SPECIMEN ID</dt><dd>{item.id}</dd></div><div><dt>SCRIPT HASH</dt><dd title={item.scriptHash}>{item.scriptHash}</dd></div><div><dt>IR HASH</dt><dd title={runtime?.irHash}>{runtime?.irHash ?? "Rust/WASM validation in progress"}</dd></div><div><dt>OUTPUT HASH</dt><dd title={item.outputHash}>{item.outputHash}</dd></div><div><dt>COMPILED AT</dt><dd>{runtime ? new Date(runtime.compiledAt).toLocaleString() : "not yet recorded"}</dd></div><div><dt>IR VERSION</dt><dd>{runtime ? "robby-ir-v1" : "loading"}</dd></div></dl></div>}
+    {activeMode === "diff" && <div className="trace-mode-body">{history.length > 1 && <p className="diff-history-note">Comparing the latest two persisted Rust/WASM compilations for this specimen.</p>}{diff.kind === "none" ? <div className="mode-notice"><FileDiff size={17} /><p>No prior compilation to diff against. Successful recompilations are retained in this browser’s IndexedDB history; the next one will compare against this record.</p></div> : diff.rows.length === 0 ? <div className="mode-notice"><CheckCircle2 size={17} /><p>No trace-step changes between the last two successful compilations for this specimen.</p></div> : <div className="diff-list">{diff.rows.map(({ state, step }) => <article key={`${state}-${step.stage}-${step.code}`} className={`diff-row ${state}`}><span>{state.toUpperCase()}</span><div><strong>{step.stage} · {step.label}</strong><code>{step.code}</code><p>{step.detail}</p></div></article>)}</div>}</div>}
+    {activeMode === "registrar" && <div className="trace-mode-body registrar-record"><p className="mode-intro"><ClipboardList size={16} /> Registry reading of the active specimen. Exports use a browser-local ECDSA attestation; no legal certification or C2PA claim is implied.</p><div className="registrar-exports"><button type="button" onClick={() => void onExportRegistrar("json")}><Download size={12} /> Signed JSON</button><button type="button" onClick={() => void onExportRegistrar("pdf")}><Download size={12} /> Signed PDF</button></div><dl><div><dt>SPECIMEN ID</dt><dd>{item.id}</dd></div><div><dt>SCRIPT HASH</dt><dd title={item.scriptHash}>{item.scriptHash}</dd></div><div><dt>IR HASH</dt><dd title={runtime?.irHash}>{runtime?.irHash ?? "Rust/WASM validation in progress"}</dd></div><div><dt>OUTPUT HASH</dt><dd title={item.outputHash}>{item.outputHash}</dd></div><div><dt>COMPILED AT</dt><dd>{runtime ? new Date(runtime.compiledAt).toLocaleString() : "not yet recorded"}</dd></div><div><dt>IR VERSION</dt><dd>{runtime ? "robby-ir-v1" : "loading"}</dd></div><div><dt>HISTORY</dt><dd>{history.length} stored compile record{history.length === 1 ? "" : "s"} in this browser</dd></div></dl></div>}
     {activeMode === "failure" && <div className="trace-mode-body failure-record">{projectionState === "error" && failureMessage ? <><p className="mode-intro"><TriangleAlert size={16} /> Live compiler failure from the current editor source.</p><dl><div><dt>SPECIMEN</dt><dd>{item.id}</dd></div><div><dt>RUST DIAGNOSTIC</dt><dd>{failureMessage}</dd></div><div><dt>SUGGESTED FIX</dt><dd>Correct the highlighted command or parameter, then compile again to restore the evidence projection.</dd></div></dl></> : <><p className="mode-intro"><TriangleAlert size={16} /> <strong>Simulated failure example</strong> — the active specimen currently compiles cleanly.</p><dl><div><dt>PLAUSIBLE MISTAKE</dt><dd>Line {simulatedLine}: <code>cutout(source: "subject.jpg", mask: "architecture")</code></dd></div><div><dt>RUST DIAGNOSTIC</dt><dd>Unknown mask type `architecture`. Supported masks are `person` and `sky`.</dd></div><div><dt>SUGGESTED FIX</dt><dd>Choose a supported mask type, or remove the cutout command for a base-only composition.</dd></div><div><dt>CONTEXT</dt><dd>The current script is valid; this record is deliberately induced for teaching and review.</dd></div></dl></>}</div>}
     <div className="trace-evidence"><div className="signature-label"><Fingerprint size={13} /> <span className="mono-label">Colour signature</span></div><div className="palette-row" aria-label="Calculated palette signature">{item.palette.map(color => <span key={color} style={{ backgroundColor: color }} title={color} />)}</div><dl><div><dt>credential_signature</dt><dd>{item.credentialSignature.status === "present" ? "C2PA PRESENT" : "C2PA ABSENT"} · {item.credentialSignature.sourceSha256.slice(0, 14)}…</dd></div><div><dt>colour_signature</dt><dd>px:{item.colourSignature.pixelSha256.slice(0, 12)}… · pal:{item.colourSignature.paletteSha256.slice(0, 12)}…</dd></div><div><dt>script_input</dt><dd>{byteLength.toLocaleString()} UTF-8 bytes</dd></div></dl></div>
   </>;
