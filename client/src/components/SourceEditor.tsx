@@ -80,7 +80,7 @@ export default function SourceEditor({ specimenId, title, source, onCompiled, on
           {Array.from({ length: lineCount }, (_, index) => <li key={index}>{index + 1}</li>)}
         </ol>
         <textarea
-          aria-label={`Robby source editor for ${title}`}
+          aria-label={`robby source editor for ${title}`}
           spellCheck="false"
           value={draft}
           onChange={(event) => updateDraft(event.target.value)}

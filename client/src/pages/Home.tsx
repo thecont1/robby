@@ -6,8 +6,10 @@
  */
 
 import SourceEditor from "@/components/SourceEditor";
+import { useTheme } from "@/contexts/ThemeContext";
 import { gallery, type TraceStep } from "@/lib/demoData";
 import { compileWithRust, rustCompilerVersion, type RobbyIr } from "@/lib/robbyCompiler";
+import { isImageOnlyExitKey, themeControlLabel } from "@/lib/visualModes";
 import {
   Check,
   BookOpen,
@@ -23,6 +25,9 @@ import {
   ShieldCheck,
   ShieldX,
   Sparkles,
+  Moon,
+  Scan,
+  Sun,
 } from "lucide-react";
 import { Link } from "wouter";
 import { useEffect, useState } from "react";
@@ -56,6 +61,8 @@ export default function Home() {
   const [compilerLabel, setCompilerLabel] = useState("RUST CORE · LOADING");
   const [compiledEdit, setCompiledEdit] = useState<{ specimenId: string; ir: RobbyIr; source: string } | null>(null);
   const [projectionState, setProjectionState] = useState<ProjectionState>("gallery");
+  const [imageOnly, setImageOnly] = useState(false);
+  const { theme, toggleTheme } = useTheme();
   const selected = gallery[selectedIndex];
   const hasEmbeddedCredential = selected.credentialSignature.status === "present";
   const activeFace = face;
@@ -91,13 +98,17 @@ export default function Home() {
     const onKeyDown = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement | null;
       if (target?.isContentEditable || target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || target instanceof HTMLSelectElement) return;
+      if (imageOnly && isImageOnlyExitKey(event.key)) {
+        setImageOnly(false);
+        return;
+      }
       if (event.key === "ArrowLeft") selectImage(selectedIndex - 1);
       if (event.key === "ArrowRight") selectImage(selectedIndex + 1);
       if (event.key.toLowerCase() === "f") turnOver();
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [selectedIndex, isFlipping]);
+  }, [selectedIndex, isFlipping, imageOnly]);
 
   useEffect(() => {
     let active = true;
@@ -149,10 +160,10 @@ export default function Home() {
   };
 
   return (
-    <main className="min-h-screen overflow-hidden bg-[#f4efe1] text-[#1c1a19]">
-      <header className="site-header">
-        <a className="brand-lockup" href="#gallery" aria-label="Robby gallery">
-          <img src="/manus-storage/robby-registration-mark_658aceee.png" alt="Robby split registration disc" />
+    <main className={`app-shell min-h-screen overflow-hidden bg-[#f4efe1] text-[#1c1a19]${imageOnly ? " image-only" : ""}`}>
+      <header className="site-header" inert={imageOnly}>
+        <a className="brand-lockup" href="#gallery" aria-label="robby gallery">
+          <img src="/manus-storage/robby-registration-mark_658aceee.png" alt="robby split registration disc" />
           <span>robby<span className="brand-suffix">/ v1</span></span>
         </a>
         <div className="header-center">
@@ -166,11 +177,18 @@ export default function Home() {
           <a className="source-download" href="https://github.com/thecont1/robby/archive/refs/heads/main.zip" target="_blank" rel="noreferrer">
             <Download size={13} strokeWidth={2.5} /> DOWNLOAD RUST SOURCE
           </a>
+          <button type="button" className="feature-control" onClick={toggleTheme} aria-label={themeControlLabel(theme)} aria-pressed={theme === "dark"} title={themeControlLabel(theme)}>
+            {theme === "dark" ? <Sun size={13} strokeWidth={2.4} /> : <Moon size={13} strokeWidth={2.4} />}
+            <span>{theme === "dark" ? "LIGHT MODE" : "DARK MODE"}</span>
+          </button>
+          <button type="button" className="feature-control image-only-toggle" onClick={() => setImageOnly((current) => !current)} aria-pressed={imageOnly} aria-label="Enable image-only concentration mode" title="Image-only concentration mode. Press Escape to return.">
+            <Scan size={13} strokeWidth={2.4} /> <span>IMAGE ONLY</span>
+          </button>
           <div className={`compile-status ${compilerState}`}><Check size={13} strokeWidth={3} /> {compilerLabel}</div>
         </div>
       </header>
 
-      <section className="gallery-intro">
+      <section className="gallery-intro" inert={imageOnly}>
         <div className="intro-index" aria-hidden="true"><span>01</span><span>—</span><span>GALLERY</span></div>
         <div className="intro-copy">
           <p className="eyebrow">Obverse / inverse image library</p>
@@ -178,14 +196,14 @@ export default function Home() {
         </div>
         <div className="intro-note">
           <span className="note-rule" />
-          <p>Like a postcard or coin, Robby’s image-object cannot reveal its obverse and inverse together. Turn it over; keep the trace in view.</p>
+          <p>Like a postcard or coin, <span className="product-name">robby</span>’s image-object cannot reveal its obverse and inverse together. Turn it over; keep the trace in view.</p>
           <span className="mono text-[10px] tracking-[0.13em]">← → TO CYCLE · F TO FLIP</span>
         </div>
       </section>
 
-      <section id="gallery" className="gallery-workspace" aria-label="Robby image-object gallery">
+      <section id="gallery" className="gallery-workspace" aria-label="robby image-object gallery">
         <section className="object-stage" aria-labelledby="object-title">
-          <div className="stage-topline">
+            <div className="stage-topline" inert={imageOnly}>
             <div><MonoLabel>Selected image-object</MonoLabel><span className="object-serial">{selected.serial}</span></div>
             <span className="mono text-[10px]">{selected.dimensions} · {activeFace.toUpperCase()}</span>
           </div>
@@ -194,18 +212,18 @@ export default function Home() {
             <div className="object-turner" data-face={face} onTransitionEnd={settleFlip}>
               <div className="object-face object-face-obverse" aria-hidden={face !== "obverse"}>
                 <img src={selected.obverse} alt={`${selected.title} obverse`} className="object-image" />
-                <span className="face-stamp">O</span>
+                <span className="face-stamp" aria-hidden="true">O</span>
               </div>
               <div className="object-face object-face-inverse" aria-hidden={face !== "inverse"}>
                 <img src={selected.reverse} alt={`${selected.title} inverse: ${selected.reverseDescription}`} className="object-image" />
-                <span className="face-stamp">I</span>
+                <span className="face-stamp" aria-hidden="true">I</span>
               </div>
             </div>
             <span className="face-corner top-left" /><span className="face-corner top-right" /><span className="face-corner bottom-left" /><span className="face-corner bottom-right" />
           </div>
 
           <div className="stage-caption">
-            <div className="caption-record">
+            <div className="caption-record" inert={imageOnly}>
               <p className="caption-face">{face === "inverse" ? selected.reverseKind : "Obverse"}</p>
               <h2 id="object-title">{selected.title}</h2>
               <p className="caption-detail">{face === "inverse" ? selected.reverseDescription : selected.subtitle}</p>
@@ -255,7 +273,7 @@ export default function Home() {
             <button type="button" onClick={() => selectImage(selectedIndex + 1)} disabled={isFlipping} aria-label="Next image">Next <ChevronRight size={17} /></button>
           </div>
 
-          <nav className="bottom-filmstrip" aria-label="Gallery navigation">
+          <nav className="bottom-filmstrip" aria-label="Gallery navigation" inert={imageOnly}>
             <div className="filmstrip-heading"><MonoLabel>Image library</MonoLabel><span>{selected.serial}</span></div>
             <ol className="gallery-list">
               {gallery.map((item, index) => (
@@ -276,19 +294,21 @@ export default function Home() {
             </ol>
           </nav>
 
-          <SourceEditor
-            specimenId={selected.id}
-            title={selected.title}
-            source={selected.script}
-            onCompiled={applyCompiledSource}
-            onCompileStart={clearLiveProjection}
-            onCompileError={markProjectionUnavailable}
-            onDraftChange={markDraftProjectionUnavailable}
-            onReset={resetLiveProjection}
-          />
+          <div className="source-workbench-wrap" inert={imageOnly}>
+            <SourceEditor
+              specimenId={selected.id}
+              title={selected.title}
+              source={selected.script}
+              onCompiled={applyCompiledSource}
+              onCompileStart={clearLiveProjection}
+              onCompileError={markProjectionUnavailable}
+              onDraftChange={markDraftProjectionUnavailable}
+              onReset={resetLiveProjection}
+            />
+          </div>
         </section>
 
-        <aside className="trace-panel" aria-label={`Compilation trace for ${selected.title}`}>
+        <aside className="trace-panel" aria-label={`Compilation trace for ${selected.title}`} inert={imageOnly}>
           <div className="trace-heading"><div><CircleDotDashed size={15} /><MonoLabel>Compilation trace</MonoLabel></div><span>{projectionState === "draft" ? "DRAFT" : projectionState === "compiling" ? "VALIDATING" : projectionState === "error" ? "UNAVAILABLE" : `${trace.length} STEPS`}</span></div>
           <div className="trace-title"><p className="eyebrow">Evidence beside object</p><h3>{selected.title}<br /><em>/ {activeFace}</em></h3></div>
           {projectionUnavailable ? (
@@ -343,14 +363,14 @@ export default function Home() {
         </aside>
       </section>
 
-      <section className="manifest-strip" aria-label="Gallery manifest record">
+      <section className="manifest-strip" aria-label="Gallery manifest record" inert={imageOnly}>
         <div className="manifest-identity"><FileJson2 size={18} /><span>MANIFEST / PROCESS GRAPH</span></div>
         <div className="manifest-fields"><span>LIBRARY <b>5 COMPILED OBJECTS</b></span><span>ACTIVE FACE <b>{activeFace.toUpperCase()} · MUTUALLY EXCLUSIVE</b></span><span>CORE <b>RUST · robby-compiler-v0.1</b></span><span>EXECUTOR <b>{projectionUnavailable ? "LIVE IR · UNAVAILABLE" : liveIr ? "STATIC ARTIFACT · RENDER PENDING" : "CPU · PILLOW / OPENCV"}</b></span></div>
         <img src="/manus-storage/robby-palette-study_ad20752b.png" alt="Abstract palette study" />
         <Sparkles className="manifest-spark" size={18} />
       </section>
 
-      <footer className="site-footer">
+      <footer className="site-footer" inert={imageOnly}>
         <p>The trace remains alongside the object, but the image has only one visible face. <em>Observation is a choice.</em></p>
         <span className="mono text-[10px]">RUST CORE ↔ PYTHON EXECUTOR / MANIFEST</span>
       </footer>

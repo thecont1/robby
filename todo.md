@@ -86,3 +86,9 @@
 
 - [x] Sync and audit the five replacement originals without modifying their bytes.
 - [x] Move user image data out of Git and introduce a raw-byte-preserving authenticated upload path with provenance records.
+
+## Gallery visual modes
+
+- [x] Render all Robby references in lower-case monotype styling.
+- [x] Add a persisted light/dark visual-mode control with black dark surfaces and orange structural borders.
+- [x] Add a layout-stable image-only concentration mode that leaves only the active image, flip, and previous/next controls visible.

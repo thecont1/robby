@@ -35,7 +35,7 @@ export default function Originals() {
     setStatus("");
     if (!file) return;
     if (file.type !== "image/jpeg" || !/\.jpe?g$/i.test(file.name)) {
-      setStatus("Robby v1 accepts original JPEG files only. Nothing was uploaded.");
+      setStatus("robby v1 accepts original JPEG files only. Nothing was uploaded.");
       return;
     }
     setSelected(file);
@@ -68,12 +68,12 @@ export default function Originals() {
   };
 
   return (
-    <main className="min-h-screen bg-[#f5f0e8] px-5 py-8 text-[#20211e] sm:px-10">
+    <main className="originals-page min-h-screen bg-[#f5f0e8] px-5 py-8 text-[#20211e] sm:px-10">
       <div className="mx-auto max-w-4xl">
         <Link href="/" className="manual-link inline-flex"><ArrowLeft size={14} /> BACK TO GALLERY</Link>
         <p className="eyebrow mt-12">Originals vault / immutable intake</p>
         <h1 className="mt-3 font-serif text-4xl leading-tight sm:text-6xl">Preserve the image<br /><em>before</em> the compiler sees it.</h1>
-        <p className="mt-6 max-w-2xl text-base leading-7 text-[#4d4d46]">Robby stores the selected JPEG byte stream directly. It does not crop, resize, re-encode, strip metadata, or rename the filename. Storage is content-addressed by SHA-256; the original basename is retained.</p>
+        <p className="mt-6 max-w-2xl text-base leading-7 text-[#4d4d46]"><span className="product-name">robby</span> stores the selected JPEG byte stream directly. It does not crop, resize, re-encode, strip metadata, or rename the filename. Storage is content-addressed by SHA-256; the original basename is retained.</p>
 
         {!loading && !isAuthenticated ? (
           <section className="mt-10 border border-[#20211e] bg-[#fffdf8] p-6">
