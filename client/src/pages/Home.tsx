@@ -17,7 +17,7 @@ import { useTheme } from "@/contexts/ThemeContext";
 import { gallery, type TraceStep } from "@/lib/demoData";
 import { footerSocialLinks } from "@/lib/footerLinks";
 import { compileWithRust, rustCompilerVersion, type RobbyIr } from "@/lib/robbyCompiler";
-import { isImageOnlyExitKey, themeControlLabel } from "@/lib/visualModes";
+import { isImageOnlyExitKey, swipeGalleryOffset, themeControlLabel } from "@/lib/visualModes";
 import {
   Check,
   BookOpen,
@@ -38,7 +38,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { Link } from "wouter";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 function MonoLabel({ children }: { children: React.ReactNode }) {
   return <span className="mono-label">{children}</span>;
@@ -82,8 +82,8 @@ export default function Home() {
   const [compiledEdit, setCompiledEdit] = useState<{ specimenId: string; ir: RobbyIr; source: string } | null>(null);
   const [projectionState, setProjectionState] = useState<ProjectionState>("gallery");
   const [imageOnly, setImageOnly] = useState(false);
-  const [compactTitle, setCompactTitle] = useState(() => typeof window !== "undefined" && window.localStorage.getItem("robby-title-size") === "compact");
   const [artworkView, setArtworkView] = useState(false);
+  const artworkTouchStartX = useRef<number | null>(null);
   const { theme, toggleTheme } = useTheme();
   const selected = gallery[selectedIndex];
   const hasEmbeddedCredential = selected.credentialSignature.status === "present";
@@ -137,10 +137,6 @@ export default function Home() {
   }, [selectedIndex, isFlipping, imageOnly, artworkView]);
 
   useEffect(() => {
-    window.localStorage.setItem("robby-title-size", compactTitle ? "compact" : "standard");
-  }, [compactTitle]);
-
-  useEffect(() => {
     let active = true;
     setCompilerState("checking");
     setCompilerLabel("RUST CORE · VERIFYING");
@@ -189,6 +185,20 @@ export default function Home() {
     setProjectionState("gallery");
   };
 
+  const handleArtworkTouchStart = (event: React.TouchEvent<HTMLDivElement>) => {
+    artworkTouchStartX.current = event.touches[0]?.clientX ?? null;
+  };
+
+  const handleArtworkTouchEnd = (event: React.TouchEvent<HTMLDivElement>) => {
+    const startX = artworkTouchStartX.current;
+    const endX = event.changedTouches[0]?.clientX;
+    artworkTouchStartX.current = null;
+    if (startX === null || endX === undefined) return;
+    const offset = swipeGalleryOffset(startX, endX);
+    if (offset === 0) return;
+    selectImage(selectedIndex + offset);
+  };
+
   return (
     <main className={`app-shell min-h-screen overflow-hidden bg-[#f4efe1] text-[#1c1a19]${imageOnly ? " image-only" : ""}`}>
       <header className="site-header">
@@ -220,14 +230,14 @@ export default function Home() {
         </div>
       </header>
 
-      <section className={`gallery-intro${compactTitle ? " title-compact" : ""}`} inert={imageOnly}>
+      <section className="gallery-intro" inert={imageOnly}>
         <div className="intro-copy">
           <h1><span className="headline-line headline-primary"><span className="headline-accent">Explainable</span> <span className="headline-ink">visual composition</span></span><em className="headline-line"><span className="headline-accent">compiler</span> <span className="headline-ink">in rust.</span></em></h1>
         </div>
         <div className="intro-note">
           <span className="note-rule" />
           <p>Like a postcard or coin, <span className="product-name">robby</span> reveals one face at a time. The trace stays in view.</p>
-          <div className="intro-tools"><span className="mono text-[10px] tracking-[0.13em]">← → TO CYCLE · F TO FLIP</span><button type="button" className="title-size-toggle" onClick={() => setCompactTitle(current => !current)} aria-pressed={compactTitle} title={compactTitle ? "Use standard title size" : "Use compact title size"}>{compactTitle ? <Maximize2 size={13} /> : <Minimize2 size={13} />}<span>{compactTitle ? "Standard" : "Compact"}</span></button></div>
+          <div className="intro-tools"><span className="mono text-[10px] tracking-[0.13em]">← → TO CYCLE · F TO FLIP</span></div>
         </div>
       </section>
 
@@ -410,9 +420,9 @@ export default function Home() {
         <p className="footer-copyright">© 2026 <a href="https://thecontrarian.in/" target="_blank" rel="noreferrer">Mahesh Shantaram / thecontrarian.in</a></p>
       </footer>
       {artworkView && <div className="artwork-view" role="dialog" aria-modal="true" aria-label={`${selected.title} full-bleed artwork view`} onClick={() => setArtworkView(false)}>
-        <div className="artwork-view-frame" onClick={event => event.stopPropagation()}>
+        <div className="artwork-view-frame" onClick={event => event.stopPropagation()} onTouchStart={handleArtworkTouchStart} onTouchEnd={handleArtworkTouchEnd}>
           <img src={face === "obverse" ? selected.obverse : selected.reverse} alt={`${selected.title} ${face}`} />
-          <div className="artwork-view-meta"><span>{selected.title} / {face}</span><span>ESC TO CLOSE</span></div>
+          <div className="artwork-view-meta"><span>{selected.title} / {face}</span><span>SWIPE TO BROWSE · ESC TO CLOSE</span></div>
           <button type="button" onClick={() => setArtworkView(false)} aria-label="Close full-bleed artwork view" title="Close full-bleed artwork view"><Minimize2 size={19} /></button>
         </div>
       </div>}

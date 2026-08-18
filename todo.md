@@ -128,3 +128,8 @@
 - [x] Preserve orange Explainable/compiler emphasis while refining the supporting sentence’s line length.
 - [x] Add a compact title-size preference and optional full-bleed artwork view.
 - [x] Restore title/signatures, controls, image library, and live-source area as three bordered sections with the requested control alignment.
+
+## Full-bleed touch navigation
+
+- [x] Remove the compact title-size control and its supporting state.
+- [x] Add accessible touch swipe navigation between gallery images in full-bleed artwork view.
