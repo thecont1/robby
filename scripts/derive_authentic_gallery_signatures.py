@@ -15,8 +15,10 @@ from PIL import Image
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+sys.path.insert(0, str(ROOT / "scripts"))
 
 from executor.run import kmeans_palette
+from gallery_sources import SOURCES
 
 
 def sha256_file(path: Path) -> str:
@@ -47,13 +49,7 @@ def main() -> None:
     parser.add_argument("--out", type=Path, required=True)
     arguments = parser.parse_args()
 
-    mapping = {
-        "night-duality": ("IMG_20210916_185510.jpg", "night-obverse.png"),
-        "ayodhya-mural": ("MS202401-Ayodhya0041.jpg", "ayodhya-mural-obverse.png"),
-        "urban-fantasy": ("_DSF0739-Enhanced-NR.jpg", "urban-fantasy-obverse.png"),
-        "murgeshpalya-passage": ("MS201901-Murgeshpalya0018.jpg", "murgeshpalya-passage-obverse.png"),
-        "uganda-diptych": ("MS201508-Uganda0016.jpg", "uganda-diptych-obverse.png"),
-    }
+    mapping = {slug: (filename, f"{slug}-obverse.png") for slug, filename in SOURCES}
     records = {
         specimen: signature(arguments.assets_root / source, arguments.renders_root / output)
         for specimen, (source, output) in mapping.items()

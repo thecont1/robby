@@ -7,6 +7,7 @@
 import initRobbyCompiler, {
   compile_source_json,
   compiler_version,
+  rust_toolchain,
 } from "../wasm/robby_compiler";
 
 export type RobbyIr = {
@@ -46,4 +47,10 @@ export async function compileWithRust(source: string): Promise<RobbyIr> {
 export async function rustCompilerVersion() {
   await ensureRustCompiler();
   return compiler_version();
+}
+
+/** Returns the rustc toolchain captured while the loaded WASM compiler was built. */
+export async function rustToolchainVersion() {
+  await ensureRustCompiler();
+  return rust_toolchain();
 }

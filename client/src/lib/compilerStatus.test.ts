@@ -1,9 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { RUST_TOOLCHAIN_VERSION, verifiedCompilerStatus } from "./compilerStatus";
+import { verifiedCompilerStatus } from "./compilerStatus";
 
 describe("compiler status", () => {
-  it("distinguishes the Rust toolchain version from Robby's crate release", () => {
-    expect(RUST_TOOLCHAIN_VERSION).toBe("1.97.1");
-    expect(verifiedCompilerStatus).toBe("VALID IR · RUST 1.97.1");
+  it("formats the toolchain label supplied by the Rust/WASM build metadata", () => {
+    expect(verifiedCompilerStatus("RUST 1.97.1")).toBe("VALID IR · RUST 1.97.1");
   });
 });

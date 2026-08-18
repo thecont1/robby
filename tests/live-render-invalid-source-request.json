@@ -1,0 +1,11 @@
+{
+  "ir": {
+    "version": "robby-ir-v1",
+    "canvas": { "base": "unregistered.jpg" },
+    "cutouts": [],
+    "layers": [],
+    "palette": { "k": 8 },
+    "reverse": [{ "mode": "palette-grid", "k": 8 }],
+    "output": { "obverse": "ignored.png", "reverse": "ignored.png", "manifest": "ignored.json" }
+  }
+}

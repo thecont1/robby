@@ -6,7 +6,11 @@
  */
 
 import SourceEditor from "@/components/SourceEditor";
+import { CompilationTraceModes, ProvenanceModule, type RuntimeRecord, type TraceMode } from "@/components/Build06Panels";
+import { loadCompileHistory, persistCompileSnapshot, type CompileSnapshot } from "@/lib/compileHistory";
 import { verifiedCompilerStatus } from "@/lib/compilerStatus";
+import { requestLiveRender, type LiveRenderResult } from "@/lib/liveRender";
+import { createSignedRegistrarRecord, downloadSignedRegistrarJson, downloadSignedRegistrarPdf } from "@/lib/registrarExport";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -17,18 +21,15 @@ import {
 import { useTheme } from "@/contexts/ThemeContext";
 import { gallery, type TraceStep } from "@/lib/demoData";
 import { footerSocialLinks } from "@/lib/footerLinks";
-import { compileWithRust, type RobbyIr } from "@/lib/robbyCompiler";
-import { isImageOnlyExitKey, swipeGalleryOffset, themeControlLabel } from "@/lib/visualModes";
+import { compileWithRust, rustToolchainVersion, type RobbyIr } from "@/lib/robbyCompiler";
+import { gallerySlideDirection, isImageOnlyExitKey, swipeGalleryOffset, themeControlLabel, type GallerySlideDirection } from "@/lib/visualModes";
 import {
-  Check,
   BookOpen,
   ChevronLeft,
   ChevronRight,
   CircleDotDashed,
   Download,
-  FileJson2,
   FileText,
-  Fingerprint,
   FlipHorizontal2,
   RotateCcw,
   LockKeyhole,
@@ -36,9 +37,6 @@ import {
   Lightbulb,
   Maximize2,
   Minimize2,
-  ShieldCheck,
-  ShieldX,
-  Sparkles,
 } from "lucide-react";
 import { Link } from "wouter";
 import { useEffect, useRef, useState } from "react";
@@ -74,37 +72,87 @@ function traceFromIr(ir: RobbyIr): TraceStep[] {
 }
 
 type ProjectionState = "gallery" | "draft" | "compiling" | "error" | "live";
+type SlideMotion = { direction: GallerySlideDirection; phase: "out" | "in" };
 
 export default function Home() {
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [face, setFace] = useState<"obverse" | "inverse">("obverse");
   const [isFlipping, setIsFlipping] = useState(false);
-  const [credentialOpen, setCredentialOpen] = useState(false);
   const [compilerState, setCompilerState] = useState<"checking" | "verified" | "error">("checking");
   const [compilerLabel, setCompilerLabel] = useState("RUST CORE · LOADING");
   const [compiledEdit, setCompiledEdit] = useState<{ specimenId: string; ir: RobbyIr; source: string } | null>(null);
+  const [liveDerivative, setLiveDerivative] = useState<{ specimenId: string; result: LiveRenderResult } | null>(null);
   const [projectionState, setProjectionState] = useState<ProjectionState>("gallery");
+  const [traceMode, setTraceMode] = useState<TraceMode>("evidence");
+  const [failureMessage, setFailureMessage] = useState<string | null>(null);
+  const [runtimeRecord, setRuntimeRecord] = useState<RuntimeRecord | null>(null);
+  const [historyReady, setHistoryReady] = useState(false);
+  const [, setHistoryRevision] = useState(0);
   const [imageOnly, setImageOnly] = useState(false);
   const [artworkView, setArtworkView] = useState(false);
+  const [slideMotion, setSlideMotion] = useState<SlideMotion | null>(null);
+  const [pendingImageIndex, setPendingImageIndex] = useState<number | null>(null);
   const artworkTouchStartX = useRef<number | null>(null);
+  const compileHistory = useRef<Record<string, CompileSnapshot[]>>({});
   const { theme, toggleTheme } = useTheme();
   const selected = gallery[selectedIndex];
-  const hasEmbeddedCredential = selected.credentialSignature.status === "present";
   const activeFace = face;
   const liveIr = projectionState === "live" && compiledEdit?.specimenId === selected.id ? compiledEdit.ir : null;
+  const activeDerivative = liveDerivative?.specimenId === selected.id ? liveDerivative.result : null;
+  const displayedObverse = activeDerivative?.obverseUrl ?? selected.obverse;
+  const displayedInverse = activeDerivative?.inverseUrl ?? selected.reverse;
   const projectionUnavailable = projectionState === "draft" || projectionState === "compiling" || projectionState === "error";
   const trace = projectionUnavailable ? [] : liveIr ? traceFromIr(liveIr) : selected.trace;
   const liveScriptHash = projectionUnavailable ? null : liveIr?.meta.script_sha256 ?? selected.scriptHash;
   const liveReverseMode = projectionUnavailable ? null : liveIr?.reverse.map((item) => item.k ? `${item.mode} (k=${item.k})` : item.mode).join(" + ") ?? selected.reverseMode;
+  const currentHistory = compileHistory.current[selected.id] ?? [];
+  const stageSlideClass = slideMotion ? `gallery-slide-${slideMotion.phase}-${slideMotion.direction}` : "";
 
-  const selectImage = (nextIndex: number) => {
-    if (isFlipping) return;
-    setSelectedIndex((nextIndex + gallery.length) % gallery.length);
+  const hashValue = async (value: string) => {
+    const bytes = new TextEncoder().encode(value);
+    const digest = await crypto.subtle.digest("SHA-256", bytes);
+    return Array.from(new Uint8Array(digest)).map(byte => byte.toString(16).padStart(2, "0")).join("");
+  };
+
+  useEffect(() => {
+    let active = true;
+    Promise.all(gallery.map(async item => [item.id, await loadCompileHistory(item.id)] as const))
+      .then(entries => {
+        if (!active) return;
+        compileHistory.current = Object.fromEntries(entries);
+        setHistoryRevision(current => current + 1);
+        setHistoryReady(true);
+      })
+      .catch(() => {
+        if (!active) return;
+        compileHistory.current = {};
+        setHistoryReady(true);
+      });
+    return () => { active = false; };
+  }, []);
+
+  const commitSelection = (nextIndex: number) => {
+    setSelectedIndex(nextIndex);
     setFace("obverse");
     setIsFlipping(false);
-    setCredentialOpen(false);
     setCompiledEdit(null);
+    setLiveDerivative(null);
     setProjectionState("gallery");
+    setFailureMessage(null);
+    setTraceMode("evidence");
+    setRuntimeRecord(null);
+  };
+
+  const selectImage = (nextIndex: number) => {
+    if (isFlipping || slideMotion) return;
+    const normalizedIndex = (nextIndex + gallery.length) % gallery.length;
+    if (normalizedIndex === selectedIndex) return;
+    if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) {
+      commitSelection(normalizedIndex);
+      return;
+    }
+    setPendingImageIndex(normalizedIndex);
+    setSlideMotion({ direction: gallerySlideDirection(selectedIndex, normalizedIndex, gallery.length), phase: "out" });
   };
 
   const turnOver = () => {
@@ -117,6 +165,18 @@ export default function Home() {
     if (event.target === event.currentTarget && event.propertyName === "transform") {
       setIsFlipping(false);
     }
+  };
+
+  const settleStageSlide = (event: React.AnimationEvent<HTMLDivElement>) => {
+    if (event.target !== event.currentTarget || !slideMotion) return;
+    if (slideMotion.phase === "out") {
+      if (pendingImageIndex === null) return;
+      commitSelection(pendingImageIndex);
+      setSlideMotion({ direction: slideMotion.direction, phase: "in" });
+      return;
+    }
+    setSlideMotion(null);
+    setPendingImageIndex(null);
   };
 
   useEffect(() => {
@@ -137,18 +197,31 @@ export default function Home() {
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [selectedIndex, isFlipping, imageOnly, artworkView]);
+  }, [selectedIndex, isFlipping, slideMotion, imageOnly, artworkView]);
 
   useEffect(() => {
+    if (!historyReady) return;
     let active = true;
     setCompilerState("checking");
     setCompilerLabel("RUST CORE · VERIFYING");
+    setRuntimeRecord(null);
 
-    compileWithRust(selected.script)
-      .then(() => {
+    Promise.all([compileWithRust(selected.script), rustToolchainVersion()])
+      .then(async ([ir, toolchain]) => {
         if (!active) return;
+        const compiledAt = new Date().toISOString();
+        const irHash = await hashValue(JSON.stringify(ir));
+        if (!active) return;
+        const baseline: CompileSnapshot = { id: `${selected.id}-${irHash}`, specimenId: selected.id, source: selected.script, ir, trace: traceFromIr(ir), compiledAt, irHash, origin: "baseline" };
+        if (!compileHistory.current[selected.id]?.length) {
+          const persistedHistory = await persistCompileSnapshot(baseline);
+          if (!active) return;
+          compileHistory.current[selected.id] = persistedHistory;
+          setHistoryRevision(current => current + 1);
+        }
         setCompilerState("verified");
-        setCompilerLabel(verifiedCompilerStatus);
+        setCompilerLabel(verifiedCompilerStatus(toolchain));
+        setRuntimeRecord({ compiledAt, irHash, toolchain });
       })
       .catch(() => {
         if (!active) return;
@@ -159,32 +232,63 @@ export default function Home() {
     return () => {
       active = false;
     };
-  }, [selected.id, selected.script]);
+  }, [selected.id, selected.script, historyReady]);
 
-  const applyCompiledSource = (ir: RobbyIr, source: string) => {
+  const applyCompiledSource = async (ir: RobbyIr, source: string) => {
+    const compiledAt = new Date().toISOString();
+    const irHash = await hashValue(JSON.stringify(ir));
+    const snapshot: CompileSnapshot = { id: `${selected.id}-${irHash}`, specimenId: selected.id, source, ir, trace: traceFromIr(ir), compiledAt, irHash, origin: "editor" };
+    compileHistory.current[selected.id] = await persistCompileSnapshot(snapshot);
+    setHistoryRevision(current => current + 1);
+    const result = await requestLiveRender(ir);
     setCompiledEdit({ specimenId: selected.id, ir, source });
+    setLiveDerivative({ specimenId: selected.id, result });
     setProjectionState("live");
     setFace("obverse");
+    setFailureMessage(null);
+    setRuntimeRecord(current => ({ compiledAt, irHash, toolchain: current?.toolchain ?? "RUST/WASM" }));
   };
 
   const clearLiveProjection = () => {
     setCompiledEdit(null);
+    setLiveDerivative(null);
     setProjectionState("compiling");
+    setFailureMessage(null);
   };
 
-  const markProjectionUnavailable = () => {
+  const markProjectionUnavailable = (message: string) => {
     setCompiledEdit(null);
+    setLiveDerivative(null);
     setProjectionState("error");
+    setFailureMessage(message);
   };
 
   const markDraftProjectionUnavailable = () => {
     setCompiledEdit(null);
+    setLiveDerivative(null);
     setProjectionState("draft");
+    setFailureMessage(null);
   };
 
   const resetLiveProjection = () => {
     setCompiledEdit(null);
+    setLiveDerivative(null);
     setProjectionState("gallery");
+    setFailureMessage(null);
+  };
+
+  const focusReverseStep = () => {
+    setTraceMode("evidence");
+    const reverseStage = trace.find(step => step.code.startsWith("reverse("))?.stage;
+    if (!reverseStage) return;
+    requestAnimationFrame(() => document.getElementById(`trace-step-${reverseStage}`)?.scrollIntoView({ behavior: "smooth", block: "center" }));
+  };
+
+  const exportRegistrar = async (format: "json" | "pdf") => {
+    const record = await createSignedRegistrarRecord({ item: selected, runtime: runtimeRecord, history: compileHistory.current[selected.id] ?? [] });
+    const filename = `robby-${selected.id}-registrar-${record.issuedAt.replaceAll(":", "-")}`;
+    if (format === "json") downloadSignedRegistrarJson(record, filename);
+    else await downloadSignedRegistrarPdf(record, filename);
   };
 
   const handleArtworkTouchStart = (event: React.TouchEvent<HTMLDivElement>) => {
@@ -241,78 +345,49 @@ export default function Home() {
         </div>
         <div className="intro-note">
           <span className="note-rule" />
-          <p>What if a digital image could be a two-sided image-object, like a post card or a coin?</p>
+          <p>What if a digital image could be a two-sided image-object, like a postcard or a coin?</p>
           <div className="intro-tools"><span className="mono text-[10px] tracking-[0.13em]">← → TO CYCLE · F TO FLIP</span></div>
         </div>
       </section>
 
       <section id="gallery" className="gallery-workspace" aria-label="robby image-object gallery">
         <section className="object-stage" aria-label={`${selected.title} ${activeFace} image-object`}>
-          <div className={`two-sided-object ${selected.ratio}`} aria-busy={isFlipping}>
-            <div className="object-turner" data-face={face} onTransitionEnd={settleFlip}>
-              <div className="object-face object-face-obverse" aria-hidden={face !== "obverse"}>
-                <img src={selected.obverse} alt={`${selected.title} obverse`} className="object-image" />
-                <span className="face-stamp" aria-hidden="true">O</span>
-              </div>
-              <div className="object-face object-face-inverse" aria-hidden={face !== "inverse"}>
-                <img src={selected.reverse} alt={`${selected.title} inverse: ${selected.reverseDescription}`} className="object-image" />
-                <span className="face-stamp" aria-hidden="true">I</span>
+          <div className="artwork-stage-frame">
+            <span className="stage-corner top-left" aria-hidden="true" /><span className="stage-corner top-right" aria-hidden="true" /><span className="stage-corner bottom-left" aria-hidden="true" /><span className="stage-corner bottom-right" aria-hidden="true" />
+            <div className="artwork-stage-viewport">
+              <div className={`two-sided-object ${selected.ratio} ${stageSlideClass}`} aria-busy={isFlipping || Boolean(slideMotion)} onAnimationEnd={settleStageSlide}>
+                <div className="object-turner" data-face={face} onTransitionEnd={settleFlip}>
+                  <div className="object-face object-face-obverse" aria-hidden={face !== "obverse"}>
+                    <img src={displayedObverse} alt={`${selected.title} obverse`} className="object-image" />
+                  </div>
+                  <div className="object-face object-face-inverse" aria-hidden={face !== "inverse"}>
+                    <img src={displayedInverse} alt={`${selected.title} inverse: ${selected.reverseDescription}`} className="object-image" />
+                  </div>
+                </div>
               </div>
             </div>
-            <span className="face-corner top-left" /><span className="face-corner top-right" /><span className="face-corner bottom-left" /><span className="face-corner bottom-right" />
-            <button type="button" className="artwork-view-toggle" onClick={() => setArtworkView(true)} aria-label={`Open ${selected.title} in full-bleed artwork view`} title="Open full-bleed artwork view"><Maximize2 size={15} /></button>
-          </div>
-
-          <div className="stage-metadata" inert={imageOnly}>
-            <div><MonoLabel>Selected image-object</MonoLabel><span className="object-serial">{selected.serial}</span></div>
-            <span className="mono text-[10px]">{selected.dimensions} · {activeFace.toUpperCase()}</span>
           </div>
 
           <div className="stage-caption">
-            <div className="caption-record" inert={imageOnly}>
-              <div className="signature-row" aria-label="Specimen signatures">
-                <div className="credential-wrap">
-                  <button
-                    type="button"
-                    className={`credential-badge ${hasEmbeddedCredential ? "present" : "absent"}`}
-                    onClick={() => setCredentialOpen((current) => !current)}
-                    aria-expanded={credentialOpen}
-                    aria-controls="credential-summary"
-                  >
-                    {hasEmbeddedCredential ? <ShieldCheck size={14} strokeWidth={2.2} /> : <ShieldX size={14} strokeWidth={2.2} />} {hasEmbeddedCredential ? "C2PA PRESENT" : "C2PA ABSENT"}
-                  </button>
-                  <div id="credential-summary" className={`credential-popover ${credentialOpen ? "open" : ""}`} role="status">
-                    <strong>Credential signature</strong>
-                    <p>{selected.credentialSignature.note}</p>
-                    <dl>
-                      <div><dt>issuer</dt><dd>{selected.credentialSignature.claimGenerator ?? "no embedded record"}</dd></div>
-                      <div><dt>validation</dt><dd>{hasEmbeddedCredential ? "manifest present · trust warning" : "no embedded record"}</dd></div>
-                      <div><dt>audit</dt><dd>{selected.credentialSignature.markerScan}</dd></div>
-                      <div><dt>source sha</dt><dd>{selected.credentialSignature.sourceSha256.slice(0, 16)}…</dd></div>
-                    </dl>
-                  </div>
-                </div>
-                <div className="colour-badge">
-                  <Fingerprint size={14} strokeWidth={2.2} />
-                  <span>COLOUR SIGNATURE</span>
-                  <i className="inline-swatches" aria-label="Eight-colour signature">
-                    {selected.palette.map((color) => <b key={color} style={{ backgroundColor: color }} />)}
-                  </i>
+            <div className="stage-control-row">
+              <div className="stage-metadata" inert={imageOnly}>
+                <div className="stage-display-tools">
+                  <span className="stage-face-record"><MonoLabel>{activeFace}</MonoLabel><span aria-hidden="true">·</span><span className="mono stage-dimensions">{selected.dimensions}</span></span>
+                  <button type="button" className="artwork-view-control" onClick={() => setArtworkView(true)} aria-label={`Open ${selected.title} in full-bleed artwork view`} title="Open full-bleed artwork view"><Maximize2 size={15} /></button>
                 </div>
               </div>
-              <p className="signature-tension">One signature is cryptographic. One is visual. Only one is human-readable.</p>
-              {liveIr && <p className="static-artifact-note">STATIC ARTIFACT · RENDER PENDING — the live Rust IR changes this trace and manifest target; bitmap faces remain the selected pre-rendered specimen.</p>}
-            </div>
-            <div className="caption-controls">
-              <button type="button" className="flip-control" onClick={turnOver} disabled={isFlipping} aria-label={face === "inverse" ? `Return ${selected.title} to its obverse` : `Flip ${selected.title} to its inverse`}>
-                {face === "inverse" ? <RotateCcw size={18} /> : <FlipHorizontal2 size={18} />}<span>{isFlipping ? "Turning object" : face === "inverse" ? "Return to obverse" : "Turn to inverse"}</span><small>F</small>
-              </button>
-              <div className="object-navigation"><button type="button" onClick={() => selectImage(selectedIndex - 1)} disabled={isFlipping} aria-label="Previous image"><ChevronLeft size={17} /> Previous</button><span className="navigation-current">{selected.serial}</span><button type="button" onClick={() => selectImage(selectedIndex + 1)} disabled={isFlipping} aria-label="Next image">Next <ChevronRight size={17} /></button></div>
+              <div className="caption-turn">
+                <button type="button" className="flip-control" onClick={turnOver} disabled={isFlipping} aria-label={face === "inverse" ? `Return ${selected.title} to its obverse` : `Flip ${selected.title} to its inverse`}>
+                  {face === "inverse" ? <RotateCcw size={18} /> : <FlipHorizontal2 size={18} />}<span>{isFlipping ? "Turning object" : face === "inverse" ? "Return to obverse" : "Turn to inverse"}</span><small>F</small>
+                </button>
+              </div>
+              <div className="caption-navigation">
+                <div className="object-navigation"><button type="button" onClick={() => selectImage(selectedIndex - 1)} disabled={isFlipping} aria-label="Previous image"><ChevronLeft size={17} /> Previous</button><span className="navigation-current">{selected.serial}</span><button type="button" onClick={() => selectImage(selectedIndex + 1)} disabled={isFlipping} aria-label="Next image">Next <ChevronRight size={17} /></button></div>
+              </div>
             </div>
           </div>
 
           <nav className="bottom-filmstrip" aria-label="Gallery navigation" inert={imageOnly}>
-            <div className="filmstrip-heading"><MonoLabel>Image library</MonoLabel><span>{selected.serial}</span></div>
             <ol className="gallery-list">
               {gallery.map((item, index) => (
                 <li key={item.id}>
@@ -336,56 +411,8 @@ export default function Home() {
 
         <aside className="trace-panel" aria-label={`Compilation trace for ${selected.title}`} inert={imageOnly}>
           <div className="trace-heading"><div><CircleDotDashed size={15} /><MonoLabel>Compilation trace</MonoLabel></div><span>{projectionState === "draft" ? "DRAFT" : projectionState === "compiling" ? "VALIDATING" : projectionState === "error" ? "UNAVAILABLE" : `${trace.length} STEPS`}</span></div>
-          <div className="trace-title"><p className="eyebrow">Evidence beside object</p><h3>{selected.title}<br /><em>/ {activeFace}</em></h3></div>
-          {projectionUnavailable ? (
-            <div className="projection-unavailable" role="status">
-              <CircleDotDashed size={18} aria-hidden="true" />
-              <div>
-                <p className="mono-label">Live projection withheld</p>
-                <strong>{projectionState === "draft" ? "The source changed after its last successful compile." : projectionState === "compiling" ? "Validating the current Rust source." : "The current source did not compile."}</strong>
-                <p>{projectionState === "draft" ? "Previous trace, hash, and output targets are hidden until this draft is compiled." : projectionState === "compiling" ? "Previous trace, hash, and output targets are hidden until validation finishes." : "Previous trace, hash, and output targets remain hidden. Fix the source and compile again for a new projection."}</p>
-              </div>
-            </div>
-          ) : (
-            <div className="trace-steps">
-              {trace.map((step) => (
-                <article className="trace-step" key={step.stage}>
-                  <span className="trace-number">{step.stage}</span>
-                  <div><strong>{step.label}</strong><code>{step.code}</code><p>{step.detail}</p></div>
-                  {step.color && <i style={{ backgroundColor: step.color }} aria-label="Vermilion provenance colour" />}
-                </article>
-              ))}
-            </div>
-          )}
-          <div className="trace-evidence">
-            {projectionUnavailable ? (
-              <div className="projection-evidence-unavailable">
-                <MonoLabel>Projection record</MonoLabel>
-                <p>Unavailable for the submitted draft.</p>
-              </div>
-            ) : (
-              <>
-                <div className="signature-label"><Fingerprint size={13} /> <MonoLabel>Colour signature</MonoLabel></div>
-                <div className="palette-row" aria-label="Calculated palette signature">
-                  {selected.palette.map((color) => <span key={color} style={{ backgroundColor: color }} title={color} />)}
-                </div>
-                <dl>
-                  <div><dt>credential_signature</dt><dd>{hasEmbeddedCredential ? "C2PA PRESENT" : "C2PA ABSENT"} · {selected.credentialSignature.sourceSha256.slice(0, 14)}…</dd></div>
-                  <div><dt>colour_signature</dt><dd>px:{selected.colourSignature.pixelSha256.slice(0, 12)}… · pal:{selected.colourSignature.paletteSha256.slice(0, 12)}…</dd></div>
-                  <div><dt>reverse_mode</dt><dd>{liveReverseMode}</dd></div>
-                  <div><dt>script_hash</dt><dd title={liveScriptHash!}>{shortHash(liveScriptHash!)}</dd></div>
-                  {liveIr ? (
-                    <>
-                      <div><dt>output_target</dt><dd>{liveIr.output.obverse}</dd></div>
-                      <div><dt>manifest_target</dt><dd>{liveIr.output.manifest}</dd></div>
-                    </>
-                  ) : (
-                    <div><dt>output_sha256</dt><dd title={selected.outputHash}>{shortHash(selected.outputHash)}</dd></div>
-                  )}
-                </dl>
-              </>
-            )}
-          </div>
+          <div className="trace-title"><p className="eyebrow">Evidence beside object</p><h3>{selected.source}<br /><em>/ {activeFace}</em></h3></div>
+          <CompilationTraceModes item={selected} trace={trace} activeMode={traceMode} onModeChange={setTraceMode} projectionState={projectionState} failureMessage={failureMessage} history={currentHistory} runtime={runtimeRecord} onExportRegistrar={exportRegistrar} />
         </aside>
         <div className="source-workbench-wrap" inert={imageOnly}>
           <SourceEditor
@@ -401,12 +428,7 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="manifest-strip" aria-label="Gallery manifest record" inert={imageOnly}>
-        <div className="manifest-identity"><FileJson2 size={18} /><span>MANIFEST / PROCESS GRAPH</span></div>
-        <div className="manifest-fields"><span>LIBRARY <b>5 COMPILED OBJECTS</b></span><span>ACTIVE FACE <b>{activeFace.toUpperCase()} · MUTUALLY EXCLUSIVE</b></span><span>CORE <b>RUST · robby-compiler-v0.1</b></span><span>EXECUTOR <b>{projectionUnavailable ? "LIVE IR · UNAVAILABLE" : liveIr ? "STATIC ARTIFACT · RENDER PENDING" : "CPU · PILLOW / OPENCV"}</b></span></div>
-        <img src="/manus-storage/robby-palette-study_ad20752b.png" alt="Abstract palette study" />
-        <Sparkles className="manifest-spark" size={18} />
-      </section>
+      <div inert={imageOnly}><ProvenanceModule item={selected} runtime={runtimeRecord} onFocusReverse={focusReverseStep} /></div>
 
       <footer className="site-footer" inert={imageOnly}>
         <div className="footer-left">
@@ -423,9 +445,8 @@ export default function Home() {
       </footer>
       {artworkView && <div className="artwork-view" role="dialog" aria-modal="true" aria-label={`${selected.title} full-bleed artwork view`} onClick={() => setArtworkView(false)}>
         <div className="artwork-view-frame" onClick={event => event.stopPropagation()} onTouchStart={handleArtworkTouchStart} onTouchEnd={handleArtworkTouchEnd}>
-          <img src={face === "obverse" ? selected.obverse : selected.reverse} alt={`${selected.title} ${face}`} />
-          <div className="artwork-view-meta"><span>{selected.title} / {face}</span><span>SWIPE TO BROWSE · ESC TO CLOSE</span></div>
-          <button type="button" onClick={() => setArtworkView(false)} aria-label="Close full-bleed artwork view" title="Close full-bleed artwork view"><Minimize2 size={19} /></button>
+          <div className="artwork-view-image-viewport"><img src={face === "obverse" ? displayedObverse : displayedInverse} alt={`${selected.title} ${face}`} /></div>
+          <div className="artwork-view-controls"><div className="artwork-view-meta"><span>{selected.title} / {face}</span><span>SWIPE TO BROWSE · ESC TO CLOSE</span></div><button type="button" onClick={() => setArtworkView(false)} aria-label="Close full-bleed artwork view" title="Close full-bleed artwork view"><Minimize2 size={19} /></button></div>
         </div>
       </div>}
     </main>

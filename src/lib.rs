@@ -24,11 +24,16 @@ pub fn compile_source(source: &str) -> CompileResult<Ir> {
 /// A stable human-readable version for the CLI, manifest UI, and WASM bridge.
 pub const COMPILER_VERSION: &str = "robby-compiler-v0.1.0";
 
+/// Toolchain metadata captured from Cargo's active `rustc` during this build.
+/// Browser code cannot inspect a visitor's local toolchain, so this carries the
+/// authoritative compiler used to build the shipped native/WASM artifact.
+pub const RUST_TOOLCHAIN: &str = env!("ROBBY_RUST_TOOLCHAIN");
+
 #[cfg(feature = "wasm")]
 mod wasm {
     use wasm_bindgen::prelude::*;
 
-    use crate::{compile_source, COMPILER_VERSION};
+    use crate::{compile_source, COMPILER_VERSION, RUST_TOOLCHAIN};
 
     /// Compile Robby source in the browser using this exact Rust library.
     #[wasm_bindgen]
@@ -40,6 +45,11 @@ mod wasm {
     #[wasm_bindgen]
     pub fn compiler_version() -> String {
         COMPILER_VERSION.to_string()
+    }
+
+    #[wasm_bindgen]
+    pub fn rust_toolchain() -> String {
+        RUST_TOOLCHAIN.to_string()
     }
 }
 

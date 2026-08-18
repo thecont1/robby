@@ -1,42 +1,39 @@
 import { describe, expect, it } from "vitest";
-import { gallery } from "./demoData";
+import { gallery, galleryOrder } from "./demoData";
 
 describe("authentic-source gallery records", () => {
-  const authenticIds = ["night-duality", "ayodhya-mural", "urban-fantasy", "murgeshpalya-passage", "uganda-diptych"] as const;
+  const authenticIds = galleryOrder;
 
-  it("binds each replacement specimen to a JPEG original with embedded C2PA evidence", () => {
+  it("binds each refreshed specimen to a JPEG original with a measured source hash", () => {
     for (const id of authenticIds) {
       const specimen = gallery.find(item => item.id === id);
       expect(specimen).toBeDefined();
       expect(specimen?.source).toMatch(/\.jpe?g$/i);
       expect(specimen?.script).not.toContain(".webp");
-      expect(specimen?.credentialSignature.status).toBe("present");
+      expect(["absent", "candidate", "present"]).toContain(specimen?.credentialSignature.status);
       expect(specimen?.credentialSignature.sourceSha256).toMatch(/^[0-9a-f]{64}$/);
     }
   });
 
-  it("records the validating C2PA claim generator for every original", () => {
-    for (const id of authenticIds) {
-      const specimen = gallery.find(item => item.id === id);
-      expect(specimen?.credentialSignature.claimGenerator).toMatch(/^lightroom_classic\/15\./);
-      expect(specimen?.credentialSignature.markerScan).toBe("c2patool detailed manifest validation");
-    }
+  it("keeps raw C2PA-marker evidence conservative until cryptographic validation is available", () => {
+    const candidates = gallery.filter(item => item.credentialSignature.status === "candidate");
+    expect(candidates).toHaveLength(1);
+    expect(gallery.filter(item => item !== candidates[0]).every(item => item.credentialSignature.status === "absent")).toBe(true);
   });
 
   it("uses separate managed-storage faces for the obverse and its inverse", () => {
     for (const id of authenticIds) {
       const specimen = gallery.find(item => item.id === id);
-      expect(specimen?.obverse).toMatch(/^\/manus-storage\/.+\.png$/);
+      expect(specimen?.obverse).toMatch(/^\/manus-storage\/.+\.(png|jpg)$/);
       expect(specimen?.reverse).toMatch(/^\/manus-storage\/.+\.png$/);
       expect(specimen?.obverse).not.toBe(specimen?.reverse);
     }
   });
 
-  it("keeps Night duality as a base-only study after removing the duplicate full-scene layer", () => {
-    const night = gallery.find(item => item.id === "night-duality");
-    expect(night?.script).not.toContain("courier.png");
-    expect(night?.script).not.toContain("cutout(");
-    expect(night?.script).not.toContain("place(");
-    expect(night?.reverseMode).toBe("palette-grid");
+  it("derives sequence and serial labels solely from the exported gallery order", () => {
+    expect(gallery.map(item => item.id)).toEqual(galleryOrder);
+    const total = galleryOrder.length;
+    const expectedSerials = galleryOrder.map((_, i) => `${String(i + 1).padStart(2, "0")} / ${String(total).padStart(2, "0")}`);
+    expect(gallery.map(item => item.serial)).toEqual(expectedSerials);
   });
 });

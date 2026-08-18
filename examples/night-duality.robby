@@ -1,7 +1,0 @@
-# A base-image study using the supplied authenticated street photograph.
-base("IMG_20210916_185510.jpg", width: 1440, height: 1080)
-
-palette(k: 8)
-reverse(mode: "palette-grid", k: 8)
-
-output(obverse: "night-obverse.png", reverse: "night-reverse.png", manifest: "night-manifest.json")

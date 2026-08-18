@@ -6,18 +6,18 @@
 | --- | --- | --- |
 | Public source destination | ✅ real | The existing `Download Rust Source` control now targets `https://github.com/thecont1/robby/archive/refs/heads/dev/ananya.zip`. The GitHub REST archive downloaded successfully, passed `unzip -t`, and unpacked a full Rust crate. |
 | Clean native build | ✅ real | A clean local clone of the pushed `dev/ananya` state compiled successfully with `cargo build`. |
-| Browser-independent CLI | ✅ real | `cargo run -- version`, `cargo run -- check examples/night-duality.robby`, and `cargo run -- compile examples/night-duality.robby --out /tmp/build04-night.ir.json` all succeeded without the website running. |
+| Browser-independent CLI | ✅ real | `cargo run -- version`, `cargo run -- check examples/MS202401-Ayodhya0041.robby`, and `cargo run -- compile examples/MS202401-Ayodhya0041.robby --out /tmp/build04-ayodhya.ir.json` all succeeded without the website running. |
 | Documented IR | ✅ real | The compiled artifact contains `"version": "robby-ir-v1"`. |
 
 The exact public repository path is `https://github.com/thecont1/robby/tree/dev/ananya`; the direct downloadable branch archive is `https://github.com/thecont1/robby/archive/refs/heads/dev/ananya.zip`. The native verification command is:
 
 ```bash
 cargo build
-cargo run -- check examples/night-duality.robby
-cargo run -- compile examples/night-duality.robby --out output/night.ir.json
+cargo run -- check examples/MS202401-Ayodhya0041.robby
+cargo run -- compile examples/MS202401-Ayodhya0041.robby --out output/MS202401-Ayodhya0041.ir.json
 ```
 
-The first GitHub CLI GraphQL clone attempt returned an HTTP 503, but GitHub’s REST archive endpoint succeeded. The downloaded archive unpacked as `thecont1-robby-226edc8`, built with `cargo build`, and compiled `examples/night-duality.robby` to a `robby-ir-v1` document without a browser.
+The first GitHub CLI GraphQL clone attempt returned an HTTP 503, but GitHub's REST archive endpoint succeeded. The downloaded archive unpacked as `thecont1-robby-226edc8`, built with `cargo build`, and compiled `examples/MS202401-Ayodhya0041.robby` to a `robby-ir-v1` document without a browser.
 
 The live page’s `DOWNLOAD RUST SOURCE` link was also inspected after the correction and resolves to the same tested `dev/ananya.zip` archive endpoint.
 
@@ -27,7 +27,7 @@ The initial aggregate browser test exposed two harness defects, not product defe
 
 ## C2PA validator cross-check
 
-The marker scan used by Build 03 was supplemented in Build 04 with `c2patool v0.27.15`, a manifest-aware C2PA utility. It returned **`Error: No claim found`** for each original local asset: `night-street.jpg`, `MS202401-Ayodhya0041.webp`, `_DSF0739-Enhanced-NR.webp`, `MS201901-Murgeshpalya0018.webp`, and `MS201508-Uganda0016.webp`.
+The marker scan used by Build 03 was supplemented in Build 04 with `c2patool v0.27.15`, a manifest-aware C2PA utility. It returned **`Error: No claim found`** for each original local source asset tested.
 
 Therefore the five visible `C2PA ABSENT` badges are accurate asset-specific states. No UI item reports issuer, edit history, or capture data because no embedded C2PA claim exists to support it. The C2PA state is static build evidence in this frontend-only v1 gallery; uploading a new image still requires regenerating the signature records before its badge can be trusted.
 

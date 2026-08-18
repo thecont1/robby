@@ -157,3 +157,140 @@
 
 - [x] Reduce the compilation-trace step-number cell width by 50 percent.
 - [x] Replace the ambiguous header compiler label with the verified Rust toolchain version.
+
+## Trace spacing and dynamic compiler status
+
+- [x] Restore the trace step-number column width and tighten only the gap between step numbers and operation text.
+- [x] Increase the header compiler-status text and derive its version from compiler build metadata rather than a hardcoded UI value.
+
+## Build 06 — provenance strip and compilation trace modes
+
+- [x] Create and work from the `dev/brinda` branch for Build 06.
+- [x] Replace the pre-footer manifest strip with Object Provenance, Runtime Manifest, and Reverse Record tabs populated from the active specimen.
+- [x] Add hover/click disclosure for provenance and runtime fields, including raw values and hash-computation explanations.
+- [x] Add five functional trace tabs: Diff, Evidence, Registrar, Pedagogic, and Failure.
+- [x] Use active source/editor state for derivable trace-mode data and clearly label simulated failure or unavailable history content.
+- [x] Add regression coverage and verify gallery cycling, source editing, tab updates, and production build.
+- [x] Report the tabs backed by real data, simulated content, and the future state/backend work needed for persistent compile history.
+
+## Build 06 completion checks
+
+- [x] Cycle to a second specimen and verify the provenance and runtime tabs refresh with that specimen’s source and checksum data.
+- [x] Deliver a Build 06 report distinguishing real per-specimen records, browser-session/simulated trace content, and the persistent history work still required.
+
+## Persistent compilation history and signed registrar export
+
+- [x] Persist successful Rust/WASM compilation snapshots across browser sessions using IndexedDB.
+- [x] Load persistent specimen history into Diff mode without changing approved gallery or editor mechanics.
+- [x] Generate and persist a browser-local signing key for registrar attestation, with clear scope labeling.
+- [x] Add Registrar controls to download signed JSON and PDF records.
+- [x] Verify stored history reload, signed export structure, download actions, and full regressions.
+
+## Live compiler projection clarity
+
+- [x] Investigate why changing palette and reverse parameters recompiles the IR without changing the flipped bitmap.
+- [x] Make the editor and image-object stage accurately communicate or implement live inverse rendering behavior.
+- [x] Verify the corrected editor-to-inverse interaction and regression coverage.
+
+## Server-side live image execution
+
+- [x] Audit and select a production-safe server-side executor path compatible with the existing compiler and authentic-source storage.
+- [x] Add a validated image-render endpoint that preserves original JPEGs and writes only fresh derived output artifacts.
+- [x] Update the editor pipeline so successful execution dynamically replaces the inverse face with the newly rendered derivative.
+- [x] Add automated tests showing palette and reverse configuration changes trigger distinct rendering requests and output records.
+- [x] Verify source immutability, execution failures, responsive gallery behavior, and production deployment requirements.
+
+## Live executor completion checks
+
+- [x] Verify in the browser that a palette/reverse edit compiles, flips to a fresh inverse URL, and replaces the prior static derivative.
+- [x] Add explicit API failure-path tests and confirm stale live derivatives clear when execution fails.
+- [x] Verify mobile live-render interaction and confirm the Docker-based production runtime starts Python dependencies successfully.
+
+## Live executor evidence hardening
+
+- [x] Add an automated HTTP test for the `/api/live-render` validation failure response.
+- [x] Verify in the browser that a failed recompile clears a previously displayed live derivative and shows the error state.
+- [x] Publish and exercise the Docker-based production endpoint to prove the Python executor starts with deployed dependencies.
+
+## Stable gallery viewing window
+
+- [x] Keep the image-object viewport height stable when gallery specimens have different aspect ratios.
+- [x] Keep Previous and Next controls at a stationary vertical position while cycling through gallery images.
+- [x] Verify the stable stage on desktop and mobile viewports.
+
+## Stable stage mobile interaction check
+
+- [x] Measure the mobile image-window height and Next-control position before and after cycling across specimens.
+
+## Sacred artwork stage and transition
+
+- [x] Remove all artificial interface pixels, controls, and indicators from on-image positions.
+- [x] Move the full-bleed action and face/registration indicators into neutral space around the artwork.
+- [x] Increase the stable image viewing-window height without moving navigation controls between specimens.
+- [x] Add a reduced-motion-safe directional slide transition when the selected image changes, distinct from the 3D face-turn.
+- [x] Verify overlay-free artwork, stable controls, and slide/flip behavior on desktop and mobile.
+
+## Pure-slide motion refinement
+
+- [x] Remove all opacity interpolation from gallery specimen navigation so replacement is purely positional.
+- [x] Tighten directional gallery-slide timing while preserving the separate 3D face-turn and reduced-motion path.
+- [x] Verify forward/backward gallery slides and the obverse–inverse card flip.
+
+## Full-screen layout refinement
+
+- [x] Move the full-screen activation control to the left of the dimensions in the lower-right stage metadata area.
+- [x] Constrain full-screen artwork above the bottom orange information separator with a dedicated safe image area.
+- [x] Verify the activation control and full-screen image containment on desktop and mobile.
+
+## Authentic gallery refresh and sequencing
+
+- [x] Inspect newly uploaded immutable originals and identify the removed previous specimen.
+- [x] Reconcile the active gallery catalogue, immutable-original allowlist, and source metadata without transforming source JPEGs.
+- [x] Add clear documentation identifying the exact gallery-order control point for future sequencing changes.
+- [x] Verify each refreshed gallery specimen, navigation sequence, and source integrity metadata.
+
+## Native-dimension live rendering
+
+- [x] Accept Rust compiler IR canvas dimensions emitted as null when a base-only script intentionally preserves the source image’s native size.
+- [x] Add regression coverage for native-dimension refreshed gallery IR through the live-render validator.
+
+## Stable subfooter tabs
+
+- [x] Keep the provenance subfooter’s overall height fixed while switching Object Provenance, Runtime Manifest, and Reverse Record tabs.
+- [x] Correct the Reverse Record triage-link cell alignment so its text stays within the shared panel geometry.
+- [x] Verify stationary tab-panel geometry on desktop and mobile.
+
+## Compact gallery and trace hierarchy
+
+- [x] Make the thumbnail gallery beneath the artwork a single left-right scrollable filmstrip rather than a multi-row grid.
+- [x] Remove duplicate colour-signature and C2PA status from beneath the artwork, retaining and elevating this evidence in the compilation trace.
+- [x] Move compilation-trace tabs left, remove the orange rule above step 01, and increase trace-card spacing and text size slightly.
+- [x] Replace the under-image selected-object line with `OBVERSE · dimensions`, center the face-turn control, and place Previous/Next plus the mono serial at bottom-right.
+- [x] Verify compact desktop and mobile layout, horizontal thumbnail scroll, navigation, and preserved trace readability.
+
+## Background-only artwork stage
+
+- [x] Remove black letterbox surfaces from the obverse and inverse faces while retaining full-image containment.
+- [x] Make unused stable-stage area resolve to the archival page background for portrait and landscape specimens.
+- [x] Verify representative 4:3 and 3:2 images on desktop and mobile without clipping or black bars.
+
+## Dark-stage transparency and unified control row
+
+- [x] Remove any remaining dark-mode black letterbox surface from the stable viewing window and image faces.
+- [x] Place the expand control before the obverse/dimensions metadata, the face-turn at center, and Previous/Next with orange serial on one desktop control row.
+- [x] Preserve an accessible responsive arrangement when the three control groups no longer fit on a phone-width row.
+- [x] Verify light/dark face containment and control placement on desktop and mobile.
+
+## Subfooter tab selection refinement
+
+- [x] Increase the baseline visual weight of Object Provenance, Runtime Manifest, and Reverse Record tabs.
+- [x] Replace selected-tab weight emphasis with an outlined-box state in light and dark themes.
+- [x] Verify tab treatment on desktop and mobile without changing the fixed subfooter height.
+
+## Readable provenance subfooter
+
+- [x] Center selected tab labels inside their outlined boxes and add top breathing room between the tab rail and panel.
+- [x] Increase the selected-tab outline thickness so the state reads as a confident tab/button.
+- [x] Move the provenance icon into the widened tab rail and remove the duplicate black-panel header.
+- [x] Use recovered panel height to increase provenance cell label and value font sizes.
+- [x] Verify desktop and mobile tab spacing, centering, and enlarged cell readability.

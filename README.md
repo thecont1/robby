@@ -48,11 +48,11 @@ Build the portable native Rust binary once, then lower a local `.robby` script i
 ```bash
 cargo build --release
 ./target/release/robby version
-./target/release/robby check examples/night-duality.robby
-./target/release/robby compile examples/night-duality.robby --out output/night-duality.ir.json
+./target/release/robby check examples/MS202401-Ayodhya0041.robby
+./target/release/robby compile examples/MS202401-Ayodhya0041.robby --out output/MS202401-Ayodhya0041.ir.json
 ```
 
-Human-oriented errors are intentional. For example, `examples/invalid-coordinate.robby` emits an error explaining that `x` and `y` must be normalized coordinates.
+Human-oriented errors are intentional. For example, a `.robby` file with `place(x: 1.2, y: 0.45)` emits an error explaining that `x` and `y` must be normalized coordinates.
 
 ## IR outline
 
@@ -76,24 +76,28 @@ The executor runs on the CPU with Pillow, NumPy, and OpenCV. It first honours a 
 
 ```bash
 uv run python executor/run.py \
-  --ir output/night-duality.ir.json \
+  --ir output/MS202401-Ayodhya0041.ir.json \
   --assets-root /absolute/path/to/assets \
-  --out-dir output/night-duality
+  --out-dir output/MS202401-Ayodhya0041
 ```
 
 If a script requests two reverse modes, the executor writes `-provenance-map` and `-palette-grid` variants derived from the declared reverse filename. The manifest records each emitted path and SHA-256 checksum.
 
 ## Run the web application
 
-The web application displays a compiled library of image-objects and keeps the selected record’s process trace alongside the image stage. The browser compiler remains Rust/WASM; server capability is used only for authenticated original-file storage and metadata.
+The web application displays a compiled library of image-objects and keeps the selected record’s process trace alongside the image stage. The browser compiler remains Rust/WASM. A successful editor compilation is then submitted to the server-side Python executor, which reads a checksum-verified immutable original into a temporary workspace and uploads only newly derived obverse, inverse, and manifest artifacts. The selected stage swaps to those fresh derivative URLs after execution; it never overwrites or transforms the authentic JPEG in storage.
 
 ```bash
 pnpm dev
 ```
 
-The gallery starts on an obverse. Selecting another record also starts that record on its obverse. The **Turn to inverse** control (or the `F` key) replaces the stage image with its compiled reverse; the faces are never shown side by side. Left and right arrow keys cycle the library. The supplied examples are generated from `examples/night-duality.robby`, `examples/ayodhya-mural.robby`, `examples/urban-fantasy.robby`, `examples/murgeshpalya-passage.robby`, and `examples/uganda-diptych.robby`.
+The gallery starts on an obverse. Selecting another record also starts that record on its obverse. The **Turn to inverse** control (or the `F` key) replaces the stage image with its compiled reverse; the faces are never shown side by side. Left and right arrow keys cycle the library. The historical `examples/*.robby` files remain compact compiler fixtures; the active gallery records are regenerated from the immutable current source set with `scripts/build_refreshed_gallery.py`.
 
-The viewer validates the selected `.robby` script with the generated **Rust WebAssembly** adapter before it reports `VALID IR · RUST v0.1.0`. Rebuild the adapter from the same library after changing compiler code:
+### Change gallery order
+
+The active gallery sequence is controlled in **`client/src/lib/demoData.ts`**, in the exported `galleryOrder` list. Move an image id earlier or later in that list to change the filmstrip, serial numbers, Previous/Next behavior, keyboard cycling, and full-screen swipe order. Remove an id from that list to hide the specimen without deleting its immutable original or stored derivatives.
+
+The viewer validates the selected `.robby` script with the generated **Rust WebAssembly** adapter before it reports `VALID IR · RUST <toolchain>`. The value is not hardcoded in the UI: `build.rs` runs the same `rustc --version` used by Cargo while building the native/WASM compiler and embeds that toolchain label in the generated adapter. The separate `robby-compiler-v0.1.0` value remains the crate release, not the Rust toolchain. Rebuild the adapter from the same library after changing compiler code or the installed Rust toolchain:
 
 ```bash
 rustup target add wasm32-unknown-unknown
@@ -104,19 +108,21 @@ pnpm build
 
 The generated `client/src/wasm/` package is intentionally committed because it is the deployable adapter from the Rust source, not a parallel TypeScript implementation of Robby.
 
+### Live web execution boundary
+
+The current live endpoint supports the gallery’s **base-only** scripts and the `palette-grid` or `provenance-map` reverse modes. It limits live canvases to 12 megapixels, permits only the five registered immutable gallery originals, verifies their byte SHA-256 before execution, serializes CPU rendering, and writes each output under a new managed-storage key. Cutout-based live rendering remains unavailable until cutout sources receive the same immutable storage registry and audit path as base originals.
+
 ## Authentic originals and credential-preserving storage
 
 Authentic source images are **user data, not repository files**. Store them through the web app’s **Authentic originals** intake or the Management UI File Storage panel. The intake accepts original JPEG byte streams only; it does not crop, resize, decode/re-encode, strip metadata, or rename the original basename. Each object is content-addressed by SHA-256 and an immutable metadata record stores its filename, byte length, storage key, and provenance status. The `gallery/` path is ignored intentionally.
 
-The active replacement originals have C2PA manifests. Robby records their source-byte SHA-256 values and surfaces a `C2PA PRESENT` badge, while retaining the local verifier warning that its signing credential is not trusted by the configured trust store. This is deliberately more conservative than claiming a fully trusted credential.
+The refreshed gallery records an honest raw-byte credential scan beside every source SHA-256. A source without a C2PA/JUMBF marker is labeled `C2PA ABSENT`; a raw marker without an available cryptographic validation pass is labeled `C2PA CANDIDATE`, never as a verified claim. This keeps the gallery’s credential language conservative while preserving every supplied JPEG byte-for-byte.
 
-The **colour signature** is real pixel-derived data from the active compiled obverse: a SHA-256 fingerprint of raw RGB pixels, a SHA-256 fingerprint of its deterministic eight-colour palette, and the displayed palette itself. Recompute the authentic-source gallery signature record with:
+The **colour signature** is real pixel-derived data from the active compiled obverse: a SHA-256 fingerprint of raw RGB pixels, a SHA-256 fingerprint of its deterministic eight-colour palette, and the displayed palette itself. The current-gallery compiler/executor record and measured catalogue can be regenerated with:
 
 ```bash
-uv run python scripts/derive_authentic_gallery_signatures.py \
-  --assets-root /path/to/immutable-originals \
-  --renders-root /path/to/rendered-derivatives \
-  --out /tmp/robby-authentic-signatures.json
+python3 scripts/build_refreshed_gallery.py
+python3 scripts/derive_refreshed_gallery_catalog.py
 ```
 
 The source-byte audit, signature values, flip-state model, and verification notes remain available in the Build 03 records. No credential assertion in the gallery is stubbed.
