@@ -102,3 +102,8 @@
 ## Footer identity and links
 
 - [x] Replace the footer’s explanatory copy with the orange observation statement, requested social icon links, and linked Mahesh Shantaram copyright notice.
+
+## Managed-storage cleanup
+
+- [x] Audit managed storage references and remove verified obsolete local legacy remnants, preserving authentic originals and files referenced by the current gallery.
+- [x] Hard-delete obsolete unreferenced managed `/manus-storage` objects through a supported storage-management path, if one is available.
