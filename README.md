@@ -93,7 +93,7 @@ pnpm dev
 
 The gallery starts on an obverse. Selecting another record also starts that record on its obverse. The **Turn to inverse** control (or the `F` key) replaces the stage image with its compiled reverse; the faces are never shown side by side. Left and right arrow keys cycle the library. The supplied examples are generated from `examples/night-duality.robby`, `examples/ayodhya-mural.robby`, `examples/urban-fantasy.robby`, `examples/murgeshpalya-passage.robby`, and `examples/uganda-diptych.robby`.
 
-The viewer validates the selected `.robby` script with the generated **Rust WebAssembly** adapter before it reports `VALID IR · RUST v0.1.0`. Rebuild the adapter from the same library after changing compiler code:
+The viewer validates the selected `.robby` script with the generated **Rust WebAssembly** adapter before it reports `VALID IR · RUST <toolchain>`. The value is not hardcoded in the UI: `build.rs` runs the same `rustc --version` used by Cargo while building the native/WASM compiler and embeds that toolchain label in the generated adapter. The separate `robby-compiler-v0.1.0` value remains the crate release, not the Rust toolchain. Rebuild the adapter from the same library after changing compiler code or the installed Rust toolchain:
 
 ```bash
 rustup target add wasm32-unknown-unknown

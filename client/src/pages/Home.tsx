@@ -17,7 +17,7 @@ import {
 import { useTheme } from "@/contexts/ThemeContext";
 import { gallery, type TraceStep } from "@/lib/demoData";
 import { footerSocialLinks } from "@/lib/footerLinks";
-import { compileWithRust, type RobbyIr } from "@/lib/robbyCompiler";
+import { compileWithRust, rustToolchainVersion, type RobbyIr } from "@/lib/robbyCompiler";
 import { isImageOnlyExitKey, swipeGalleryOffset, themeControlLabel } from "@/lib/visualModes";
 import {
   Check,
@@ -145,10 +145,11 @@ export default function Home() {
     setCompilerLabel("RUST CORE · VERIFYING");
 
     compileWithRust(selected.script)
-      .then(() => {
+      .then(() => rustToolchainVersion())
+      .then((toolchain) => {
         if (!active) return;
         setCompilerState("verified");
-        setCompilerLabel(verifiedCompilerStatus);
+        setCompilerLabel(verifiedCompilerStatus(toolchain));
       })
       .catch(() => {
         if (!active) return;

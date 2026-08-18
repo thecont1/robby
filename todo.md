@@ -157,3 +157,8 @@
 
 - [x] Reduce the compilation-trace step-number cell width by 50 percent.
 - [x] Replace the ambiguous header compiler label with the verified Rust toolchain version.
+
+## Trace spacing and dynamic compiler status
+
+- [x] Restore the trace step-number column width and tighten only the gap between step numbers and operation text.
+- [x] Increase the header compiler-status text and derive its version from compiler build metadata rather than a hardcoded UI value.
