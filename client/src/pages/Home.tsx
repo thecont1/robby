@@ -31,6 +31,8 @@ import {
   RotateCcw,
   LockKeyhole,
   Menu,
+  Maximize2,
+  Minimize2,
   ShieldCheck,
   ShieldX,
   Sparkles,
@@ -80,6 +82,8 @@ export default function Home() {
   const [compiledEdit, setCompiledEdit] = useState<{ specimenId: string; ir: RobbyIr; source: string } | null>(null);
   const [projectionState, setProjectionState] = useState<ProjectionState>("gallery");
   const [imageOnly, setImageOnly] = useState(false);
+  const [compactTitle, setCompactTitle] = useState(() => typeof window !== "undefined" && window.localStorage.getItem("robby-title-size") === "compact");
+  const [artworkView, setArtworkView] = useState(false);
   const { theme, toggleTheme } = useTheme();
   const selected = gallery[selectedIndex];
   const hasEmbeddedCredential = selected.credentialSignature.status === "present";
@@ -116,6 +120,10 @@ export default function Home() {
     const onKeyDown = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement | null;
       if (target?.isContentEditable || target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || target instanceof HTMLSelectElement) return;
+      if (artworkView && event.key === "Escape") {
+        setArtworkView(false);
+        return;
+      }
       if (imageOnly && isImageOnlyExitKey(event.key)) {
         setImageOnly(false);
         return;
@@ -126,7 +134,11 @@ export default function Home() {
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [selectedIndex, isFlipping, imageOnly]);
+  }, [selectedIndex, isFlipping, imageOnly, artworkView]);
+
+  useEffect(() => {
+    window.localStorage.setItem("robby-title-size", compactTitle ? "compact" : "standard");
+  }, [compactTitle]);
 
   useEffect(() => {
     let active = true;
@@ -208,14 +220,14 @@ export default function Home() {
         </div>
       </header>
 
-      <section className="gallery-intro" inert={imageOnly}>
+      <section className={`gallery-intro${compactTitle ? " title-compact" : ""}`} inert={imageOnly}>
         <div className="intro-copy">
           <h1><span className="headline-line headline-primary"><span className="headline-accent">Explainable</span> <span className="headline-ink">visual composition</span></span><em className="headline-line"><span className="headline-accent">compiler</span> <span className="headline-ink">in rust.</span></em></h1>
         </div>
         <div className="intro-note">
           <span className="note-rule" />
-          <p>Like a postcard or coin, <span className="product-name">robby</span>’s image-object cannot reveal its obverse and inverse together. Turn it over; keep the trace in view.</p>
-          <span className="mono text-[10px] tracking-[0.13em]">← → TO CYCLE · F TO FLIP</span>
+          <p>Like a postcard or coin, <span className="product-name">robby</span> reveals one face at a time. The trace stays in view.</p>
+          <div className="intro-tools"><span className="mono text-[10px] tracking-[0.13em]">← → TO CYCLE · F TO FLIP</span><button type="button" className="title-size-toggle" onClick={() => setCompactTitle(current => !current)} aria-pressed={compactTitle} title={compactTitle ? "Use standard title size" : "Use compact title size"}>{compactTitle ? <Maximize2 size={13} /> : <Minimize2 size={13} />}<span>{compactTitle ? "Standard" : "Compact"}</span></button></div>
         </div>
       </section>
 
@@ -238,18 +250,7 @@ export default function Home() {
               </div>
             </div>
             <span className="face-corner top-left" /><span className="face-corner top-right" /><span className="face-corner bottom-left" /><span className="face-corner bottom-right" />
-          </div>
-
-          <div className="object-controls">
-            <button type="button" className="flip-control" onClick={turnOver} disabled={isFlipping} aria-label={face === "inverse" ? `Return ${selected.title} to its obverse` : `Flip ${selected.title} to its inverse`}>
-              {face === "inverse" ? <RotateCcw size={18} /> : <FlipHorizontal2 size={18} />}
-              <span>{isFlipping ? "Turning object" : face === "inverse" ? "Return to obverse" : "Turn to inverse"}</span>
-              <small>F</small>
-            </button>
-            <div className="object-navigation">
-              <button type="button" onClick={() => selectImage(selectedIndex - 1)} disabled={isFlipping} aria-label="Previous image"><ChevronLeft size={17} /> Previous</button>
-              <button type="button" onClick={() => selectImage(selectedIndex + 1)} disabled={isFlipping} aria-label="Next image">Next <ChevronRight size={17} /></button>
-            </div>
+            <button type="button" className="artwork-view-toggle" onClick={() => setArtworkView(true)} aria-label={`Open ${selected.title} in full-bleed artwork view`} title="Open full-bleed artwork view"><Maximize2 size={15} /></button>
           </div>
 
           <div className="stage-caption">
@@ -289,6 +290,12 @@ export default function Home() {
               </div>
               <p className="signature-tension">One signature is cryptographic. One is visual. Only one is human-readable.</p>
               {liveIr && <p className="static-artifact-note">STATIC ARTIFACT · RENDER PENDING — the live Rust IR changes this trace and manifest target; bitmap faces remain the selected pre-rendered specimen.</p>}
+            </div>
+            <div className="caption-controls">
+              <div className="object-navigation"><button type="button" onClick={() => selectImage(selectedIndex - 1)} disabled={isFlipping} aria-label="Previous image"><ChevronLeft size={17} /> Previous</button><span className="navigation-current">{selected.serial}</span><button type="button" onClick={() => selectImage(selectedIndex + 1)} disabled={isFlipping} aria-label="Next image">Next <ChevronRight size={17} /></button></div>
+              <button type="button" className="flip-control" onClick={turnOver} disabled={isFlipping} aria-label={face === "inverse" ? `Return ${selected.title} to its obverse` : `Flip ${selected.title} to its inverse`}>
+                {face === "inverse" ? <RotateCcw size={18} /> : <FlipHorizontal2 size={18} />}<span>{isFlipping ? "Turning object" : face === "inverse" ? "Return to obverse" : "Turn to inverse"}</span><small>F</small>
+              </button>
             </div>
           </div>
 
@@ -402,6 +409,13 @@ export default function Home() {
         </div>
         <p className="footer-copyright">© 2026 <a href="https://thecontrarian.in/" target="_blank" rel="noreferrer">Mahesh Shantaram / thecontrarian.in</a></p>
       </footer>
+      {artworkView && <div className="artwork-view" role="dialog" aria-modal="true" aria-label={`${selected.title} full-bleed artwork view`} onClick={() => setArtworkView(false)}>
+        <div className="artwork-view-frame" onClick={event => event.stopPropagation()}>
+          <img src={face === "obverse" ? selected.obverse : selected.reverse} alt={`${selected.title} ${face}`} />
+          <div className="artwork-view-meta"><span>{selected.title} / {face}</span><span>ESC TO CLOSE</span></div>
+          <button type="button" onClick={() => setArtworkView(false)} aria-label="Close full-bleed artwork view" title="Close full-bleed artwork view"><Minimize2 size={19} /></button>
+        </div>
+      </div>}
     </main>
   );
 }

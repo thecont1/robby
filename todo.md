@@ -122,3 +122,9 @@
 ## Secondary-title reflow
 
 - [x] Reflow the secondary title as “Explainable visual composition” followed by “compiler in rust.”
+
+## Artwork-view and image-area refinement
+
+- [x] Preserve orange Explainable/compiler emphasis while refining the supporting sentence’s line length.
+- [x] Add a compact title-size preference and optional full-bleed artwork view.
+- [x] Restore title/signatures, controls, image library, and live-source area as three bordered sections with the requested control alignment.
