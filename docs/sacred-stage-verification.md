@@ -63,3 +63,7 @@ The desktop 4:3 visual review confirms that the fixed stage’s unused vertical 
 The light-mode desktop view now presents one artwork-control row: expand plus `OBVERSE · dimensions` at left, the face-turn centered, and Previous / orange mono serial / Next at right. The superseded standalone metadata strip is absent.
 
 The responsive phone layout retains these three groups within the same control container: metadata and the face-turn share the first line when space is constrained, while Previous / orange serial / Next remain an undisturbed navigation line immediately below. The final stylesheet adds a later, explicit dark-mode transparency rule for the stage, both faces, and both image selectors, overriding the prior black dark-mode face background.
+
+## Subfooter tab selection refinement — 2026-08-18
+
+Desktop and mobile reviews confirm that all three provenance tabs use the stronger shared label weight. The selected Object Provenance tab is now marked by a full inset outline rather than a heavier active label, preserving the subfooter’s fixed geometry at both breakpoints.

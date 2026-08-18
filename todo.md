@@ -280,3 +280,9 @@
 - [x] Place the expand control before the obverse/dimensions metadata, the face-turn at center, and Previous/Next with orange serial on one desktop control row.
 - [x] Preserve an accessible responsive arrangement when the three control groups no longer fit on a phone-width row.
 - [x] Verify light/dark face containment and control placement on desktop and mobile.
+
+## Subfooter tab selection refinement
+
+- [x] Increase the baseline visual weight of Object Provenance, Runtime Manifest, and Reverse Record tabs.
+- [x] Replace selected-tab weight emphasis with an outlined-box state in light and dark themes.
+- [x] Verify tab treatment on desktop and mobile without changing the fixed subfooter height.
