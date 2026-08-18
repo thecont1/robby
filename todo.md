@@ -107,3 +107,9 @@
 
 - [x] Audit managed storage references and remove verified obsolete local legacy remnants, preserving authentic originals and files referenced by the current gallery.
 - [x] Hard-delete obsolete unreferenced managed `/manus-storage` objects through a supported storage-management path, if one is available.
+
+## Secondary-header and control refinements
+
+- [x] Apply the requested orange/black word treatment, remove redundant secondary-header labels, and reduce its height.
+- [x] Preserve the primary header in image-only mode and maintain visible contrast for active visual-mode controls.
+- [x] Increase hamburger-menu content size while retaining accessible navigation.

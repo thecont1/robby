@@ -179,7 +179,7 @@ export default function Home() {
 
   return (
     <main className={`app-shell min-h-screen overflow-hidden bg-[#f4efe1] text-[#1c1a19]${imageOnly ? " image-only" : ""}`}>
-      <header className="site-header" inert={imageOnly}>
+      <header className="site-header">
         <a className="brand-lockup" href="#gallery" aria-label="robby gallery">
           <img src="/manus-storage/robby-registration-mark_658aceee.png" alt="robby split registration disc" />
           <span className="brand-copy">
@@ -199,20 +199,18 @@ export default function Home() {
               <button type="button" className="menu-control" aria-label="Open site menu" title="Site menu"><Menu size={18} strokeWidth={2.2} /></button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="robby-menu-content">
-              <DropdownMenuItem asChild><Link href="/manual"><BookOpen size={14} /> Language manual</Link></DropdownMenuItem>
-              <DropdownMenuItem asChild><Link href="/originals"><LockKeyhole size={14} /> Authentic originals</Link></DropdownMenuItem>
+              <DropdownMenuItem asChild><Link href="/manual"><BookOpen size={17} /> Language manual</Link></DropdownMenuItem>
+              <DropdownMenuItem asChild><Link href="/originals"><LockKeyhole size={17} /> Authentic originals</Link></DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem asChild><a href="https://github.com/thecont1/robby/archive/refs/heads/main.zip" target="_blank" rel="noreferrer"><Download size={14} /> Download Rust source</a></DropdownMenuItem>
+              <DropdownMenuItem asChild><a href="https://github.com/thecont1/robby/archive/refs/heads/main.zip" target="_blank" rel="noreferrer"><Download size={17} /> Download Rust source</a></DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
       </header>
 
       <section className="gallery-intro" inert={imageOnly}>
-        <div className="intro-index" aria-hidden="true"><span>01</span><span>—</span><span>GALLERY</span></div>
         <div className="intro-copy">
-          <p className="eyebrow">Obverse / inverse image library</p>
-          <h1>Explainable visual<br /><em>composition compiler.</em></h1>
+          <h1><span className="headline-accent">Explainable</span> <span className="headline-ink">visual</span> <em><span className="headline-ink">composition</span> <span className="headline-accent">compiler.</span></em></h1>
         </div>
         <div className="intro-note">
           <span className="note-rule" />
