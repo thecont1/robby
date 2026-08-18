@@ -7,6 +7,7 @@ import { ThemeProvider } from "./contexts/ThemeContext";
 import Home from "./pages/Home";
 import Manual from "./pages/Manual";
 import Originals from "./pages/Originals";
+import { HackathonBrief, ImageObjectBrief } from "./pages/ProjectBrief";
 
 function Router() {
   // make sure to consider if you need authentication for certain routes
@@ -15,6 +16,8 @@ function Router() {
       <Route path={"/"} component={Home} />
       <Route path={"/manual"} component={Manual} />
       <Route path={"/originals"} component={Originals} />
+      <Route path={"/brief/hackathon"} component={HackathonBrief} />
+      <Route path={"/brief/image-object"} component={ImageObjectBrief} />
       <Route path={"/404"} component={NotFound} />
       {/* Final fallback route */}
       <Route component={NotFound} />

@@ -26,11 +26,13 @@ import {
   CircleDotDashed,
   Download,
   FileJson2,
+  FileText,
   Fingerprint,
   FlipHorizontal2,
   RotateCcw,
   LockKeyhole,
   Menu,
+  Lightbulb,
   Maximize2,
   Minimize2,
   ShieldCheck,
@@ -206,10 +208,10 @@ export default function Home() {
           <img src="/manus-storage/robby-registration-mark_658aceee.png" alt="robby split registration disc" />
           <span className="brand-copy">
             <span className="brand-title">robby <span className="brand-slash">/</span> <span className="brand-suffix">v1</span></span>
-            <span className="brand-subtitle">The Reverse-Obverse Image Duality Compiler</span>
             <span className={`compile-status ${compilerState}`}>{compilerLabel}</span>
           </span>
         </a>
+        <span className="header-product-subtitle">The Reverse-Obverse Image Duality Compiler</span>
         <div className="header-actions header-toolset">
           <button type="button" className="feature-control icon-control" onClick={toggleTheme} aria-label={themeControlLabel(theme)} aria-pressed={theme === "dark"} title={themeControlLabel(theme)}>
             <img src={theme === "light" ? "/manus-storage/thin-sunglasses_23303233.svg" : "/manus-storage/regular-sunglasses_28c9e1cf.svg"} alt="" />
@@ -224,6 +226,8 @@ export default function Home() {
             <DropdownMenuContent align="end" className="robby-menu-content">
               <DropdownMenuItem asChild><Link href="/manual"><BookOpen size={17} /> Language manual</Link></DropdownMenuItem>
               <DropdownMenuItem asChild><Link href="/originals"><LockKeyhole size={17} /> Authentic originals</Link></DropdownMenuItem>
+              <DropdownMenuItem asChild><Link href="/brief/hackathon"><FileText size={17} /> Hackathon brief</Link></DropdownMenuItem>
+              <DropdownMenuItem asChild><Link href="/brief/image-object"><Lightbulb size={17} /> Image-object concept</Link></DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem asChild><a href="https://github.com/thecont1/robby/archive/refs/heads/main.zip" target="_blank" rel="noreferrer"><Download size={17} /> Download Rust source</a></DropdownMenuItem>
             </DropdownMenuContent>
@@ -244,11 +248,6 @@ export default function Home() {
 
       <section id="gallery" className="gallery-workspace" aria-label="robby image-object gallery">
         <section className="object-stage" aria-label={`${selected.title} ${activeFace} image-object`}>
-            <div className="stage-topline" inert={imageOnly}>
-            <div><MonoLabel>Selected image-object</MonoLabel><span className="object-serial">{selected.serial}</span></div>
-            <span className="mono text-[10px]">{selected.dimensions} · {activeFace.toUpperCase()}</span>
-          </div>
-
           <div className={`two-sided-object ${selected.ratio}`} aria-busy={isFlipping}>
             <div className="object-turner" data-face={face} onTransitionEnd={settleFlip}>
               <div className="object-face object-face-obverse" aria-hidden={face !== "obverse"}>
@@ -262,6 +261,11 @@ export default function Home() {
             </div>
             <span className="face-corner top-left" /><span className="face-corner top-right" /><span className="face-corner bottom-left" /><span className="face-corner bottom-right" />
             <button type="button" className="artwork-view-toggle" onClick={() => setArtworkView(true)} aria-label={`Open ${selected.title} in full-bleed artwork view`} title="Open full-bleed artwork view"><Maximize2 size={15} /></button>
+          </div>
+
+          <div className="stage-metadata" inert={imageOnly}>
+            <div><MonoLabel>Selected image-object</MonoLabel><span className="object-serial">{selected.serial}</span></div>
+            <span className="mono text-[10px]">{selected.dimensions} · {activeFace.toUpperCase()}</span>
           </div>
 
           <div className="stage-caption">
@@ -300,10 +304,10 @@ export default function Home() {
               {liveIr && <p className="static-artifact-note">STATIC ARTIFACT · RENDER PENDING — the live Rust IR changes this trace and manifest target; bitmap faces remain the selected pre-rendered specimen.</p>}
             </div>
             <div className="caption-controls">
-              <div className="object-navigation"><button type="button" onClick={() => selectImage(selectedIndex - 1)} disabled={isFlipping} aria-label="Previous image"><ChevronLeft size={17} /> Previous</button><span className="navigation-current">{selected.serial}</span><button type="button" onClick={() => selectImage(selectedIndex + 1)} disabled={isFlipping} aria-label="Next image">Next <ChevronRight size={17} /></button></div>
               <button type="button" className="flip-control" onClick={turnOver} disabled={isFlipping} aria-label={face === "inverse" ? `Return ${selected.title} to its obverse` : `Flip ${selected.title} to its inverse`}>
                 {face === "inverse" ? <RotateCcw size={18} /> : <FlipHorizontal2 size={18} />}<span>{isFlipping ? "Turning object" : face === "inverse" ? "Return to obverse" : "Turn to inverse"}</span><small>F</small>
               </button>
+              <div className="object-navigation"><button type="button" onClick={() => selectImage(selectedIndex - 1)} disabled={isFlipping} aria-label="Previous image"><ChevronLeft size={17} /> Previous</button><span className="navigation-current">{selected.serial}</span><button type="button" onClick={() => selectImage(selectedIndex + 1)} disabled={isFlipping} aria-label="Next image">Next <ChevronRight size={17} /></button></div>
             </div>
           </div>
 

@@ -145,3 +145,10 @@
 - [x] Remove the duplicate specimen title and metadata block beneath the image.
 - [x] Increase the numbered compilation-trace sections for clearer use of the available trace-column space.
 - [x] Restore a valid accessible label for the object stage after removing the under-image title block.
+
+## Identity, controls, trace, and brief pages
+
+- [x] Move the readable product subtitle to the center of the header.
+- [x] Move selected image serial and dimensions below the image; top-align Turn to Inverse with signature badges; place previous/next beneath it.
+- [x] Increase compilation-trace card typography and spacing for readability.
+- [x] Add polished hamburger-menu pages for the hackathon brief and “Even Better Than the Real Thing?” concept document.
