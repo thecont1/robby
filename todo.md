@@ -286,3 +286,11 @@
 - [x] Increase the baseline visual weight of Object Provenance, Runtime Manifest, and Reverse Record tabs.
 - [x] Replace selected-tab weight emphasis with an outlined-box state in light and dark themes.
 - [x] Verify tab treatment on desktop and mobile without changing the fixed subfooter height.
+
+## Readable provenance subfooter
+
+- [x] Center selected tab labels inside their outlined boxes and add top breathing room between the tab rail and panel.
+- [x] Increase the selected-tab outline thickness so the state reads as a confident tab/button.
+- [x] Move the provenance icon into the widened tab rail and remove the duplicate black-panel header.
+- [x] Use recovered panel height to increase provenance cell label and value font sizes.
+- [x] Verify desktop and mobile tab spacing, centering, and enlarged cell readability.

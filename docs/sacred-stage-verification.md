@@ -67,3 +67,7 @@ The responsive phone layout retains these three groups within the same control c
 ## Subfooter tab selection refinement — 2026-08-18
 
 Desktop and mobile reviews confirm that all three provenance tabs use the stronger shared label weight. The selected Object Provenance tab is now marked by a full inset outline rather than a heavier active label, preserving the subfooter’s fixed geometry at both breakpoints.
+
+## Readable provenance subfooter — 2026-08-18
+
+Desktop and mobile checks confirm a centred, 2px outlined active tab with visible top clearance from the orange rail edge. The panel header has been removed; its contextual icons now sit inside the wider tabs. The resulting space is used by larger field labels and values, while the mobile grid retains all four readable cells inside its fixed panel height.
