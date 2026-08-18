@@ -62,7 +62,7 @@
 ## Post-review follow-up
 
 - [x] Manually trigger CodeRabbit on open PR #1 and confirm the request without merging. (Requested via https://github.com/thecont1/robby/pull/1#issuecomment-5319949918)
-- [ ] Confirm CodeRabbit reviewed the substantive compiler changes despite its head-change notice after the checklist-only commit. (Temporarily blocked: the stable-head retry received CodeRabbit’s `Review rate limited` response.)
+- [x] Confirm CodeRabbit reviewed the substantive compiler changes despite its head-change notice after the checklist-only commit. (Verified from merged PR #1 review history: CodeRabbit posted a substantive review at 2026-08-18T02:59:16Z.)
 - [x] Review and resolve the additional ITO-QA findings. Failed Rust/WASM compiles now withhold stale live output; integrity reports use atomic replacement for concurrent writes.
 - [x] Verify in-browser that an invalid recompile withholds the prior live trace, source hash, and output projection.
 - [x] Establish a valid Night duality live projection, then prepare the unsupported-mask browser draft for the error-state check.
