@@ -72,7 +72,7 @@ function traceFromIr(ir: RobbyIr): TraceStep[] {
 }
 
 type ProjectionState = "gallery" | "draft" | "compiling" | "error" | "live";
-type SlideMotion = { direction: GallerySlideDirection; phase: "out" | "in" };
+type SlideTransition = { outgoingIndex: number; incomingIndex: number; direction: GallerySlideDirection };
 
 export default function Home() {
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -90,8 +90,7 @@ export default function Home() {
   const [, setHistoryRevision] = useState(0);
   const [imageOnly, setImageOnly] = useState(false);
   const [artworkView, setArtworkView] = useState(false);
-  const [slideMotion, setSlideMotion] = useState<SlideMotion | null>(null);
-  const [pendingImageIndex, setPendingImageIndex] = useState<number | null>(null);
+  const [slideTransition, setSlideTransition] = useState<SlideTransition | null>(null);
   const artworkTouchStartX = useRef<number | null>(null);
   const compileHistory = useRef<Record<string, CompileSnapshot[]>>({});
   const { theme, toggleTheme } = useTheme();
@@ -106,7 +105,7 @@ export default function Home() {
   const liveScriptHash = projectionUnavailable ? null : liveIr?.meta.script_sha256 ?? selected.scriptHash;
   const liveReverseMode = projectionUnavailable ? null : liveIr?.reverse.map((item) => item.k ? `${item.mode} (k=${item.k})` : item.mode).join(" + ") ?? selected.reverseMode;
   const currentHistory = compileHistory.current[selected.id] ?? [];
-  const stageSlideClass = slideMotion ? `gallery-slide-${slideMotion.phase}-${slideMotion.direction}` : "";
+  const isSlideTransitioning = Boolean(slideTransition);
 
   const hashValue = async (value: string) => {
     const bytes = new TextEncoder().encode(value);
@@ -144,15 +143,18 @@ export default function Home() {
   };
 
   const selectImage = (nextIndex: number) => {
-    if (isFlipping || slideMotion) return;
+    if (isFlipping || slideTransition) return;
     const normalizedIndex = (nextIndex + gallery.length) % gallery.length;
     if (normalizedIndex === selectedIndex) return;
     if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) {
       commitSelection(normalizedIndex);
       return;
     }
-    setPendingImageIndex(normalizedIndex);
-    setSlideMotion({ direction: gallerySlideDirection(selectedIndex, normalizedIndex, gallery.length), phase: "out" });
+    setSlideTransition({
+      outgoingIndex: selectedIndex,
+      incomingIndex: normalizedIndex,
+      direction: gallerySlideDirection(selectedIndex, normalizedIndex, gallery.length),
+    });
   };
 
   const turnOver = () => {
@@ -168,15 +170,13 @@ export default function Home() {
   };
 
   const settleStageSlide = (event: React.AnimationEvent<HTMLDivElement>) => {
-    if (event.target !== event.currentTarget || !slideMotion) return;
-    if (slideMotion.phase === "out") {
-      if (pendingImageIndex === null) return;
-      commitSelection(pendingImageIndex);
-      setSlideMotion({ direction: slideMotion.direction, phase: "in" });
-      return;
+    if (event.target !== event.currentTarget || !slideTransition) return;
+    // The slide-in animation is longer (190ms vs 150ms), so it ends last.
+    // Only commit when the slide-in animation completes.
+    if (event.animationName.includes("slide-track")) {
+      commitSelection(slideTransition.incomingIndex);
+      setSlideTransition(null);
     }
-    setSlideMotion(null);
-    setPendingImageIndex(null);
   };
 
   useEffect(() => {
@@ -197,7 +197,7 @@ export default function Home() {
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [selectedIndex, isFlipping, slideMotion, imageOnly, artworkView]);
+  }, [selectedIndex, isFlipping, slideTransition, imageOnly, artworkView]);
 
   useEffect(() => {
     if (!historyReady) return;
@@ -355,16 +355,68 @@ export default function Home() {
           <div className="artwork-stage-frame">
             <span className="stage-corner top-left" aria-hidden="true" /><span className="stage-corner top-right" aria-hidden="true" /><span className="stage-corner bottom-left" aria-hidden="true" /><span className="stage-corner bottom-right" aria-hidden="true" />
             <div className="artwork-stage-viewport">
-              <div className={`two-sided-object ${selected.ratio} ${stageSlideClass}`} aria-busy={isFlipping || Boolean(slideMotion)} onAnimationEnd={settleStageSlide}>
-                <div className="object-turner" data-face={face} onTransitionEnd={settleFlip}>
-                  <div className="object-face object-face-obverse" aria-hidden={face !== "obverse"}>
-                    <img src={displayedObverse} alt={`${selected.title} obverse`} className="object-image" />
-                  </div>
-                  <div className="object-face object-face-inverse" aria-hidden={face !== "inverse"}>
-                    <img src={displayedInverse} alt={`${selected.title} inverse: ${selected.reverseDescription}`} className="object-image" />
+              {slideTransition ? (
+                <div className={`slide-track slide-track-${slideTransition.direction}`} onAnimationEnd={settleStageSlide}>
+                  {slideTransition.direction === "forward" ? (
+                    <>
+                      <div className={`two-sided-object ${gallery[slideTransition.outgoingIndex].ratio} slide-track-item`} aria-hidden="true">
+                        <div className="object-turner" data-face={face}>
+                          <div className="object-face object-face-obverse" aria-hidden={face !== "obverse"}>
+                            <img src={displayedObverse} alt="" className="object-image" />
+                          </div>
+                          <div className="object-face object-face-inverse" aria-hidden={face !== "inverse"}>
+                            <img src={displayedInverse} alt="" className="object-image" />
+                          </div>
+                        </div>
+                      </div>
+                      <div className={`two-sided-object ${gallery[slideTransition.incomingIndex].ratio} slide-track-item`} aria-busy>
+                        <div className="object-turner" data-face="obverse">
+                          <div className="object-face object-face-obverse" aria-hidden={false}>
+                            <img src={gallery[slideTransition.incomingIndex].obverse} alt={`${gallery[slideTransition.incomingIndex].title} obverse`} className="object-image" />
+                          </div>
+                          <div className="object-face object-face-inverse" aria-hidden={true}>
+                            <img src={gallery[slideTransition.incomingIndex].reverse} alt="" className="object-image" />
+                          </div>
+                        </div>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className={`two-sided-object ${gallery[slideTransition.incomingIndex].ratio} slide-track-item`} aria-busy>
+                        <div className="object-turner" data-face="obverse">
+                          <div className="object-face object-face-obverse" aria-hidden={false}>
+                            <img src={gallery[slideTransition.incomingIndex].obverse} alt={`${gallery[slideTransition.incomingIndex].title} obverse`} className="object-image" />
+                          </div>
+                          <div className="object-face object-face-inverse" aria-hidden={true}>
+                            <img src={gallery[slideTransition.incomingIndex].reverse} alt="" className="object-image" />
+                          </div>
+                        </div>
+                      </div>
+                      <div className={`two-sided-object ${gallery[slideTransition.outgoingIndex].ratio} slide-track-item`} aria-hidden="true">
+                        <div className="object-turner" data-face={face}>
+                          <div className="object-face object-face-obverse" aria-hidden={face !== "obverse"}>
+                            <img src={displayedObverse} alt="" className="object-image" />
+                          </div>
+                          <div className="object-face object-face-inverse" aria-hidden={face !== "inverse"}>
+                            <img src={displayedInverse} alt="" className="object-image" />
+                          </div>
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </div>
+              ) : (
+                <div className={`two-sided-object ${selected.ratio}`} aria-busy={isFlipping} onAnimationEnd={settleStageSlide}>
+                  <div className="object-turner" data-face={face} onTransitionEnd={settleFlip}>
+                    <div className="object-face object-face-obverse" aria-hidden={face !== "obverse"}>
+                      <img src={displayedObverse} alt={`${selected.title} obverse`} className="object-image" />
+                    </div>
+                    <div className="object-face object-face-inverse" aria-hidden={face !== "inverse"}>
+                      <img src={displayedInverse} alt={`${selected.title} inverse: ${selected.reverseDescription}`} className="object-image" />
+                    </div>
                   </div>
                 </div>
-              </div>
+              )}
             </div>
           </div>
 
