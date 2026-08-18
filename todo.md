@@ -185,3 +185,29 @@
 - [x] Generate and persist a browser-local signing key for registrar attestation, with clear scope labeling.
 - [x] Add Registrar controls to download signed JSON and PDF records.
 - [x] Verify stored history reload, signed export structure, download actions, and full regressions.
+
+## Live compiler projection clarity
+
+- [x] Investigate why changing palette and reverse parameters recompiles the IR without changing the flipped bitmap.
+- [x] Make the editor and image-object stage accurately communicate or implement live inverse rendering behavior.
+- [x] Verify the corrected editor-to-inverse interaction and regression coverage.
+
+## Server-side live image execution
+
+- [x] Audit and select a production-safe server-side executor path compatible with the existing compiler and authentic-source storage.
+- [x] Add a validated image-render endpoint that preserves original JPEGs and writes only fresh derived output artifacts.
+- [x] Update the editor pipeline so successful execution dynamically replaces the inverse face with the newly rendered derivative.
+- [x] Add automated tests showing palette and reverse configuration changes trigger distinct rendering requests and output records.
+- [x] Verify source immutability, execution failures, responsive gallery behavior, and production deployment requirements.
+
+## Live executor completion checks
+
+- [x] Verify in the browser that a palette/reverse edit compiles, flips to a fresh inverse URL, and replaces the prior static derivative.
+- [x] Add explicit API failure-path tests and confirm stale live derivatives clear when execution fails.
+- [x] Verify mobile live-render interaction and confirm the Docker-based production runtime starts Python dependencies successfully.
+
+## Live executor evidence hardening
+
+- [x] Add an automated HTTP test for the `/api/live-render` validation failure response.
+- [x] Verify in the browser that a failed recompile clears a previously displayed live derivative and shows the error state.
+- [x] Publish and exercise the Docker-based production endpoint to prove the Python executor starts with deployed dependencies.

@@ -85,7 +85,7 @@ If a script requests two reverse modes, the executor writes `-provenance-map` an
 
 ## Run the web application
 
-The web application displays a compiled library of image-objects and keeps the selected record’s process trace alongside the image stage. The browser compiler remains Rust/WASM; server capability is used only for authenticated original-file storage and metadata.
+The web application displays a compiled library of image-objects and keeps the selected record’s process trace alongside the image stage. The browser compiler remains Rust/WASM. A successful editor compilation is then submitted to the server-side Python executor, which reads a checksum-verified immutable original into a temporary workspace and uploads only newly derived obverse, inverse, and manifest artifacts. The selected stage swaps to those fresh derivative URLs after execution; it never overwrites or transforms the authentic JPEG in storage.
 
 ```bash
 pnpm dev
@@ -103,6 +103,10 @@ pnpm build
 ```
 
 The generated `client/src/wasm/` package is intentionally committed because it is the deployable adapter from the Rust source, not a parallel TypeScript implementation of Robby.
+
+### Live web execution boundary
+
+The current live endpoint supports the gallery’s **base-only** scripts and the `palette-grid` or `provenance-map` reverse modes. It limits live canvases to 12 megapixels, permits only the five registered immutable gallery originals, verifies their byte SHA-256 before execution, serializes CPU rendering, and writes each output under a new managed-storage key. Cutout-based live rendering remains unavailable until cutout sources receive the same immutable storage registry and audit path as base originals.
 
 ## Authentic originals and credential-preserving storage
 

@@ -1,0 +1,29 @@
+{
+  "ir": {
+    "version": "robby-ir-v1",
+    "canvas": {
+      "base": "IMG_20210916_185510.jpg",
+      "width": 720,
+      "height": 540
+    },
+    "cutouts": [],
+    "layers": [],
+    "palette": {
+      "k": 9
+    },
+    "reverse": [
+      {
+        "mode": "palette-grid",
+        "k": 9
+      }
+    ],
+    "output": {
+      "obverse": "ignored-obverse.png",
+      "reverse": "ignored-inverse.png",
+      "manifest": "ignored-manifest.json"
+    },
+    "meta": {
+      "script_sha256": "end-to-end-live-render-fixture"
+    }
+  }
+}

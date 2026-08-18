@@ -9,6 +9,7 @@ import SourceEditor from "@/components/SourceEditor";
 import { CompilationTraceModes, ProvenanceModule, type RuntimeRecord, type TraceMode } from "@/components/Build06Panels";
 import { loadCompileHistory, persistCompileSnapshot, type CompileSnapshot } from "@/lib/compileHistory";
 import { verifiedCompilerStatus } from "@/lib/compilerStatus";
+import { requestLiveRender, type LiveRenderResult } from "@/lib/liveRender";
 import { createSignedRegistrarRecord, downloadSignedRegistrarJson, downloadSignedRegistrarPdf } from "@/lib/registrarExport";
 import {
   DropdownMenu,
@@ -84,6 +85,7 @@ export default function Home() {
   const [compilerState, setCompilerState] = useState<"checking" | "verified" | "error">("checking");
   const [compilerLabel, setCompilerLabel] = useState("RUST CORE · LOADING");
   const [compiledEdit, setCompiledEdit] = useState<{ specimenId: string; ir: RobbyIr; source: string } | null>(null);
+  const [liveDerivative, setLiveDerivative] = useState<{ specimenId: string; result: LiveRenderResult } | null>(null);
   const [projectionState, setProjectionState] = useState<ProjectionState>("gallery");
   const [traceMode, setTraceMode] = useState<TraceMode>("evidence");
   const [failureMessage, setFailureMessage] = useState<string | null>(null);
@@ -99,6 +101,9 @@ export default function Home() {
   const hasEmbeddedCredential = selected.credentialSignature.status === "present";
   const activeFace = face;
   const liveIr = projectionState === "live" && compiledEdit?.specimenId === selected.id ? compiledEdit.ir : null;
+  const activeDerivative = liveDerivative?.specimenId === selected.id ? liveDerivative.result : null;
+  const displayedObverse = activeDerivative?.obverseUrl ?? selected.obverse;
+  const displayedInverse = activeDerivative?.inverseUrl ?? selected.reverse;
   const projectionUnavailable = projectionState === "draft" || projectionState === "compiling" || projectionState === "error";
   const trace = projectionUnavailable ? [] : liveIr ? traceFromIr(liveIr) : selected.trace;
   const liveScriptHash = projectionUnavailable ? null : liveIr?.meta.script_sha256 ?? selected.scriptHash;
@@ -135,6 +140,7 @@ export default function Home() {
     setIsFlipping(false);
     setCredentialOpen(false);
     setCompiledEdit(null);
+    setLiveDerivative(null);
     setProjectionState("gallery");
     setFailureMessage(null);
     setTraceMode("evidence");
@@ -214,7 +220,9 @@ export default function Home() {
     const snapshot: CompileSnapshot = { id: `${selected.id}-${irHash}`, specimenId: selected.id, source, ir, trace: traceFromIr(ir), compiledAt, irHash, origin: "editor" };
     compileHistory.current[selected.id] = await persistCompileSnapshot(snapshot);
     setHistoryRevision(current => current + 1);
+    const result = await requestLiveRender(ir);
     setCompiledEdit({ specimenId: selected.id, ir, source });
+    setLiveDerivative({ specimenId: selected.id, result });
     setProjectionState("live");
     setFace("obverse");
     setFailureMessage(null);
@@ -223,24 +231,28 @@ export default function Home() {
 
   const clearLiveProjection = () => {
     setCompiledEdit(null);
+    setLiveDerivative(null);
     setProjectionState("compiling");
     setFailureMessage(null);
   };
 
   const markProjectionUnavailable = (message: string) => {
     setCompiledEdit(null);
+    setLiveDerivative(null);
     setProjectionState("error");
     setFailureMessage(message);
   };
 
   const markDraftProjectionUnavailable = () => {
     setCompiledEdit(null);
+    setLiveDerivative(null);
     setProjectionState("draft");
     setFailureMessage(null);
   };
 
   const resetLiveProjection = () => {
     setCompiledEdit(null);
+    setLiveDerivative(null);
     setProjectionState("gallery");
     setFailureMessage(null);
   };
@@ -323,11 +335,11 @@ export default function Home() {
           <div className={`two-sided-object ${selected.ratio}`} aria-busy={isFlipping}>
             <div className="object-turner" data-face={face} onTransitionEnd={settleFlip}>
               <div className="object-face object-face-obverse" aria-hidden={face !== "obverse"}>
-                <img src={selected.obverse} alt={`${selected.title} obverse`} className="object-image" />
+                <img src={displayedObverse} alt={`${selected.title} obverse`} className="object-image" />
                 <span className="face-stamp" aria-hidden="true">O</span>
               </div>
               <div className="object-face object-face-inverse" aria-hidden={face !== "inverse"}>
-                <img src={selected.reverse} alt={`${selected.title} inverse: ${selected.reverseDescription}`} className="object-image" />
+                <img src={displayedInverse} alt={`${selected.title} inverse: ${selected.reverseDescription}`} className="object-image" />
                 <span className="face-stamp" aria-hidden="true">I</span>
               </div>
             </div>
@@ -373,7 +385,7 @@ export default function Home() {
                 </div>
               </div>
               <p className="signature-tension">One signature is cryptographic. One is visual. Only one is human-readable.</p>
-              {liveIr && <p className="static-artifact-note">STATIC ARTIFACT · RENDER PENDING — the live Rust IR changes this trace and manifest target; bitmap faces remain the selected pre-rendered specimen.</p>}
+              {liveIr && activeDerivative && <p className="static-artifact-note">LIVE DERIVATIVE · SERVER RENDERED — both faces were freshly derived from a checksum-verified immutable source; the original JPEG remains untouched.</p>}
             </div>
             <div className="caption-controls">
               <button type="button" className="flip-control" onClick={turnOver} disabled={isFlipping} aria-label={face === "inverse" ? `Return ${selected.title} to its obverse` : `Flip ${selected.title} to its inverse`}>

@@ -18,7 +18,7 @@ type SourceEditorProps = {
   specimenId: string;
   title: string;
   source: string;
-  onCompiled: (ir: RobbyIr, source: string) => void;
+  onCompiled: (ir: RobbyIr, source: string) => Promise<void>;
   onCompileStart: () => void;
   onCompileError: (message: string) => void;
   onDraftChange: () => void;
@@ -43,8 +43,9 @@ export default function SourceEditor({ specimenId, title, source, onCompiled, on
     try {
       const ir = await compileWithRust(draft);
       if (generation !== compileGeneration.current) return;
+      await onCompiled(ir, draft);
+      if (generation !== compileGeneration.current) return;
       setState({ kind: "success", ir });
-      onCompiled(ir, draft);
     } catch (error) {
       if (generation !== compileGeneration.current) return;
       const message = error instanceof Error ? error.message : String(error);
@@ -98,7 +99,7 @@ export default function SourceEditor({ specimenId, title, source, onCompiled, on
       {state.kind === "success" && (
         <div className="source-result success" role="status">
           <CheckCircle2 size={16} />
-          <div><strong>Valid `robby-ir-v1` from the Rust core.</strong><span>Trace and manifest targets now reflect this source. The gallery bitmap remains the pre-rendered specimen artifact.</span></div>
+          <div><strong>Valid `robby-ir-v1` rendered by the server executor.</strong><span>The stage now shows fresh derived output from this source; the authenticated JPEG was only read and checksum-verified.</span></div>
         </div>
       )}
       {state.kind === "error" && (
