@@ -20,7 +20,7 @@ type SourceEditorProps = {
   source: string;
   onCompiled: (ir: RobbyIr, source: string) => void;
   onCompileStart: () => void;
-  onCompileError: () => void;
+  onCompileError: (message: string) => void;
   onDraftChange: () => void;
   onReset: () => void;
 };
@@ -49,7 +49,7 @@ export default function SourceEditor({ specimenId, title, source, onCompiled, on
       if (generation !== compileGeneration.current) return;
       const message = error instanceof Error ? error.message : String(error);
       setState({ kind: "error", message });
-      onCompileError();
+      onCompileError(message);
     }
   };
 

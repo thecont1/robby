@@ -6,6 +6,7 @@
  */
 
 import SourceEditor from "@/components/SourceEditor";
+import { CompilationTraceModes, ProvenanceModule, type CompileSnapshot, type RuntimeRecord, type TraceMode } from "@/components/Build06Panels";
 import { verifiedCompilerStatus } from "@/lib/compilerStatus";
 import {
   DropdownMenu,
@@ -26,7 +27,6 @@ import {
   ChevronRight,
   CircleDotDashed,
   Download,
-  FileJson2,
   FileText,
   Fingerprint,
   FlipHorizontal2,
@@ -38,7 +38,6 @@ import {
   Minimize2,
   ShieldCheck,
   ShieldX,
-  Sparkles,
 } from "lucide-react";
 import { Link } from "wouter";
 import { useEffect, useRef, useState } from "react";
@@ -84,9 +83,13 @@ export default function Home() {
   const [compilerLabel, setCompilerLabel] = useState("RUST CORE · LOADING");
   const [compiledEdit, setCompiledEdit] = useState<{ specimenId: string; ir: RobbyIr; source: string } | null>(null);
   const [projectionState, setProjectionState] = useState<ProjectionState>("gallery");
+  const [traceMode, setTraceMode] = useState<TraceMode>("evidence");
+  const [failureMessage, setFailureMessage] = useState<string | null>(null);
+  const [runtimeRecord, setRuntimeRecord] = useState<RuntimeRecord | null>(null);
   const [imageOnly, setImageOnly] = useState(false);
   const [artworkView, setArtworkView] = useState(false);
   const artworkTouchStartX = useRef<number | null>(null);
+  const compileHistory = useRef<Record<string, CompileSnapshot[]>>({});
   const { theme, toggleTheme } = useTheme();
   const selected = gallery[selectedIndex];
   const hasEmbeddedCredential = selected.credentialSignature.status === "present";
@@ -96,6 +99,13 @@ export default function Home() {
   const trace = projectionUnavailable ? [] : liveIr ? traceFromIr(liveIr) : selected.trace;
   const liveScriptHash = projectionUnavailable ? null : liveIr?.meta.script_sha256 ?? selected.scriptHash;
   const liveReverseMode = projectionUnavailable ? null : liveIr?.reverse.map((item) => item.k ? `${item.mode} (k=${item.k})` : item.mode).join(" + ") ?? selected.reverseMode;
+  const currentHistory = compileHistory.current[selected.id] ?? [];
+
+  const hashValue = async (value: string) => {
+    const bytes = new TextEncoder().encode(value);
+    const digest = await crypto.subtle.digest("SHA-256", bytes);
+    return Array.from(new Uint8Array(digest)).map(byte => byte.toString(16).padStart(2, "0")).join("");
+  };
 
   const selectImage = (nextIndex: number) => {
     if (isFlipping) return;
@@ -105,6 +115,9 @@ export default function Home() {
     setCredentialOpen(false);
     setCompiledEdit(null);
     setProjectionState("gallery");
+    setFailureMessage(null);
+    setTraceMode("evidence");
+    setRuntimeRecord(null);
   };
 
   const turnOver = () => {
@@ -143,13 +156,19 @@ export default function Home() {
     let active = true;
     setCompilerState("checking");
     setCompilerLabel("RUST CORE · VERIFYING");
+    setRuntimeRecord(null);
 
-    compileWithRust(selected.script)
-      .then(() => rustToolchainVersion())
-      .then((toolchain) => {
+    Promise.all([compileWithRust(selected.script), rustToolchainVersion()])
+      .then(async ([ir, toolchain]) => {
         if (!active) return;
+        const compiledAt = new Date().toISOString();
+        const irHash = await hashValue(JSON.stringify(ir));
+        if (!active) return;
+        const baseline: CompileSnapshot = { specimenId: selected.id, source: selected.script, ir, trace: traceFromIr(ir), compiledAt, irHash };
+        if (!compileHistory.current[selected.id]?.length) compileHistory.current[selected.id] = [baseline];
         setCompilerState("verified");
         setCompilerLabel(verifiedCompilerStatus(toolchain));
+        setRuntimeRecord({ compiledAt, irHash, toolchain });
       })
       .catch(() => {
         if (!active) return;
@@ -162,30 +181,48 @@ export default function Home() {
     };
   }, [selected.id, selected.script]);
 
-  const applyCompiledSource = (ir: RobbyIr, source: string) => {
+  const applyCompiledSource = async (ir: RobbyIr, source: string) => {
+    const compiledAt = new Date().toISOString();
+    const irHash = await hashValue(JSON.stringify(ir));
+    const snapshot: CompileSnapshot = { specimenId: selected.id, source, ir, trace: traceFromIr(ir), compiledAt, irHash };
+    const existing = compileHistory.current[selected.id] ?? [];
+    compileHistory.current[selected.id] = [...existing, snapshot].slice(-6);
     setCompiledEdit({ specimenId: selected.id, ir, source });
     setProjectionState("live");
     setFace("obverse");
+    setFailureMessage(null);
+    setRuntimeRecord(current => ({ compiledAt, irHash, toolchain: current?.toolchain ?? "RUST/WASM" }));
   };
 
   const clearLiveProjection = () => {
     setCompiledEdit(null);
     setProjectionState("compiling");
+    setFailureMessage(null);
   };
 
-  const markProjectionUnavailable = () => {
+  const markProjectionUnavailable = (message: string) => {
     setCompiledEdit(null);
     setProjectionState("error");
+    setFailureMessage(message);
   };
 
   const markDraftProjectionUnavailable = () => {
     setCompiledEdit(null);
     setProjectionState("draft");
+    setFailureMessage(null);
   };
 
   const resetLiveProjection = () => {
     setCompiledEdit(null);
     setProjectionState("gallery");
+    setFailureMessage(null);
+  };
+
+  const focusReverseStep = () => {
+    setTraceMode("evidence");
+    const reverseStage = trace.find(step => step.code.startsWith("reverse("))?.stage;
+    if (!reverseStage) return;
+    requestAnimationFrame(() => document.getElementById(`trace-step-${reverseStage}`)?.scrollIntoView({ behavior: "smooth", block: "center" }));
   };
 
   const handleArtworkTouchStart = (event: React.TouchEvent<HTMLDivElement>) => {
@@ -338,55 +375,7 @@ export default function Home() {
         <aside className="trace-panel" aria-label={`Compilation trace for ${selected.title}`} inert={imageOnly}>
           <div className="trace-heading"><div><CircleDotDashed size={15} /><MonoLabel>Compilation trace</MonoLabel></div><span>{projectionState === "draft" ? "DRAFT" : projectionState === "compiling" ? "VALIDATING" : projectionState === "error" ? "UNAVAILABLE" : `${trace.length} STEPS`}</span></div>
           <div className="trace-title"><p className="eyebrow">Evidence beside object</p><h3>{selected.title}<br /><em>/ {activeFace}</em></h3></div>
-          {projectionUnavailable ? (
-            <div className="projection-unavailable" role="status">
-              <CircleDotDashed size={18} aria-hidden="true" />
-              <div>
-                <p className="mono-label">Live projection withheld</p>
-                <strong>{projectionState === "draft" ? "The source changed after its last successful compile." : projectionState === "compiling" ? "Validating the current Rust source." : "The current source did not compile."}</strong>
-                <p>{projectionState === "draft" ? "Previous trace, hash, and output targets are hidden until this draft is compiled." : projectionState === "compiling" ? "Previous trace, hash, and output targets are hidden until validation finishes." : "Previous trace, hash, and output targets remain hidden. Fix the source and compile again for a new projection."}</p>
-              </div>
-            </div>
-          ) : (
-            <div className="trace-steps">
-              {trace.map((step) => (
-                <article className="trace-step" key={step.stage}>
-                  <span className="trace-number">{step.stage}</span>
-                  <div><strong>{step.label}</strong><code>{step.code}</code><p>{step.detail}</p></div>
-                  {step.color && <i style={{ backgroundColor: step.color }} aria-label="Vermilion provenance colour" />}
-                </article>
-              ))}
-            </div>
-          )}
-          <div className="trace-evidence">
-            {projectionUnavailable ? (
-              <div className="projection-evidence-unavailable">
-                <MonoLabel>Projection record</MonoLabel>
-                <p>Unavailable for the submitted draft.</p>
-              </div>
-            ) : (
-              <>
-                <div className="signature-label"><Fingerprint size={13} /> <MonoLabel>Colour signature</MonoLabel></div>
-                <div className="palette-row" aria-label="Calculated palette signature">
-                  {selected.palette.map((color) => <span key={color} style={{ backgroundColor: color }} title={color} />)}
-                </div>
-                <dl>
-                  <div><dt>credential_signature</dt><dd>{hasEmbeddedCredential ? "C2PA PRESENT" : "C2PA ABSENT"} · {selected.credentialSignature.sourceSha256.slice(0, 14)}…</dd></div>
-                  <div><dt>colour_signature</dt><dd>px:{selected.colourSignature.pixelSha256.slice(0, 12)}… · pal:{selected.colourSignature.paletteSha256.slice(0, 12)}…</dd></div>
-                  <div><dt>reverse_mode</dt><dd>{liveReverseMode}</dd></div>
-                  <div><dt>script_hash</dt><dd title={liveScriptHash!}>{shortHash(liveScriptHash!)}</dd></div>
-                  {liveIr ? (
-                    <>
-                      <div><dt>output_target</dt><dd>{liveIr.output.obverse}</dd></div>
-                      <div><dt>manifest_target</dt><dd>{liveIr.output.manifest}</dd></div>
-                    </>
-                  ) : (
-                    <div><dt>output_sha256</dt><dd title={selected.outputHash}>{shortHash(selected.outputHash)}</dd></div>
-                  )}
-                </dl>
-              </>
-            )}
-          </div>
+          <CompilationTraceModes item={selected} trace={trace} activeMode={traceMode} onModeChange={setTraceMode} projectionState={projectionState} failureMessage={failureMessage} history={currentHistory} runtime={runtimeRecord} />
         </aside>
         <div className="source-workbench-wrap" inert={imageOnly}>
           <SourceEditor
@@ -402,12 +391,7 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="manifest-strip" aria-label="Gallery manifest record" inert={imageOnly}>
-        <div className="manifest-identity"><FileJson2 size={18} /><span>MANIFEST / PROCESS GRAPH</span></div>
-        <div className="manifest-fields"><span>LIBRARY <b>5 COMPILED OBJECTS</b></span><span>ACTIVE FACE <b>{activeFace.toUpperCase()} · MUTUALLY EXCLUSIVE</b></span><span>CORE <b>RUST · robby-compiler-v0.1</b></span><span>EXECUTOR <b>{projectionUnavailable ? "LIVE IR · UNAVAILABLE" : liveIr ? "STATIC ARTIFACT · RENDER PENDING" : "CPU · PILLOW / OPENCV"}</b></span></div>
-        <img src="/manus-storage/robby-palette-study_ad20752b.png" alt="Abstract palette study" />
-        <Sparkles className="manifest-spark" size={18} />
-      </section>
+      <div inert={imageOnly}><ProvenanceModule item={selected} runtime={runtimeRecord} onFocusReverse={focusReverseStep} /></div>
 
       <footer className="site-footer" inert={imageOnly}>
         <div className="footer-left">

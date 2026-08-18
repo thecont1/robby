@@ -162,3 +162,18 @@
 
 - [x] Restore the trace step-number column width and tighten only the gap between step numbers and operation text.
 - [x] Increase the header compiler-status text and derive its version from compiler build metadata rather than a hardcoded UI value.
+
+## Build 06 — provenance strip and compilation trace modes
+
+- [x] Create and work from the `dev/brinda` branch for Build 06.
+- [x] Replace the pre-footer manifest strip with Object Provenance, Runtime Manifest, and Reverse Record tabs populated from the active specimen.
+- [x] Add hover/click disclosure for provenance and runtime fields, including raw values and hash-computation explanations.
+- [x] Add five functional trace tabs: Diff, Evidence, Registrar, Pedagogic, and Failure.
+- [x] Use active source/editor state for derivable trace-mode data and clearly label simulated failure or unavailable history content.
+- [x] Add regression coverage and verify gallery cycling, source editing, tab updates, and production build.
+- [x] Report the tabs backed by real data, simulated content, and the future state/backend work needed for persistent compile history.
+
+## Build 06 completion checks
+
+- [x] Cycle to a second specimen and verify the provenance and runtime tabs refresh with that specimen’s source and checksum data.
+- [x] Deliver a Build 06 report distinguishing real per-specimen records, browser-session/simulated trace content, and the persistent history work still required.
