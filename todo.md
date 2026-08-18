@@ -259,3 +259,11 @@
 - [x] Keep the provenance subfooter’s overall height fixed while switching Object Provenance, Runtime Manifest, and Reverse Record tabs.
 - [x] Correct the Reverse Record triage-link cell alignment so its text stays within the shared panel geometry.
 - [x] Verify stationary tab-panel geometry on desktop and mobile.
+
+## Compact gallery and trace hierarchy
+
+- [x] Make the thumbnail gallery beneath the artwork a single left-right scrollable filmstrip rather than a multi-row grid.
+- [x] Remove duplicate colour-signature and C2PA status from beneath the artwork, retaining and elevating this evidence in the compilation trace.
+- [x] Move compilation-trace tabs left, remove the orange rule above step 01, and increase trace-card spacing and text size slightly.
+- [x] Replace the under-image selected-object line with `OBVERSE · dimensions`, center the face-turn control, and place Previous/Next plus the mono serial at bottom-right.
+- [x] Verify compact desktop and mobile layout, horizontal thumbnail scroll, navigation, and preserved trace readability.

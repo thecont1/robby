@@ -43,3 +43,9 @@ At phone-width layout, the Object Provenance tab now occupies a fixed `338px` co
 The Runtime Manifest tab measured the same `338px` content box and `393px` outer module after activation, confirming that this tab no longer changes the subfooter’s layout footprint.
 
 Reverse Record preserved that same `338px` / `393px` mobile geometry. Its triage cell measured `70px` high, with the explanatory text ending one pixel above the cell boundary. At desktop width, the shared content box measured `158px`, the module measured `221px`, and the `92px` triage cell likewise kept its lower text one pixel inside the cell.
+
+## Compact gallery hierarchy — 2026-08-18
+
+Desktop inspection confirms that the compilation trace tabs now begin nearer the trace’s left edge, leave breathing room after `Failure`, and no longer show the former vermilion rule before step 01. The trace cards use larger type with expanded internal spacing, while signature evidence follows the final evidence step rather than appearing beneath the artwork.
+
+The refreshed desktop gallery now renders six thumbnail crops in one horizontal scrollable strip rather than two rows, with the compact face/dimensions line, centered face-turn control, and mono Previous/Next serial in place. Mobile retains the same single-row thumbnail strip and trace hierarchy; a final CSS adjustment is reserved for the narrow metadata line so its dimensions cannot wrap.

@@ -24,14 +24,12 @@ import { footerSocialLinks } from "@/lib/footerLinks";
 import { compileWithRust, rustToolchainVersion, type RobbyIr } from "@/lib/robbyCompiler";
 import { gallerySlideDirection, isImageOnlyExitKey, swipeGalleryOffset, themeControlLabel, type GallerySlideDirection } from "@/lib/visualModes";
 import {
-  Check,
   BookOpen,
   ChevronLeft,
   ChevronRight,
   CircleDotDashed,
   Download,
   FileText,
-  Fingerprint,
   FlipHorizontal2,
   RotateCcw,
   LockKeyhole,
@@ -39,9 +37,6 @@ import {
   Lightbulb,
   Maximize2,
   Minimize2,
-  ShieldAlert,
-  ShieldCheck,
-  ShieldX,
 } from "lucide-react";
 import { Link } from "wouter";
 import { useEffect, useRef, useState } from "react";
@@ -83,7 +78,6 @@ export default function Home() {
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [face, setFace] = useState<"obverse" | "inverse">("obverse");
   const [isFlipping, setIsFlipping] = useState(false);
-  const [credentialOpen, setCredentialOpen] = useState(false);
   const [compilerState, setCompilerState] = useState<"checking" | "verified" | "error">("checking");
   const [compilerLabel, setCompilerLabel] = useState("RUST CORE · LOADING");
   const [compiledEdit, setCompiledEdit] = useState<{ specimenId: string; ir: RobbyIr; source: string } | null>(null);
@@ -102,10 +96,6 @@ export default function Home() {
   const compileHistory = useRef<Record<string, CompileSnapshot[]>>({});
   const { theme, toggleTheme } = useTheme();
   const selected = gallery[selectedIndex];
-  const credentialStatus = selected.credentialSignature.status;
-  const hasEmbeddedCredential = credentialStatus === "present";
-  const hasCredentialCandidate = credentialStatus === "candidate";
-  const credentialLabel = hasEmbeddedCredential ? "C2PA PRESENT" : hasCredentialCandidate ? "C2PA CANDIDATE" : "C2PA ABSENT";
   const activeFace = face;
   const liveIr = projectionState === "live" && compiledEdit?.specimenId === selected.id ? compiledEdit.ir : null;
   const activeDerivative = liveDerivative?.specimenId === selected.id ? liveDerivative.result : null;
@@ -145,7 +135,6 @@ export default function Home() {
     setSelectedIndex(nextIndex);
     setFace("obverse");
     setIsFlipping(false);
-    setCredentialOpen(false);
     setCompiledEdit(null);
     setLiveDerivative(null);
     setProjectionState("gallery");
@@ -380,58 +369,24 @@ export default function Home() {
           </div>
 
           <div className="stage-metadata" inert={imageOnly}>
-            <div><MonoLabel>Selected image-object</MonoLabel><span className="object-serial">{selected.serial}</span></div>
+            <div className="stage-face-record"><MonoLabel>{activeFace}</MonoLabel><span aria-hidden="true">·</span><span className="mono stage-dimensions">{selected.dimensions}</span></div>
             <div className="stage-display-tools">
               <button type="button" className="artwork-view-control" onClick={() => setArtworkView(true)} aria-label={`Open ${selected.title} in full-bleed artwork view`} title="Open full-bleed artwork view"><Maximize2 size={15} /></button>
-              <span className="mono text-[10px]">{selected.dimensions} · {activeFace.toUpperCase()}</span>
             </div>
           </div>
 
           <div className="stage-caption">
-            <div className="caption-record" inert={imageOnly}>
-              <div className="signature-row" aria-label="Specimen signatures">
-                <div className="credential-wrap">
-                  <button
-                    type="button"
-                    className={`credential-badge ${credentialStatus}`}
-                    onClick={() => setCredentialOpen((current) => !current)}
-                    aria-expanded={credentialOpen}
-                    aria-controls="credential-summary"
-                  >
-                    {hasEmbeddedCredential ? <ShieldCheck size={14} strokeWidth={2.2} /> : hasCredentialCandidate ? <ShieldAlert size={14} strokeWidth={2.2} /> : <ShieldX size={14} strokeWidth={2.2} />} {credentialLabel}
-                  </button>
-                  <div id="credential-summary" className={`credential-popover ${credentialOpen ? "open" : ""}`} role="status">
-                    <strong>Credential signature</strong>
-                    <p>{selected.credentialSignature.note}</p>
-                    <dl>
-                      <div><dt>issuer</dt><dd>{selected.credentialSignature.claimGenerator ?? "no embedded record"}</dd></div>
-                      <div><dt>validation</dt><dd>{hasEmbeddedCredential ? "manifest present · trust warning" : hasCredentialCandidate ? "marker present · validation pending" : "no embedded record"}</dd></div>
-                      <div><dt>audit</dt><dd>{selected.credentialSignature.markerScan}</dd></div>
-                      <div><dt>source sha</dt><dd>{selected.credentialSignature.sourceSha256.slice(0, 16)}…</dd></div>
-                    </dl>
-                  </div>
-                </div>
-                <div className="colour-badge">
-                  <Fingerprint size={14} strokeWidth={2.2} />
-                  <span>COLOUR SIGNATURE</span>
-                  <i className="inline-swatches" aria-label="Eight-colour signature">
-                    {selected.palette.map((color) => <b key={color} style={{ backgroundColor: color }} />)}
-                  </i>
-                </div>
-              </div>
-              <p className="signature-tension">One signature is cryptographic. One is visual. Only one is human-readable.</p>
-              {liveIr && activeDerivative && <p className="static-artifact-note">LIVE DERIVATIVE · SERVER RENDERED — both faces were freshly derived from a checksum-verified immutable source; the original JPEG remains untouched.</p>}
-            </div>
-            <div className="caption-controls">
+            <div className="caption-turn">
               <button type="button" className="flip-control" onClick={turnOver} disabled={isFlipping} aria-label={face === "inverse" ? `Return ${selected.title} to its obverse` : `Flip ${selected.title} to its inverse`}>
                 {face === "inverse" ? <RotateCcw size={18} /> : <FlipHorizontal2 size={18} />}<span>{isFlipping ? "Turning object" : face === "inverse" ? "Return to obverse" : "Turn to inverse"}</span><small>F</small>
               </button>
+            </div>
+            <div className="caption-navigation">
               <div className="object-navigation"><button type="button" onClick={() => selectImage(selectedIndex - 1)} disabled={isFlipping} aria-label="Previous image"><ChevronLeft size={17} /> Previous</button><span className="navigation-current">{selected.serial}</span><button type="button" onClick={() => selectImage(selectedIndex + 1)} disabled={isFlipping} aria-label="Next image">Next <ChevronRight size={17} /></button></div>
             </div>
           </div>
 
           <nav className="bottom-filmstrip" aria-label="Gallery navigation" inert={imageOnly}>
-            <div className="filmstrip-heading"><MonoLabel>Image library</MonoLabel><span>{selected.serial}</span></div>
             <ol className="gallery-list">
               {gallery.map((item, index) => (
                 <li key={item.id}>
