@@ -73,6 +73,11 @@
 .signature-label { align-items: center; color: #d8cebc; display: flex; gap: 6px; margin-bottom: 7px; }.signature-label .mono-label { color: #d8cebc; }
 .flip-control:disabled, .stage-navigation button:disabled, .gallery-thumb:disabled { cursor: wait; opacity: .54; }
 .trace-evidence dl div:nth-child(1) dd { color: #e8a394; }
+
+/* The trace is the authoritative title location. Its numbered evidence rows
+ * are deliberately enlarged to make the available reading column useful. */
+.trace-step { gap:11px; grid-template-columns:31px minmax(0,1fr) 12px; min-height:96px; padding:15px 0; }.trace-number { font-size:11px; padding-top:3px; }.trace-step strong { font-size:13px; line-height:1.15; }.trace-step code { font-size:9px; line-height:1.45; margin-top:5px; }.trace-step p { font-size:9px; line-height:1.35; margin-top:5px; }.trace-step i { height:11px; margin-top:4px; width:11px; }
+@media (max-width:790px) { .trace-step { min-height:83px; padding:12px 0; }.trace-step strong { font-size:12px; }.trace-step code,.trace-step p { font-size:8px; } }
 @media (max-width: 790px) { .stage-caption { min-height: 154px; }.credential-popover { max-width: min(260px, 77vw); width: min(260px, 77vw); } }
 @media (max-width: 560px) { .signature-row { gap: 6px; }.colour-badge { max-width: 100%; }.colour-badge > span { font-size: 7px; }.inline-swatches b { height: 8px; width: 8px; }.signature-tension { font-size: 10px; max-width: 285px; } }
 

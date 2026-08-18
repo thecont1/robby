@@ -139,3 +139,9 @@
 - [x] Add the requested product subtitle and secondary-header two-sided-image question.
 - [x] Increase the gap between image-library thumbnails and the live source section.
 - [x] Remove the live-source section’s right border so it attaches seamlessly to the compilation trace column.
+
+## Trace clarity refinement
+
+- [x] Remove the duplicate specimen title and metadata block beneath the image.
+- [x] Increase the numbered compilation-trace sections for clearer use of the available trace-column space.
+- [x] Restore a valid accessible label for the object stage after removing the under-image title block.

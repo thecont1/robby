@@ -243,7 +243,7 @@ export default function Home() {
       </section>
 
       <section id="gallery" className="gallery-workspace" aria-label="robby image-object gallery">
-        <section className="object-stage" aria-labelledby="object-title">
+        <section className="object-stage" aria-label={`${selected.title} ${activeFace} image-object`}>
             <div className="stage-topline" inert={imageOnly}>
             <div><MonoLabel>Selected image-object</MonoLabel><span className="object-serial">{selected.serial}</span></div>
             <span className="mono text-[10px]">{selected.dimensions} · {activeFace.toUpperCase()}</span>
@@ -266,9 +266,6 @@ export default function Home() {
 
           <div className="stage-caption">
             <div className="caption-record" inert={imageOnly}>
-              <p className="caption-face">{face === "inverse" ? selected.reverseKind : "Obverse"}</p>
-              <h2 id="object-title">{selected.title}</h2>
-              <p className="caption-detail">{face === "inverse" ? selected.reverseDescription : selected.subtitle}</p>
               <div className="signature-row" aria-label="Specimen signatures">
                 <div className="credential-wrap">
                   <button
