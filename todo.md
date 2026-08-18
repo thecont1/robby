@@ -72,7 +72,7 @@
 
 - [x] Review and resolve the new CodeRabbit findings first. (Addressed all nine inline findings, the editable-shortcut finding, and the directly related robustness notes.)
 - [x] Review and resolve the new ITO-QA findings second. (Draft edits now invalidate obsolete live evidence and supersede prior compile generations.)
-- [ ] Validate, push, and report the latest unmerged PR review outcome.
+- [x] Validate, push, and report the latest unmerged PR review outcome.
 - [x] Verify editor shortcut isolation and reset projection behavior in the rebuilt browser preview.
 - [x] Focus the Night source editor and issue ArrowRight as the editable-target shortcut regression input. (Night remained selected on its obverse face.)
 - [x] Send `f` while the source editor retained focus as the flip-shortcut isolation regression input. (Night remained on its obverse face.)
