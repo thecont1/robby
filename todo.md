@@ -118,3 +118,7 @@
 
 - [x] Move flip and previous/next controls directly beneath the image, eliminating the separate navigation bar.
 - [x] Join the live-source editor visually with the compilation trace as one reverse-L evidence object.
+
+## Secondary-title reflow
+
+- [x] Reflow the secondary title as “Explainable visual composition” followed by “compiler in rust.”

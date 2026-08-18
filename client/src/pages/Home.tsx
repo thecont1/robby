@@ -210,7 +210,7 @@ export default function Home() {
 
       <section className="gallery-intro" inert={imageOnly}>
         <div className="intro-copy">
-          <h1><span className="headline-accent">Explainable</span> <span className="headline-ink">visual</span> <em><span className="headline-ink">composition</span> <span className="headline-accent">compiler.</span></em></h1>
+          <h1><span className="headline-line headline-primary"><span className="headline-accent">Explainable</span> <span className="headline-ink">visual composition</span></span><em className="headline-line"><span className="headline-accent">compiler</span> <span className="headline-ink">in rust.</span></em></h1>
         </div>
         <div className="intro-note">
           <span className="note-rule" />
