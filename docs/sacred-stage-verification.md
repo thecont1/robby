@@ -17,3 +17,13 @@ At a `375px` mobile viewport, the image occupies a fixed `338 × 277` stage box.
 The gallery navigation keyframes now animate only `transform: translateX(...)`: outgoing and incoming specimens travel a full viewport width, with no `opacity` declaration or interpolation. The inner object-turner retains its separate 3D transform transition for face changes.
 
 A refreshed live navigation check advanced from Night duality to Ayodhya mural through the pure-slide path; the successor rendered normally in the fixed stage and the separate flip control remained present for the inverse-only card-turn path.
+
+## Full-screen layout refinement
+
+The stage metadata now exposes the full-screen activation control before the dimensions in the right-aligned lower metadata rail, making the trigger the element immediately to the left of `1440 × 1080 · OBVERSE` for the initial specimen.
+
+The full-screen viewer now has two explicit rows: an upper artwork-safe viewport with additional bottom clearance and a separate bottom information rail divided by a 2px orange rule. The image is constrained within the upper row and cannot occupy the rail.
+
+The opened viewer exposes its title, swipe/escape guidance, and close action as a distinct information rail; none of these controls is rendered over the artwork bitmap.
+
+Measured final mobile-viewer geometry confirms the artwork is reduced to `432 × 324px` and ends **18px above** the image viewport’s lower edge. That edge meets the information rail’s 2px orange separator exactly, so the image remains fully above the rule and cannot overlap the bottom information.

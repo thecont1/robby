@@ -378,8 +378,8 @@ export default function Home() {
           <div className="stage-metadata" inert={imageOnly}>
             <div><MonoLabel>Selected image-object</MonoLabel><span className="object-serial">{selected.serial}</span></div>
             <div className="stage-display-tools">
-              <span className="mono text-[10px]">{selected.dimensions} · {activeFace.toUpperCase()}</span>
               <button type="button" className="artwork-view-control" onClick={() => setArtworkView(true)} aria-label={`Open ${selected.title} in full-bleed artwork view`} title="Open full-bleed artwork view"><Maximize2 size={15} /></button>
+              <span className="mono text-[10px]">{selected.dimensions} · {activeFace.toUpperCase()}</span>
             </div>
           </div>
 

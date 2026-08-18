@@ -235,3 +235,9 @@
 - [x] Remove all opacity interpolation from gallery specimen navigation so replacement is purely positional.
 - [x] Tighten directional gallery-slide timing while preserving the separate 3D face-turn and reduced-motion path.
 - [x] Verify forward/backward gallery slides and the obverse–inverse card flip.
+
+## Full-screen layout refinement
+
+- [x] Move the full-screen activation control to the left of the dimensions in the lower-right stage metadata area.
+- [x] Constrain full-screen artwork above the bottom orange information separator with a dedicated safe image area.
+- [x] Verify the activation control and full-screen image containment on desktop and mobile.
