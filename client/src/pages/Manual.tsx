@@ -13,7 +13,7 @@ export default function Manual() {
     <main className="manual-page">
       <header className="site-header manual-header">
         <Link className="brand-lockup" href="/">
-          <img src="/manus-storage/robby-registration-mark_658aceee.png" alt="Robby split registration disc" />
+          <img src="/manus-storage/robby-registration-mark_658aceee.png" alt="robby split registration disc" />
           <span>robby<span className="brand-suffix">/ v1</span></span>
         </Link>
         <div className="header-center"><BookOpen size={14} /><span className="header-kicker">Language reference · v0.1</span></div>
@@ -24,10 +24,10 @@ export default function Manual() {
       </header>
 
       <section className="manual-hero">
-        <p className="eyebrow">Robby language reference · v0.1</p>
+        <p className="eyebrow"><span className="product-name">robby</span> language reference · v0.1</p>
         <h1>Small language.<br /><em>Two-sided evidence.</em></h1>
         <div className="manual-intro-copy">
-          <p><strong>robby</strong> is a small visual-composition language. A script names an obverse image, declares its transformations, and requires an inverse that can be read as evidence rather than decoration.</p>
+          <p><strong className="product-name">robby</strong> is a small visual-composition language. A script names an obverse image, declares its transformations, and requires an inverse that can be read as evidence rather than decoration.</p>
           <p>This reference reflects the current Rust validator. It is a living index: add a command in Rust, then add its entry here.</p>
         </div>
       </section>
@@ -37,7 +37,7 @@ export default function Manual() {
         <pre><code>{minimalExample}</code></pre>
       </section>
 
-      <section className="manual-index" aria-label="Robby command reference">
+      <section className="manual-index" aria-label="robby command reference">
         <div className="manual-index-rail"><span className="mono-label">Command index</span><ol>{languageReference.map((command, index) => <li key={command.name}><a href={`#${command.name}`}>{String(index + 1).padStart(2, "0")} · {command.name}</a></li>)}</ol></div>
         <div className="manual-commands">
           {languageReference.map((command, index) => (

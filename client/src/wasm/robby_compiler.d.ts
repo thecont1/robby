@@ -10,6 +10,10 @@ export function compile_source_json(source: string): string;
 * @returns {string}
 */
 export function compiler_version(): string;
+/**
+* @returns {string}
+*/
+export function rust_toolchain(): string;
 
 export type InitInput = RequestInfo | URL | Response | BufferSource | WebAssembly.Module;
 
@@ -17,6 +21,7 @@ export interface InitOutput {
   readonly memory: WebAssembly.Memory;
   readonly compile_source_json: (a: number, b: number, c: number) => void;
   readonly compiler_version: (a: number) => void;
+  readonly rust_toolchain: (a: number) => void;
   readonly __wbindgen_add_to_stack_pointer: (a: number) => number;
   readonly __wbindgen_malloc: (a: number, b: number) => number;
   readonly __wbindgen_realloc: (a: number, b: number, c: number, d: number) => number;

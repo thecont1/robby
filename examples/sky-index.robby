@@ -1,9 +1,0 @@
-# This example exercises the sky mask and a screen blend.
-base("night-street.jpg", width: 1440, height: 1080)
-
-cutout(source: "sky-signal.png", mask: "sky", id: "signal")
-place(cutout: "signal", x: 0.24, y: 0.22, scale: 1.15, rotation: 4, opacity: 0.78, blend: "screen")
-
-reverse(mode: "provenance-map")
-output(obverse: "sky-index-obverse.png", reverse: "sky-index-reverse.png", manifest: "sky-index-manifest.json")
-

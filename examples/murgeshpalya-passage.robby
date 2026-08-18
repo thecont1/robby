@@ -1,6 +1,0 @@
-# A base-only visual object: the reverse exposes the obverse’s dominant colours.
-base("MS201901-Murgeshpalya0018.webp")
-palette(k: 8)
-reverse(mode: "palette-grid", k: 8)
-output(obverse: "murgeshpalya-passage-obverse.png", reverse: "murgeshpalya-passage-reverse.png", manifest: "murgeshpalya-passage-manifest.json")
-

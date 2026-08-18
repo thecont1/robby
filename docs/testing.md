@@ -5,10 +5,9 @@ The checks below were run against the initial `robby` v1 implementation after th
 | Area | Command or action | Result |
 | --- | --- | --- |
 | Parser and validator | `cargo test` | Passed: 4 tests covering valid IR lowering, missing `base`, invalid normalized coordinates, and unsupported masks. |
-| Valid composition | `cargo run -- compile examples/night-duality.robby --out output/night-duality.ir.json` | Passed: emitted `robby-ir-v1`. |
-| Two reverse modes | `uv run python executor/run.py --ir output/night-duality.ir.json …` | Passed: emitted one obverse, provenance-map reverse, palette-grid reverse, and manifest. |
-| Sky branch | `cargo run -- compile examples/sky-index.robby …` followed by the executor | Passed: emitted an obverse, provenance-map reverse, and manifest. |
-| Human error | `cargo run -- check examples/invalid-coordinate.robby` | Failed as expected with the normalized-coordinate error. |
+| Valid composition | `cargo run -- compile examples/MS202401-Ayodhya0041.robby --out output/MS202401-Ayodhya0041.ir.json` | Passed: emitted `robby-ir-v1`. |
+| Two reverse modes | `uv run python executor/run.py --ir output/MS202401-Ayodhya0041.ir.json …` | Passed: emitted one obverse, palette-grid reverse, and manifest. |
+| Human error | `cargo run -- check` on a `.robby` file with `place(x: 1.2, y: 0.45)` | Failed as expected with the normalized-coordinate error. |
 | Viewer type safety | `pnpm check` | Passed. |
 | Production build | `pnpm build` | Passed. Vite reports only its non-blocking chunk-size advisory. |
 | Output integrity | `file` inspection of generated PNGs | Passed: every checked output is a valid 1440 × 1080 RGB PNG. |

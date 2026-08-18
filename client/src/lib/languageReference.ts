@@ -16,10 +16,10 @@ export type ReferenceCommand = {
   notes?: string;
 };
 
-export const minimalExample = `base("MS202401-Ayodhya0041.webp")
+export const minimalExample = `base("source.jpg")
 palette(k: 8)
 reverse(mode: "palette-grid", k: 8)
-output(obverse: "ayodhya-obverse.png", reverse: "ayodhya-reverse.png", manifest: "ayodhya-manifest.json")`;
+output(obverse: "obverse.png", reverse: "reverse.png", manifest: "manifest.json")`;
 
 export const languageReference: readonly ReferenceCommand[] = [
   {

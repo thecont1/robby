@@ -1,0 +1,4 @@
+base("MS201804-FIDHGuinea0264.jpg")
+palette(k: 8)
+reverse(mode: "palette-grid", k: 8)
+output(obverse: "MS201804-FIDHGuinea0264-obverse.png", reverse: "MS201804-FIDHGuinea0264-reverse.png", manifest: "MS201804-FIDHGuinea0264-manifest.json")
