@@ -180,3 +180,13 @@
 .registrar-exports { display:flex; gap:7px; padding:2px 0 12px; }.registrar-exports button { align-items:center; background:#e3442f; border:1px solid #e3442f; color:#fff8e9; display:inline-flex; font-family:"DM Mono",ui-monospace,monospace; font-size:8px; font-weight:700; gap:5px; letter-spacing:.06em; min-height:28px; padding:0 9px; text-transform:uppercase; transition:background-color .16s cubic-bezier(.23,1,.32,1),color .16s cubic-bezier(.23,1,.32,1),transform .16s cubic-bezier(.23,1,.32,1); }.registrar-exports button:hover { background:#f4efe1; color:#1c1a19; }.registrar-exports button:active { transform:scale(.97); }.registrar-exports button:focus-visible { outline:2px solid #f4efe1; outline-offset:2px; }.dark .registrar-exports button:hover { background:#000; color:#f7efe0; }.dark .registrar-exports button:focus-visible { outline-color:#e3442f; }
 .diff-history-note { color:#bdb2a1; font-family:"DM Mono",ui-monospace,monospace; font-size:8px; line-height:1.4; margin:0; padding:4px 0 10px; }
 @media (max-width:790px) { .registrar-exports { flex-wrap:wrap; }.registrar-exports button { font-size:7px; min-height:27px; } }
+
+/* The viewing window belongs to the gallery stage, not the selected file.
+ * This prevents 4:3 ↔ 3:2 navigation from moving controls under the cursor. */
+.object-stage { container-type:inline-size; }
+.two-sided-object,
+.two-sided-object.four-three,
+.two-sided-object.three-two { aspect-ratio:auto; height:min(75cqi, 620px); }
+@media (max-width:560px) { .two-sided-object,
+  .two-sided-object.four-three,
+  .two-sided-object.three-two { height:min(75cqi, 360px); } }

@@ -211,3 +211,13 @@
 - [x] Add an automated HTTP test for the `/api/live-render` validation failure response.
 - [x] Verify in the browser that a failed recompile clears a previously displayed live derivative and shows the error state.
 - [x] Publish and exercise the Docker-based production endpoint to prove the Python executor starts with deployed dependencies.
+
+## Stable gallery viewing window
+
+- [x] Keep the image-object viewport height stable when gallery specimens have different aspect ratios.
+- [x] Keep Previous and Next controls at a stationary vertical position while cycling through gallery images.
+- [x] Verify the stable stage on desktop and mobile viewports.
+
+## Stable stage mobile interaction check
+
+- [x] Measure the mobile image-window height and Next-control position before and after cycling across specimens.
