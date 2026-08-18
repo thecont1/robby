@@ -98,3 +98,7 @@
 - [x] Reorganize the header around a two-line robby identity, compact compiler state, and hamburger navigation.
 - [x] Use the supplied sunglasses and text-visibility SVGs for light/dark and image-only controls.
 - [x] Audit the Night duality derivative against the immutable original and correct any confirmed double-image artifact without transforming the source JPEG.
+
+## Footer identity and links
+
+- [x] Replace the footer’s explanatory copy with the orange observation statement, requested social icon links, and linked Mahesh Shantaram copyright notice.
