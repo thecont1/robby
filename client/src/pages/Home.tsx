@@ -19,6 +19,8 @@ import {
   Fingerprint,
   FlipHorizontal2,
   RotateCcw,
+  LockKeyhole,
+  ShieldCheck,
   ShieldX,
   Sparkles,
 } from "lucide-react";
@@ -55,6 +57,7 @@ export default function Home() {
   const [compiledEdit, setCompiledEdit] = useState<{ specimenId: string; ir: RobbyIr; source: string } | null>(null);
   const [projectionState, setProjectionState] = useState<ProjectionState>("gallery");
   const selected = gallery[selectedIndex];
+  const hasEmbeddedCredential = selected.credentialSignature.status === "present";
   const activeFace = face;
   const liveIr = projectionState === "live" && compiledEdit?.specimenId === selected.id ? compiledEdit.ir : null;
   const projectionUnavailable = projectionState === "draft" || projectionState === "compiling" || projectionState === "error";
@@ -159,7 +162,8 @@ export default function Home() {
         </div>
         <div className="header-actions">
           <Link className="manual-link" href="/manual"><BookOpen size={13} strokeWidth={2.5} /> LANGUAGE MANUAL</Link>
-          <a className="source-download" href="https://github.com/thecont1/robby/archive/refs/heads/dev/ananya.zip" target="_blank" rel="noreferrer">
+          <Link className="source-download" href="/originals"><LockKeyhole size={13} strokeWidth={2.5} /> AUTHENTIC ORIGINALS</Link>
+          <a className="source-download" href="https://github.com/thecont1/robby/archive/refs/heads/main.zip" target="_blank" rel="noreferrer">
             <Download size={13} strokeWidth={2.5} /> DOWNLOAD RUST SOURCE
           </a>
           <div className={`compile-status ${compilerState}`}><Check size={13} strokeWidth={3} /> {compilerLabel}</div>
@@ -209,20 +213,20 @@ export default function Home() {
                 <div className="credential-wrap">
                   <button
                     type="button"
-                    className="credential-badge absent"
+                    className={`credential-badge ${hasEmbeddedCredential ? "present" : "absent"}`}
                     onClick={() => setCredentialOpen((current) => !current)}
                     aria-expanded={credentialOpen}
                     aria-controls="credential-summary"
                   >
-                    <ShieldX size={14} strokeWidth={2.2} /> C2PA ABSENT
+                    {hasEmbeddedCredential ? <ShieldCheck size={14} strokeWidth={2.2} /> : <ShieldX size={14} strokeWidth={2.2} />} {hasEmbeddedCredential ? "C2PA PRESENT" : "C2PA ABSENT"}
                   </button>
                   <div id="credential-summary" className={`credential-popover ${credentialOpen ? "open" : ""}`} role="status">
                     <strong>Credential signature</strong>
                     <p>{selected.credentialSignature.note}</p>
                     <dl>
-                      <div><dt>issuer</dt><dd>no embedded record</dd></div>
-                      <div><dt>edit history</dt><dd>no embedded record</dd></div>
-                      <div><dt>capture info</dt><dd>no embedded record</dd></div>
+                      <div><dt>issuer</dt><dd>{selected.credentialSignature.claimGenerator ?? "no embedded record"}</dd></div>
+                      <div><dt>validation</dt><dd>{hasEmbeddedCredential ? "manifest present · trust warning" : "no embedded record"}</dd></div>
+                      <div><dt>audit</dt><dd>{selected.credentialSignature.markerScan}</dd></div>
                       <div><dt>source sha</dt><dd>{selected.credentialSignature.sourceSha256.slice(0, 16)}…</dd></div>
                     </dl>
                   </div>
@@ -320,7 +324,7 @@ export default function Home() {
                   {selected.palette.map((color) => <span key={color} style={{ backgroundColor: color }} title={color} />)}
                 </div>
                 <dl>
-                  <div><dt>credential_signature</dt><dd>C2PA ABSENT · {selected.credentialSignature.sourceSha256.slice(0, 14)}…</dd></div>
+                  <div><dt>credential_signature</dt><dd>{hasEmbeddedCredential ? "C2PA PRESENT" : "C2PA ABSENT"} · {selected.credentialSignature.sourceSha256.slice(0, 14)}…</dd></div>
                   <div><dt>colour_signature</dt><dd>px:{selected.colourSignature.pixelSha256.slice(0, 12)}… · pal:{selected.colourSignature.paletteSha256.slice(0, 12)}…</dd></div>
                   <div><dt>reverse_mode</dt><dd>{liveReverseMode}</dd></div>
                   <div><dt>script_hash</dt><dd title={liveScriptHash!}>{shortHash(liveScriptHash!)}</dd></div>

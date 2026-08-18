@@ -13,10 +13,11 @@ export type TraceStep = {
 };
 
 export type CredentialSignature = {
-  status: "absent";
+  status: "absent" | "present";
   sourceSha256: string;
   markerScan: string;
   note: string;
+  claimGenerator?: string;
 };
 
 export type ColourSignature = {
@@ -57,7 +58,7 @@ const paletteTrace = (source: string, dimensions: string): readonly TraceStep[] 
 
 const galleryScripts = {
   night: String.raw`# A one-layer composition using the supplied street photograph as its base.
-base("night-street.jpg", width: 1440, height: 1080)
+base("IMG_20210916_185510.jpg", width: 1440, height: 1080)
 
 cutout(source: "courier.png", mask: "person", id: "courier")
 place(cutout: "courier", x: 0.72, y: 0.64, scale: 0.92, rotation: -2, opacity: 0.96, blend: "normal")
@@ -67,31 +68,27 @@ reverse(mode: "provenance-map")
 reverse(mode: "palette-grid", k: 8)
 
 output(obverse: "night-obverse.png", reverse: "night-reverse.png", manifest: "night-manifest.json")
-
 `,
   ayodhya: String.raw`# A base-only visual object: its reverse is a palette audit of the obverse.
-base("MS202401-Ayodhya0041.webp")
+base("MS202401-Ayodhya0041.jpg")
 palette(k: 8)
 reverse(mode: "palette-grid", k: 8)
 output(obverse: "ayodhya-mural-obverse.png", reverse: "ayodhya-mural-reverse.png", manifest: "ayodhya-mural-manifest.json")
-
 `,
   urban: String.raw`# A base-only visual object: the compiler records its colour evidence.
-base("_DSF0739-Enhanced-NR.webp")
+base("_DSF0739-Enhanced-NR.jpg")
 palette(k: 8)
 reverse(mode: "palette-grid", k: 8)
 output(obverse: "urban-fantasy-obverse.png", reverse: "urban-fantasy-reverse.png", manifest: "urban-fantasy-manifest.json")
-
 `,
   murgeshpalya: String.raw`# A base-only visual object: the reverse exposes the obverse’s dominant colours.
-base("MS201901-Murgeshpalya0018.webp")
+base("MS201901-Murgeshpalya0018.jpg")
 palette(k: 8)
 reverse(mode: "palette-grid", k: 8)
 output(obverse: "murgeshpalya-passage-obverse.png", reverse: "murgeshpalya-passage-reverse.png", manifest: "murgeshpalya-passage-manifest.json")
-
 `,
   uganda: String.raw`# A base-only visual object: its reverse is a calculated palette plate.
-base("MS201508-Uganda0016.webp")
+base("MS201508-Uganda0016.jpg")
 palette(k: 8)
 reverse(mode: "palette-grid", k: 8)
 output(obverse: "uganda-diptych-obverse.png", reverse: "uganda-diptych-reverse.png", manifest: "uganda-diptych-manifest.json")
@@ -103,6 +100,14 @@ const absentCredential = (sourceSha256: string): CredentialSignature => ({
   sourceSha256,
   markerScan: "C2PA/JUMBF byte marker scan",
   note: "No embedded C2PA or JUMBF marker detected in the local source bytes.",
+});
+
+const presentCredential = (sourceSha256: string, claimGenerator: string): CredentialSignature => ({
+  status: "present",
+  sourceSha256,
+  markerScan: "c2patool detailed manifest validation",
+  claimGenerator,
+  note: "Embedded C2PA manifest is present. Data-hash and claim checks are valid; the local trust store reports the signing credential as untrusted, so Robby retains the original bytes and surfaces this warning rather than overstating trust.",
 });
 
 const colourSignature = (pixelSha256: string, paletteSha256: string): ColourSignature => ({
@@ -118,22 +123,22 @@ export const gallery: readonly GalleryItem[] = [
     title: "Night duality",
     subtitle: "Street image / composite study",
     date: "2021",
-    source: "night-street.jpg",
+    source: "IMG_20210916_185510.jpg",
     dimensions: "1440 × 1080",
     ratio: "four-three",
-    obverse: "/manus-storage/night-obverse_8af6fb66.png",
-    reverse: "/manus-storage/night-reverse-provenance-map_6ff6b825.png",
+    obverse: "/manus-storage/night-obverse_3cc9652f.png",
+    reverse: "/manus-storage/night-reverse_704fbdd1.png",
     reverseMode: "provenance-map",
     reverseKind: "Provenance map",
     reverseDescription: "A spatial contribution map: vermilion identifies the placed courier layer.",
-    scriptHash: "249ff423dff23260416298d0b3bf286fb8af3074761fe3bf21f2f32349388581",
-    outputHash: "6c73907fa9ead7e85ad69e0c043ff2d576c6b0f19fc1b9bde63cb62f3597d89f",
-    palette: ["#424047", "#649BE8", "#BEA3DB", "#15161B", "#7A777B", "#AAB0A6", "#D7DDE6", "#3A57C6"],
+    scriptHash: "365294f8130727987c35fca286cc84789c617e3ddf5c884e1990eeeecc37f4b5",
+    outputHash: "6c103e573eff762ea5138e766f27901b955ca8f3ca500b787c95f44193264327",
+    palette: ["#423F47", "#6899E6", "#C0A8DD", "#7B787C", "#14151B", "#ABAFA9", "#DAE0E6", "#3B56C5"],
     script: galleryScripts.night,
-    credentialSignature: absentCredential("261639173101e8b07f8b77da5104206c2deb7db4e7c42bad2d78b461907c7302"),
-    colourSignature: colourSignature("9c178fbb61496cadc7599558cc1bbeef32d1507698398f12a5e6a02e85386af5", "60f267562ff6fd9002ccb4380e0baf287bd1ed7001df6751d6b24b3d559795b6"),
+    credentialSignature: presentCredential("a30fed1f8409c20224935861f158b40b05552bf3b932e264bb262549704843bb", "lightroom_classic/15.3.1"),
+    colourSignature: colourSignature("5d3a0e2864b357816e94c417e40a67901ca524f201dd7b9aa5eb724f2b7f12e0", "60f7f329e81c9ca559e407a36c8efb39a756d02c7cd19ecd253213e4f32fb9c8"),
     trace: [
-      { stage: "01", label: "Base canvas", code: 'base("night-street.jpg")', detail: "1440 × 1080 · source checksum recorded" },
+      { stage: "01", label: "Base canvas", code: 'base("IMG_20210916_185510.jpg")', detail: "1440 × 1080 · source checksum recorded" },
       { stage: "02", label: "Extract subject", code: 'cutout(mask: "person")', detail: "courier.png · auto-foreground mask" },
       { stage: "03", label: "Place layer", code: "place(x: .72, y: .64)", detail: "normal blend · 0.92 scale · −2° rotation", color: "#E3442F" },
       { stage: "04", label: "Render inverse", code: 'reverse("provenance-map")', detail: "spatial contribution audit" },
@@ -146,21 +151,21 @@ export const gallery: readonly GalleryItem[] = [
     title: "Ayodhya mural",
     subtitle: "Terminal concourse / visual field",
     date: "2024",
-    source: "MS202401-Ayodhya0041.webp",
-    dimensions: "2048 × 1536",
+    source: "MS202401-Ayodhya0041.jpg",
+    dimensions: "2276 × 1707",
     ratio: "four-three",
-    obverse: "/manus-storage/ayodhya-mural-obverse_f17a84d1.png",
-    reverse: "/manus-storage/ayodhya-mural-reverse_1ef067ec.png",
+    obverse: "/manus-storage/ayodhya-mural-obverse_36570955.png",
+    reverse: "/manus-storage/ayodhya-mural-reverse_3244cb85.png",
     reverseMode: "palette-grid",
     reverseKind: "Palette plate",
     reverseDescription: "Eight calculated colour clusters compress the mural, crowd, and concourse into a companion plate.",
-    scriptHash: "c692e96c1e1361b8189ad6f1da8a5590048f841bbc76dc9eaeae83205b64c915",
-    outputHash: "64aedad386d543a1a77871112249073463c53e038e554365347b8640463699d5",
-    palette: ["#4C4A40", "#CCB38D", "#D6D3D2", "#1E202A", "#726F5A", "#9A997A", "#C15942", "#167BB8"],
+    scriptHash: "76b161d2cdab494c6ab9b49cfa6ada5eb54f92774003cd9e6c8a694de59cba3f",
+    outputHash: "b15a500d81e71375c111abc63893eef7ee8220b119bad715bb5137126a321d2f",
+    palette: ["#555148", "#23242C", "#ABA093", "#95755C", "#C2C3CE", "#DAC483", "#E7E1D5", "#1674B4"],
     script: galleryScripts.ayodhya,
-    credentialSignature: absentCredential("7b97c159e3eb5b021e18cf76d9b3efd3704bf4f1990f985a460524c3d98926c8"),
-    colourSignature: colourSignature("78ee78cb60c8b774f1292a30b619645e3f38482f4e0440ff1732535a2421e852", "83c583bdaa06e1566972d0d25751a55b238c7816036784550596688c7c412cd2"),
-    trace: paletteTrace("MS202401-Ayodhya0041.webp", "2048 × 1536"),
+    credentialSignature: presentCredential("82bf66f71a669a0755793e2c2d40c5817df600b15e9e45fd8f1676c194be5e46", "lightroom_classic/15.2.1"),
+    colourSignature: colourSignature("e0de66ebc2c2ca2d6b54a1eca1690dbeb5adbeefba9ac1495d6a8a8cb700136a", "98b123d59761adab121876d4ce21d3029d9af82ae49b02956324b52bc68d5553"),
+    trace: paletteTrace("MS202401-Ayodhya0041.jpg", "2276 × 1707"),
   },
   {
     id: "urban-fantasy",
@@ -168,21 +173,21 @@ export const gallery: readonly GalleryItem[] = [
     title: "Urban fantasy",
     subtitle: "Roadside repair / imagined skyline",
     date: "2024",
-    source: "_DSF0739-Enhanced-NR.webp",
-    dimensions: "2048 × 1536",
+    source: "_DSF0739-Enhanced-NR.jpg",
+    dimensions: "2276 × 1707",
     ratio: "four-three",
-    obverse: "/manus-storage/urban-fantasy-obverse_56663e81.png",
-    reverse: "/manus-storage/urban-fantasy-reverse_3e90b386.png",
+    obverse: "/manus-storage/urban-fantasy-obverse_142be99a.png",
+    reverse: "/manus-storage/urban-fantasy-reverse_61da6c1c.png",
     reverseMode: "palette-grid",
     reverseKind: "Palette plate",
     reverseDescription: "The inverse resolves the image’s competing cyan, corrugated metal, and gold tones into calculated blocks.",
-    scriptHash: "75c1cdf2b074ebfdf569264cfcfb06649232c7ecad57d2edd0796b9aa2289f53",
-    outputHash: "06157b187295d6d12405276b0227523913c8e43c67df7edadb443bd8fcdcdc4b",
-    palette: ["#0F94C7", "#594F34", "#C1D7DE", "#1C2419", "#939A99", "#5FB1DB", "#4E6E79", "#AC8536"],
+    scriptHash: "911f48bc6cabcc8772eb379ab24ecda45d778185235b3abb010fd0c7a110e4e0",
+    outputHash: "3312ab976659e39bfe85a0b48b1f1a8714350f19a09c8ca8d900ce6b25cf8f7a",
+    palette: ["#0C93C7", "#C3D7DE", "#51492D", "#5FAFDB", "#959694", "#536C72", "#182016", "#AD8125"],
     script: galleryScripts.urban,
-    credentialSignature: absentCredential("5f975d0b13563d5bc54e3fd98c559644a21a0219191afb6ca8e2c3a9c6d8e3a1"),
-    colourSignature: colourSignature("a5af195c48a5f8dbcd4da9cd87e5330b9e33a2b709ce6e4bcfdea3929f38d493", "eed0dcb55666e74c9a0dbec4160c5be5ad2f0143e07650b6bc47aca4ba03df8c"),
-    trace: paletteTrace("_DSF0739-Enhanced-NR.webp", "2048 × 1536"),
+    credentialSignature: presentCredential("dee92545e6882540392d626217367053db8e0f9095d906f0e98270bf76cc629d", "lightroom_classic/15.1"),
+    colourSignature: colourSignature("3cb4b699adf3427a7244dd7cfce375a2d6f6c2a968cc71b279bddce684f4a1a4", "7ab38a5f14f248384dfca6b0bff808829d4b2e46c69cd6006efa37d688515e61"),
+    trace: paletteTrace("_DSF0739-Enhanced-NR.jpg", "2276 × 1707"),
   },
   {
     id: "murgeshpalya-passage",
@@ -190,21 +195,21 @@ export const gallery: readonly GalleryItem[] = [
     title: "Murgeshpalya passage",
     subtitle: "Street works / weekday passage",
     date: "2019",
-    source: "MS201901-Murgeshpalya0018.webp",
-    dimensions: "2048 × 1536",
+    source: "MS201901-Murgeshpalya0018.jpg",
+    dimensions: "2533 × 1900",
     ratio: "four-three",
-    obverse: "/manus-storage/murgeshpalya-passage-obverse_19d791cd.png",
-    reverse: "/manus-storage/murgeshpalya-passage-reverse_0e6c60ca.png",
+    obverse: "/manus-storage/murgeshpalya-passage-obverse_2833e01c.png",
+    reverse: "/manus-storage/murgeshpalya-passage-reverse_1cc7effc.png",
     reverseMode: "palette-grid",
     reverseKind: "Palette plate",
     reverseDescription: "The inverse reduces a tangled street scene to eight hues without reproducing its spatial arrangement.",
-    scriptHash: "4a190307c6e4391a87adb1db6db222e5bc3eea5cb9517cd661dab6818cc86b23",
-    outputHash: "6c5ce68c16197666fec7dfe0f923b3bdc04278455df6fd9d184c3b89103cc8b8",
-    palette: ["#161617", "#393738", "#5C5858", "#7C7675", "#959395", "#B2B1AE", "#CAEBFC", "#C5CCD2"],
+    scriptHash: "b012725be7c576255c4ea127f6d87dbb0f0198b27e210eb0036956a10b6300c3",
+    outputHash: "d5cba8ecf1433bd913b124ffd2349e5469dc9df87871ecbc090474b2205cc139",
+    palette: ["#131415", "#746F6E", "#323031", "#535051", "#8F8B8D", "#D0E9FA", "#AAA9A9", "#C4C2BF"],
     script: galleryScripts.murgeshpalya,
-    credentialSignature: absentCredential("a5f88d9555f6b76272ca6975ed05f7b65bc7cf0fb9ce10afe1d512af85b977b5"),
-    colourSignature: colourSignature("587bfb208c90ec9c19c1d20582a4da7a17a1d5e421778ae6bec2857bfdb1dac0", "2926615217bcc00932c889d164a3d7a1994fba5f35c9e3551f4bf94747feb3ac"),
-    trace: paletteTrace("MS201901-Murgeshpalya0018.webp", "2048 × 1536"),
+    credentialSignature: presentCredential("33960e39e0357047ae58fda033e0564f5396db5020b0d361887ce242807e8979", "lightroom_classic/15.3.1"),
+    colourSignature: colourSignature("d37d10fbfb1fe9d5d307fa4be53aaee7db5200def8b1081f8f472196384719d6", "85e71223da522db4d89a9f71b561fd6610a0c615608de2eeac092327b0159015"),
+    trace: paletteTrace("MS201901-Murgeshpalya0018.jpg", "2533 × 1900"),
   },
   {
     id: "uganda-diptych",
@@ -212,20 +217,20 @@ export const gallery: readonly GalleryItem[] = [
     title: "Uganda diptych",
     subtitle: "Artwork presentation / double portrait",
     date: "2015",
-    source: "MS201508-Uganda0016.webp",
-    dimensions: "2048 × 1365",
+    source: "MS201508-Uganda0016.jpg",
+    dimensions: "2560 × 1707",
     ratio: "three-two",
-    obverse: "/manus-storage/uganda-diptych-obverse_6ac779bf.png",
-    reverse: "/manus-storage/uganda-diptych-reverse_36b1aea2.png",
+    obverse: "/manus-storage/uganda-diptych-obverse_4cecee7d.png",
+    reverse: "/manus-storage/uganda-diptych-reverse_1cbc7886.png",
     reverseMode: "palette-grid",
     reverseKind: "Palette plate",
     reverseDescription: "A monochrome palette plate carries the tonal evidence of the two paintings and their bearers.",
-    scriptHash: "764c5592c202ac42160f4c107c682f8385b7abca21b924c32738323df22ad5d6",
-    outputHash: "1e66213b9c7d71aabe6ba81daf5322c34bde0c37cb069604484f5fbecee7d6b6",
-    palette: ["#E4E4E4", "#070707", "#BEBEBE", "#8E8E8E", "#707070", "#515151", "#363636", "#1A1A1A"],
+    scriptHash: "c76e533b2b6469ee1ae7611779e6034eff9dbd3da0fb1a25a89556de232c8b04",
+    outputHash: "61a53e9a5d956388258364546aed624a23157c19087bfafb95c0fd5aa3bddbb4",
+    palette: ["#090909", "#EBEBEB", "#DDDDDD", "#808080", "#C7C7C7", "#2F2F2F", "#565656", "#ACACAC"],
     script: galleryScripts.uganda,
-    credentialSignature: absentCredential("02ab6db06a282c4362d30f5afc7922ece8c72c50a595acaf2c1e0ce936fbee8a"),
-    colourSignature: colourSignature("fb72924d45ec7b3832fc6c92f87b764cfcad460b11819d2fdf3a799c269858e9", "44034e1180b32729e124977c4787b968c511775a099aa831e0c356c9246ab928"),
-    trace: paletteTrace("MS201508-Uganda0016.webp", "2048 × 1365"),
+    credentialSignature: presentCredential("c0fc147c67e4b6bf2a4a761a6421a95856bfb7672b79eee13dbad42f29aa4891", "lightroom_classic/15.1"),
+    colourSignature: colourSignature("5255afcb5afcc8dc0103c94e3d35cddb0bfbfbd551e3ea3e5b599ee5bc0ee66c", "ca4832150d3ac6d2b034c98224ab9a7cbb227a611652d07fa541475b02fa280c"),
+    trace: paletteTrace("MS201508-Uganda0016.jpg", "2560 × 1707"),
   },
 ] as const;

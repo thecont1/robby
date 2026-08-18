@@ -81,3 +81,8 @@
 - [x] Verify that editing a successfully compiled source immediately withholds its obsolete live projection.
 - [x] Establish a valid live Night projection, then replace its editor draft with a distinct valid k=7 source without compiling it.
 - [x] Compile the edited k=7 draft, confirm the current live trace, then reset the temporary browser draft to the canonical specimen source.
+
+## Immutable authentic-image workflow
+
+- [x] Sync and audit the five replacement originals without modifying their bytes.
+- [x] Move user image data out of Git and introduce a raw-byte-preserving authenticated upload path with provenance records.
