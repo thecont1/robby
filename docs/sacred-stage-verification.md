@@ -11,3 +11,9 @@ The live forward-navigation check replaced Night duality with Ayodhya mural whil
 The subsequent **Turn to inverse** action changed only the active face to Ayodhya mural’s inverse. Its visible image box remained `898 × 690`, demonstrating that the retained face-turn is separate from specimen navigation and does not alter the stable stage geometry.
 
 At a `375px` mobile viewport, the image occupies a fixed `338 × 277` stage box. The metadata, face indication, full-view action, flip control, and gallery navigation remain in distinct surrounding blocks rather than over the image itself.
+
+## Pure-slide refinement
+
+The gallery navigation keyframes now animate only `transform: translateX(...)`: outgoing and incoming specimens travel a full viewport width, with no `opacity` declaration or interpolation. The inner object-turner retains its separate 3D transform transition for face changes.
+
+A refreshed live navigation check advanced from Night duality to Ayodhya mural through the pure-slide path; the successor rendered normally in the fixed stage and the separate flip control remained present for the inverse-only card-turn path.

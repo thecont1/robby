@@ -229,3 +229,9 @@
 - [x] Increase the stable image viewing-window height without moving navigation controls between specimens.
 - [x] Add a reduced-motion-safe directional slide transition when the selected image changes, distinct from the 3D face-turn.
 - [x] Verify overlay-free artwork, stable controls, and slide/flip behavior on desktop and mobile.
+
+## Pure-slide motion refinement
+
+- [x] Remove all opacity interpolation from gallery specimen navigation so replacement is purely positional.
+- [x] Tighten directional gallery-slide timing while preserving the separate 3D face-turn and reduced-motion path.
+- [x] Verify forward/backward gallery slides and the obverse–inverse card flip.
