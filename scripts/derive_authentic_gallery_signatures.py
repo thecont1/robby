@@ -48,11 +48,17 @@ def main() -> None:
     arguments = parser.parse_args()
 
     mapping = {
-        "night-duality": ("IMG_20210916_185510.jpg", "night-obverse.png"),
-        "ayodhya-mural": ("MS202401-Ayodhya0041.jpg", "ayodhya-mural-obverse.png"),
-        "urban-fantasy": ("_DSF0739-Enhanced-NR.jpg", "urban-fantasy-obverse.png"),
-        "murgeshpalya-passage": ("MS201901-Murgeshpalya0018.jpg", "murgeshpalya-passage-obverse.png"),
-        "uganda-diptych": ("MS201508-Uganda0016.jpg", "uganda-diptych-obverse.png"),
+        "MS201306-BipashaAashish0192": ("MS201306-BipashaAashish0192.jpg", "MS201306-BipashaAashish0192-obverse.png"),
+        "MS201412-AddisAbaba0315": ("MS201412-AddisAbaba0315.jpg", "MS201412-AddisAbaba0315-obverse.png"),
+        "MS201508-Uganda0016": ("MS201508-Uganda0016.jpg", "MS201508-Uganda0016-obverse.png"),
+        "MS201804-FIDHGuinea0264": ("MS201804-FIDHGuinea0264.jpg", "MS201804-FIDHGuinea0264-obverse.png"),
+        "MS201901-Murgeshpalya0018": ("MS201901-Murgeshpalya0018.jpg", "MS201901-Murgeshpalya0018-obverse.png"),
+        "MS201904-Kashmir0594": ("MS201904-Kashmir0594.jpg", "MS201904-Kashmir0594-obverse.png"),
+        "MS201910-Ghana9243": ("MS201910-Ghana9243.jpg", "MS201910-Ghana9243-obverse.png"),
+        "MS201912-Nagaland1300": ("MS201912-Nagaland1300.jpg", "MS201912-Nagaland1300-obverse.png"),
+        "MS202309-HongKong0469-Enhanced-NR": ("MS202309-HongKong0469-Enhanced-NR.jpg", "MS202309-HongKong0469-Enhanced-NR-obverse.png"),
+        "MS202401-Ayodhya0041": ("MS202401-Ayodhya0041.jpg", "MS202401-Ayodhya0041-obverse.png"),
+        "MS202308-Bangalore0739-Enhanced-NR": ("MS202308-Bangalore0739-Enhanced-NR.jpg", "MS202308-Bangalore0739-Enhanced-NR-obverse.png"),
     }
     records = {
         specimen: signature(arguments.assets_root / source, arguments.renders_root / output)

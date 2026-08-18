@@ -4,7 +4,7 @@ import { immutableStorageKey, parseOriginalContentType, parseOriginalFilename } 
 describe("immutable original intake", () => {
   it("retains a safe original JPEG basename exactly", () => {
     expect(parseOriginalFilename("MS202401-Ayodhya0041.jpg")).toBe("MS202401-Ayodhya0041.jpg");
-    expect(parseOriginalFilename("_DSF0739-Enhanced-NR.jpg")).toBe("_DSF0739-Enhanced-NR.jpg");
+    expect(parseOriginalFilename("MS202308-Bangalore0739-Enhanced-NR.jpg")).toBe("MS202308-Bangalore0739-Enhanced-NR.jpg");
   });
 
   it("rejects paths, non-JPEG names, and transformed content types", () => {

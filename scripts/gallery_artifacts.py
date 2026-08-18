@@ -74,14 +74,6 @@ GALLERY_ARTIFACTS = (
         "manifest": "robby-authentic-derived/MS201912-Nagaland1300-manifest.json",
     },
     {
-        "id": "MS202308-Bangalore0739-Enhanced-NR",
-        "gallery_key": "MS202308-Bangalore0739-Enhanced-NR",
-        "script": "examples/MS202308-Bangalore0739-Enhanced-NR.robby",
-        "source": "robby-authentic-originals/MS202308-Bangalore0739-Enhanced-NR.jpg",
-        "obverse": "robby-authentic-derived/MS202308-Bangalore0739-Enhanced-NR-obverse.png",
-        "manifest": "robby-authentic-derived/MS202308-Bangalore0739-Enhanced-NR-manifest.json",
-    },
-    {
         "id": "MS202309-HongKong0469-Enhanced-NR",
         "gallery_key": "MS202309-HongKong0469-Enhanced-NR",
         "script": "examples/MS202309-HongKong0469-Enhanced-NR.robby",
@@ -96,6 +88,14 @@ GALLERY_ARTIFACTS = (
         "source": "robby-authentic-originals/MS202401-Ayodhya0041.jpg",
         "obverse": "robby-authentic-derived/MS202401-Ayodhya0041-obverse.png",
         "manifest": "robby-authentic-derived/MS202401-Ayodhya0041-manifest.json",
+    },
+    {
+        "id": "MS202308-Bangalore0739-Enhanced-NR",
+        "gallery_key": "MS202308-Bangalore0739-Enhanced-NR",
+        "script": "examples/MS202308-Bangalore0739-Enhanced-NR.robby",
+        "source": "robby-authentic-originals/MS202308-Bangalore0739-Enhanced-NR.jpg",
+        "obverse": "robby-authentic-derived/MS202308-Bangalore0739-Enhanced-NR-obverse.png",
+        "manifest": "robby-authentic-derived/MS202308-Bangalore0739-Enhanced-NR-manifest.json",
     },
 )
 

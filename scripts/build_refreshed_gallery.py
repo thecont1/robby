@@ -14,16 +14,17 @@ DERIVATIVES = Path("/home/ubuntu/webdev-static-assets/robby-gallery-refresh/deri
 COMPILER = ROOT / "target" / "release" / "robby"
 
 SOURCES = (
-    ("bipasha-aashish", "MS201306-BipashaAashish0192.jpg"),
-    ("uganda-diptych", "MS201508-Uganda0016.jpg"),
-    ("fidh-guinea", "MS201804-FIDHGuinea0264.jpg"),
-    ("murgeshpalya-passage", "MS201901-Murgeshpalya0018.jpg"),
-    ("kashmir-study", "MS201904-Kashmir0594.jpg"),
-    ("ghana-study", "MS201910-Ghana9243.jpg"),
-    ("nagaland-study", "MS201912-Nagaland1300.jpg"),
-    ("hong-kong-study", "MS202309-HongKong0469-Enhanced-NR.jpg"),
-    ("ayodhya-mural", "MS202401-Ayodhya0041.jpg"),
-    ("urban-fantasy", "_DSF0739-Enhanced-NR.jpg"),
+    ("MS201306-BipashaAashish0192", "MS201306-BipashaAashish0192.jpg"),
+    ("MS201412-AddisAbaba0315", "MS201412-AddisAbaba0315.jpg"),
+    ("MS201508-Uganda0016", "MS201508-Uganda0016.jpg"),
+    ("MS201804-FIDHGuinea0264", "MS201804-FIDHGuinea0264.jpg"),
+    ("MS201901-Murgeshpalya0018", "MS201901-Murgeshpalya0018.jpg"),
+    ("MS201904-Kashmir0594", "MS201904-Kashmir0594.jpg"),
+    ("MS201910-Ghana9243", "MS201910-Ghana9243.jpg"),
+    ("MS201912-Nagaland1300", "MS201912-Nagaland1300.jpg"),
+    ("MS202309-HongKong0469-Enhanced-NR", "MS202309-HongKong0469-Enhanced-NR.jpg"),
+    ("MS202401-Ayodhya0041", "MS202401-Ayodhya0041.jpg"),
+    ("MS202308-Bangalore0739-Enhanced-NR", "MS202308-Bangalore0739-Enhanced-NR.jpg"),
 )
 
 

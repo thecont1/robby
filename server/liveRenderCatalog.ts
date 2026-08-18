@@ -36,8 +36,8 @@ export const liveRenderSources = {
     storageKey: "MS202401-Ayodhya0041_8327bd18.jpg",
     sha256: "7b97c159e3eb5b021e18cf76d9b3efd3704bf4f1990f985a460524c3d98926c8",
   },
-  "_DSF0739-Enhanced-NR.jpg": {
-    storageKey: "_DSF0739-Enhanced-NR_458ae022.jpg",
+  "MS202308-Bangalore0739-Enhanced-NR.jpg": {
+    storageKey: "MS202308-Bangalore0739-Enhanced-NR_458ae022.jpg",
     sha256: "5f975d0b13563d5bc54e3fd98c559644a21a0219191afb6ca8e2c3a9c6d8e3a1",
   },
 } as const;
