@@ -4,6 +4,10 @@ export const liveRenderSources = {
     storageKey: "MS201306-BipashaAashish0192_db5cccb3.jpg",
     sha256: "b1faf2ba275f8c33c3015705248c14f53ae64969c7f187a26addf78ff01acf68",
   },
+  "MS201412-AddisAbaba0315.jpg": {
+    storageKey: "MS201412-AddisAbaba0315_e2d6c41d.jpg",
+    sha256: "e2d6c41da02c2532c95e4287798420eadefe7aef22063087efb9053d915841c0",
+  },
   "MS201508-Uganda0016.jpg": {
     storageKey: "MS201508-Uganda0016_f138d65c.jpg",
     sha256: "02ab6db06a282c4362d30f5afc7922ece8c72c50a595acaf2c1e0ce936fbee8a",
