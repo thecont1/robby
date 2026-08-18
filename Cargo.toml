@@ -1,12 +1,24 @@
 [package]
-name = "robby"
+name = "robby-compiler"
 version = "0.1.0"
 edition = "2021"
-description = "A tiny explainable compiler for visual composition scripts"
+description = "A portable compiler for Robby visual composition scripts"
 license = "MIT"
 
-[dependencies]
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
-sha2 = "0.10"
+[lib]
+name = "robby_compiler"
+crate-type = ["rlib", "cdylib"]
 
+[[bin]]
+name = "robby"
+path = "src/main.rs"
+
+[features]
+default = []
+wasm = ["dep:wasm-bindgen"]
+
+[dependencies]
+serde = { version = "=1.0.197", features = ["derive"] }
+serde_json = "=1.0.115"
+sha2 = "=0.10.8"
+wasm-bindgen = { version = "=0.2.92", optional = true }

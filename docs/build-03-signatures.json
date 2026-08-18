@@ -1,0 +1,142 @@
+{
+  "night-duality": {
+    "credential_signature": {
+      "status": "absent",
+      "source_sha256": "261639173101e8b07f8b77da5104206c2deb7db4e7c42bad2d78b461907c7302",
+      "marker_scan": "C2PA/JUMBF byte marker scan",
+      "issuer": null,
+      "edit_history": null,
+      "capture_info": null,
+      "note": "No embedded C2PA or JUMBF marker detected in the local source bytes."
+    },
+    "colour_signature": {
+      "algorithm": "robby-executor-v1 deterministic k-means palette",
+      "pixel_sha256": "9c178fbb61496cadc7599558cc1bbeef32d1507698398f12a5e6a02e85386af5",
+      "palette_sha256": "60f267562ff6fd9002ccb4380e0baf287bd1ed7001df6751d6b24b3d559795b6",
+      "palette": [
+        "#424047",
+        "#649BE8",
+        "#BEA3DB",
+        "#15161B",
+        "#7A777B",
+        "#AAB0A6",
+        "#D7DDE6",
+        "#3A57C6"
+      ],
+      "width": 1440,
+      "height": 1080
+    }
+  },
+  "ayodhya-mural": {
+    "credential_signature": {
+      "status": "absent",
+      "source_sha256": "7b97c159e3eb5b021e18cf76d9b3efd3704bf4f1990f985a460524c3d98926c8",
+      "marker_scan": "C2PA/JUMBF byte marker scan",
+      "issuer": null,
+      "edit_history": null,
+      "capture_info": null,
+      "note": "No embedded C2PA or JUMBF marker detected in the local source bytes."
+    },
+    "colour_signature": {
+      "algorithm": "robby-executor-v1 deterministic k-means palette",
+      "pixel_sha256": "78ee78cb60c8b774f1292a30b619645e3f38482f4e0440ff1732535a2421e852",
+      "palette_sha256": "83c583bdaa06e1566972d0d25751a55b238c7816036784550596688c7c412cd2",
+      "palette": [
+        "#4C4A40",
+        "#CCB38D",
+        "#D6D3D2",
+        "#1E202A",
+        "#726F5A",
+        "#9A997A",
+        "#C15942",
+        "#167BB8"
+      ],
+      "width": 2048,
+      "height": 1536
+    }
+  },
+  "urban-fantasy": {
+    "credential_signature": {
+      "status": "absent",
+      "source_sha256": "5f975d0b13563d5bc54e3fd98c559644a21a0219191afb6ca8e2c3a9c6d8e3a1",
+      "marker_scan": "C2PA/JUMBF byte marker scan",
+      "issuer": null,
+      "edit_history": null,
+      "capture_info": null,
+      "note": "No embedded C2PA or JUMBF marker detected in the local source bytes."
+    },
+    "colour_signature": {
+      "algorithm": "robby-executor-v1 deterministic k-means palette",
+      "pixel_sha256": "a5af195c48a5f8dbcd4da9cd87e5330b9e33a2b709ce6e4bcfdea3929f38d493",
+      "palette_sha256": "eed0dcb55666e74c9a0dbec4160c5be5ad2f0143e07650b6bc47aca4ba03df8c",
+      "palette": [
+        "#0F94C7",
+        "#594F34",
+        "#C1D7DE",
+        "#1C2419",
+        "#939A99",
+        "#5FB1DB",
+        "#4E6E79",
+        "#AC8536"
+      ],
+      "width": 2048,
+      "height": 1536
+    }
+  },
+  "murgeshpalya-passage": {
+    "credential_signature": {
+      "status": "absent",
+      "source_sha256": "a5f88d9555f6b76272ca6975ed05f7b65bc7cf0fb9ce10afe1d512af85b977b5",
+      "marker_scan": "C2PA/JUMBF byte marker scan",
+      "issuer": null,
+      "edit_history": null,
+      "capture_info": null,
+      "note": "No embedded C2PA or JUMBF marker detected in the local source bytes."
+    },
+    "colour_signature": {
+      "algorithm": "robby-executor-v1 deterministic k-means palette",
+      "pixel_sha256": "587bfb208c90ec9c19c1d20582a4da7a17a1d5e421778ae6bec2857bfdb1dac0",
+      "palette_sha256": "2926615217bcc00932c889d164a3d7a1994fba5f35c9e3551f4bf94747feb3ac",
+      "palette": [
+        "#161617",
+        "#393738",
+        "#5C5858",
+        "#7C7675",
+        "#959395",
+        "#B2B1AE",
+        "#CAEBFC",
+        "#C5CCD2"
+      ],
+      "width": 2048,
+      "height": 1536
+    }
+  },
+  "uganda-diptych": {
+    "credential_signature": {
+      "status": "absent",
+      "source_sha256": "02ab6db06a282c4362d30f5afc7922ece8c72c50a595acaf2c1e0ce936fbee8a",
+      "marker_scan": "C2PA/JUMBF byte marker scan",
+      "issuer": null,
+      "edit_history": null,
+      "capture_info": null,
+      "note": "No embedded C2PA or JUMBF marker detected in the local source bytes."
+    },
+    "colour_signature": {
+      "algorithm": "robby-executor-v1 deterministic k-means palette",
+      "pixel_sha256": "fb72924d45ec7b3832fc6c92f87b764cfcad460b11819d2fdf3a799c269858e9",
+      "palette_sha256": "44034e1180b32729e124977c4787b968c511775a099aa831e0c356c9246ab928",
+      "palette": [
+        "#E4E4E4",
+        "#070707",
+        "#BEBEBE",
+        "#8E8E8E",
+        "#707070",
+        "#515151",
+        "#363636",
+        "#1A1A1A"
+      ],
+      "width": 2048,
+      "height": 1365
+    }
+  }
+}
