@@ -6,7 +6,7 @@
 
 import { compileWithRust, type RobbyIr } from "@/lib/robbyCompiler";
 import { AlertTriangle, CheckCircle2, Code2, Play, RotateCcw } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 type EditorState =
   | { kind: "idle" }
@@ -19,26 +19,35 @@ type SourceEditorProps = {
   title: string;
   source: string;
   onCompiled: (ir: RobbyIr, source: string) => void;
+  onCompileStart: () => void;
+  onCompileError: () => void;
 };
 
-export default function SourceEditor({ specimenId, title, source, onCompiled }: SourceEditorProps) {
+export default function SourceEditor({ specimenId, title, source, onCompiled, onCompileStart, onCompileError }: SourceEditorProps) {
   const [draft, setDraft] = useState(source);
   const [state, setState] = useState<EditorState>({ kind: "idle" });
+  const compileGeneration = useRef(0);
 
   useEffect(() => {
+    compileGeneration.current += 1;
     setDraft(source);
     setState({ kind: "idle" });
   }, [specimenId, source]);
 
   const compile = async () => {
+    const generation = ++compileGeneration.current;
     setState({ kind: "compiling" });
+    onCompileStart();
     try {
       const ir = await compileWithRust(draft);
+      if (generation !== compileGeneration.current) return;
       setState({ kind: "success", ir });
       onCompiled(ir, draft);
     } catch (error) {
+      if (generation !== compileGeneration.current) return;
       const message = error instanceof Error ? error.message : String(error);
       setState({ kind: "error", message });
+      onCompileError();
     }
   };
 

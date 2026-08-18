@@ -5,8 +5,10 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 from pathlib import Path
 import re
+import tempfile
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -74,6 +76,29 @@ def gallery_script(key: str) -> str:
     return match.group(1)
 
 
+def write_report_atomically(path: Path, payload: dict[str, object]) -> None:
+    """Publish one complete report without exposing concurrent partial writes."""
+    temporary_path: Path | None = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode="w",
+            encoding="utf-8",
+            dir=path.parent,
+            prefix=f".{path.name}.",
+            suffix=".tmp",
+            delete=False,
+        ) as output:
+            output.write(json.dumps(payload, indent=2) + "\n")
+            output.flush()
+            os.fsync(output.fileno())
+            temporary_path = Path(output.name)
+        os.replace(temporary_path, path)
+        temporary_path = None
+    finally:
+        if temporary_path is not None:
+            temporary_path.unlink(missing_ok=True)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Verify Robby Build 04 integrity evidence.")
     parser.add_argument("--out", type=Path, required=True)
@@ -109,7 +134,7 @@ def main() -> None:
         )
 
     payload = {"version": "robby-build-04-integrity-v1", "specimens": results}
-    arguments.out.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+    write_report_atomically(arguments.out, payload)
     if failures:
         raise SystemExit("Integrity failures:\n" + "\n".join(failures))
     print(f"Verified {len(results)} specimens: all manifest and gallery hashes match actual bytes.")

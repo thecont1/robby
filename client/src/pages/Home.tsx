@@ -47,6 +47,8 @@ function traceFromIr(ir: RobbyIr): TraceStep[] {
   return trace;
 }
 
+type ProjectionState = "gallery" | "compiling" | "error" | "live";
+
 export default function Home() {
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [face, setFace] = useState<"obverse" | "inverse">("obverse");
@@ -55,12 +57,14 @@ export default function Home() {
   const [compilerState, setCompilerState] = useState<"checking" | "verified" | "error">("checking");
   const [compilerLabel, setCompilerLabel] = useState("RUST CORE · LOADING");
   const [compiledEdit, setCompiledEdit] = useState<{ specimenId: string; ir: RobbyIr; source: string } | null>(null);
+  const [projectionState, setProjectionState] = useState<ProjectionState>("gallery");
   const selected = gallery[selectedIndex];
   const activeFace = face;
-  const liveIr = compiledEdit?.specimenId === selected.id ? compiledEdit.ir : null;
-  const trace = liveIr ? traceFromIr(liveIr) : selected.trace;
-  const liveScriptHash = liveIr?.meta.script_sha256 ?? selected.scriptHash;
-  const liveReverseMode = liveIr?.reverse.map((item) => item.k ? `${item.mode} (k=${item.k})` : item.mode).join(" + ") ?? selected.reverseMode;
+  const liveIr = projectionState === "live" && compiledEdit?.specimenId === selected.id ? compiledEdit.ir : null;
+  const projectionUnavailable = projectionState === "compiling" || projectionState === "error";
+  const trace = projectionUnavailable ? [] : liveIr ? traceFromIr(liveIr) : selected.trace;
+  const liveScriptHash = projectionUnavailable ? null : liveIr?.meta.script_sha256 ?? selected.scriptHash;
+  const liveReverseMode = projectionUnavailable ? null : liveIr?.reverse.map((item) => item.k ? `${item.mode} (k=${item.k})` : item.mode).join(" + ") ?? selected.reverseMode;
 
   const selectImage = (nextIndex: number) => {
     if (isFlipping) return;
@@ -69,6 +73,7 @@ export default function Home() {
     setIsFlipping(false);
     setCredentialOpen(false);
     setCompiledEdit(null);
+    setProjectionState("gallery");
   };
 
   const turnOver = () => {
@@ -119,7 +124,18 @@ export default function Home() {
 
   const applyCompiledSource = (ir: RobbyIr, source: string) => {
     setCompiledEdit({ specimenId: selected.id, ir, source });
+    setProjectionState("live");
     setFace("obverse");
+  };
+
+  const clearLiveProjection = () => {
+    setCompiledEdit(null);
+    setProjectionState("compiling");
+  };
+
+  const markProjectionUnavailable = () => {
+    setCompiledEdit(null);
+    setProjectionState("error");
   };
 
   return (
@@ -249,40 +265,74 @@ export default function Home() {
             </ol>
           </nav>
 
-          <SourceEditor specimenId={selected.id} title={selected.title} source={selected.script} onCompiled={applyCompiledSource} />
+          <SourceEditor
+            specimenId={selected.id}
+            title={selected.title}
+            source={selected.script}
+            onCompiled={applyCompiledSource}
+            onCompileStart={clearLiveProjection}
+            onCompileError={markProjectionUnavailable}
+          />
         </section>
 
         <aside className="trace-panel" aria-label={`Compilation trace for ${selected.title}`}>
-          <div className="trace-heading"><div><CircleDotDashed size={15} /><MonoLabel>Compilation trace</MonoLabel></div><span>{trace.length} STEPS</span></div>
+          <div className="trace-heading"><div><CircleDotDashed size={15} /><MonoLabel>Compilation trace</MonoLabel></div><span>{projectionState === "compiling" ? "VALIDATING" : projectionState === "error" ? "UNAVAILABLE" : `${trace.length} STEPS`}</span></div>
           <div className="trace-title"><p className="eyebrow">Evidence beside object</p><h3>{selected.title}<br /><em>/ {activeFace}</em></h3></div>
-          <div className="trace-steps">
-            {trace.map((step) => (
-              <article className="trace-step" key={step.stage}>
-                <span className="trace-number">{step.stage}</span>
-                <div><strong>{step.label}</strong><code>{step.code}</code><p>{step.detail}</p></div>
-                {step.color && <i style={{ backgroundColor: step.color }} aria-label="Vermilion provenance colour" />}
-              </article>
-            ))}
-          </div>
-          <div className="trace-evidence">
-            <div className="signature-label"><Fingerprint size={13} /> <MonoLabel>Colour signature</MonoLabel></div>
-            <div className="palette-row" aria-label="Calculated palette signature">
-              {selected.palette.map((color) => <span key={color} style={{ backgroundColor: color }} title={color} />)}
+          {projectionUnavailable ? (
+            <div className="projection-unavailable" role="status">
+              <CircleDotDashed size={18} aria-hidden="true" />
+              <div>
+                <p className="mono-label">Live projection withheld</p>
+                <strong>{projectionState === "compiling" ? "Validating the current Rust source." : "The current source did not compile."}</strong>
+                <p>{projectionState === "compiling" ? "Previous trace, hash, and output targets are hidden until validation finishes." : "Previous trace, hash, and output targets remain hidden. Fix the source and compile again for a new projection."}</p>
+              </div>
             </div>
-            <dl>
-              <div><dt>credential_signature</dt><dd>C2PA ABSENT · {selected.credentialSignature.sourceSha256.slice(0, 14)}…</dd></div>
-              <div><dt>colour_signature</dt><dd>px:{selected.colourSignature.pixelSha256.slice(0, 12)}… · pal:{selected.colourSignature.paletteSha256.slice(0, 12)}…</dd></div>
-              <div><dt>reverse_mode</dt><dd>{liveReverseMode}</dd></div>
-              <div><dt>script_hash</dt><dd title={liveScriptHash}>{shortHash(liveScriptHash)}</dd></div>
-              {liveIr ? <><div><dt>output_target</dt><dd>{liveIr.output.obverse}</dd></div><div><dt>manifest_target</dt><dd>{liveIr.output.manifest}</dd></div></> : <div><dt>output_sha256</dt><dd title={selected.outputHash}>{shortHash(selected.outputHash)}</dd></div>}
-            </dl>
+          ) : (
+            <div className="trace-steps">
+              {trace.map((step) => (
+                <article className="trace-step" key={step.stage}>
+                  <span className="trace-number">{step.stage}</span>
+                  <div><strong>{step.label}</strong><code>{step.code}</code><p>{step.detail}</p></div>
+                  {step.color && <i style={{ backgroundColor: step.color }} aria-label="Vermilion provenance colour" />}
+                </article>
+              ))}
+            </div>
+          )}
+          <div className="trace-evidence">
+            {projectionUnavailable ? (
+              <div className="projection-evidence-unavailable">
+                <MonoLabel>Projection record</MonoLabel>
+                <p>Unavailable for the submitted draft.</p>
+              </div>
+            ) : (
+              <>
+                <div className="signature-label"><Fingerprint size={13} /> <MonoLabel>Colour signature</MonoLabel></div>
+                <div className="palette-row" aria-label="Calculated palette signature">
+                  {selected.palette.map((color) => <span key={color} style={{ backgroundColor: color }} title={color} />)}
+                </div>
+                <dl>
+                  <div><dt>credential_signature</dt><dd>C2PA ABSENT · {selected.credentialSignature.sourceSha256.slice(0, 14)}…</dd></div>
+                  <div><dt>colour_signature</dt><dd>px:{selected.colourSignature.pixelSha256.slice(0, 12)}… · pal:{selected.colourSignature.paletteSha256.slice(0, 12)}…</dd></div>
+                  <div><dt>reverse_mode</dt><dd>{liveReverseMode}</dd></div>
+                  <div><dt>script_hash</dt><dd title={liveScriptHash!}>{shortHash(liveScriptHash!)}</dd></div>
+                  {liveIr ? (
+                    <>
+                      <div><dt>output_target</dt><dd>{liveIr.output.obverse}</dd></div>
+                      <div><dt>manifest_target</dt><dd>{liveIr.output.manifest}</dd></div>
+                    </>
+                  ) : (
+                    <div><dt>output_sha256</dt><dd title={selected.outputHash}>{shortHash(selected.outputHash)}</dd></div>
+                  )}
+                </dl>
+              </>
+            )}
           </div>
         </aside>
       </section>
 
       <section className="manifest-strip" aria-label="Gallery manifest record">
         <div className="manifest-identity"><FileJson2 size={18} /><span>MANIFEST / PROCESS GRAPH</span></div>
-        <div className="manifest-fields"><span>LIBRARY <b>5 COMPILED OBJECTS</b></span><span>ACTIVE FACE <b>{activeFace.toUpperCase()} · MUTUALLY EXCLUSIVE</b></span><span>CORE <b>RUST · robby-compiler-v0.1</b></span><span>EXECUTOR <b>{liveIr ? "STATIC ARTIFACT · RENDER PENDING" : "CPU · PILLOW / OPENCV"}</b></span></div>
+        <div className="manifest-fields"><span>LIBRARY <b>5 COMPILED OBJECTS</b></span><span>ACTIVE FACE <b>{activeFace.toUpperCase()} · MUTUALLY EXCLUSIVE</b></span><span>CORE <b>RUST · robby-compiler-v0.1</b></span><span>EXECUTOR <b>{projectionUnavailable ? "LIVE IR · UNAVAILABLE" : liveIr ? "STATIC ARTIFACT · RENDER PENDING" : "CPU · PILLOW / OPENCV"}</b></span></div>
         <img src="/manus-storage/robby-palette-study_ad20752b.png" alt="Abstract palette study" />
         <Sparkles className="manifest-spark" size={18} />
       </section>
