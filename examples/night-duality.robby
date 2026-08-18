@@ -1,12 +1,7 @@
-# A one-layer composition using the supplied street photograph as its base.
-base("night-street.jpg", width: 1440, height: 1080)
-
-cutout(source: "courier.png", mask: "person", id: "courier")
-place(cutout: "courier", x: 0.72, y: 0.64, scale: 0.92, rotation: -2, opacity: 0.96, blend: "normal")
+# A base-image study using the supplied authenticated street photograph.
+base("IMG_20210916_185510.jpg", width: 1440, height: 1080)
 
 palette(k: 8)
-reverse(mode: "provenance-map")
 reverse(mode: "palette-grid", k: 8)
 
 output(obverse: "night-obverse.png", reverse: "night-reverse.png", manifest: "night-manifest.json")
-

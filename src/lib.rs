@@ -66,6 +66,12 @@ output(obverse: "front.png", reverse: "back.png", manifest: "manifest.json")
     }
 
     #[test]
+    fn rejects_backslash_followed_by_a_real_newline_in_a_string() {
+        let error = lexer::lex("base(\"first\\\nsecond\")\n").unwrap_err();
+        assert!(error.message.contains("Unterminated string literal"));
+    }
+
+    #[test]
     fn lowers_a_valid_script_to_stable_ir() {
         let ir = compile_source(VALID).expect("valid v1 script");
         assert_eq!(ir.version, "robby-ir-v1");
@@ -124,5 +130,15 @@ output(obverse: "front.png", reverse: "back.png", manifest: "manifest.json")"#;
         let source = VALID.replace("provenance-map", "debug-raster");
         let error = compile_source(&source).unwrap_err();
         assert!(error.message.contains("Unknown reverse mode"));
+    }
+
+    #[test]
+    fn rejects_duplicate_reverse_modes() {
+        let source = VALID.replace(
+            "reverse(mode: \"palette-grid\", k: 6)",
+            "reverse(mode: \"provenance-map\")",
+        );
+        let error = compile_source(&source).unwrap_err();
+        assert!(error.message.contains("Duplicate reverse mode"));
     }
 }

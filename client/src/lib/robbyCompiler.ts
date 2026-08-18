@@ -24,7 +24,12 @@ let initialize: Promise<void> | null = null;
 
 async function ensureRustCompiler() {
   if (!initialize) {
-    initialize = initRobbyCompiler().then(() => undefined);
+    initialize = initRobbyCompiler()
+      .then(() => undefined)
+      .catch((error) => {
+        initialize = null;
+        throw error;
+      });
   }
   return initialize;
 }

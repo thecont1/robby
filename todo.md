@@ -62,11 +62,96 @@
 ## Post-review follow-up
 
 - [x] Manually trigger CodeRabbit on open PR #1 and confirm the request without merging. (Requested via https://github.com/thecont1/robby/pull/1#issuecomment-5319949918)
-- [ ] Confirm CodeRabbit reviewed the substantive compiler changes despite its head-change notice after the checklist-only commit. (Temporarily blocked: the stable-head retry received CodeRabbit’s `Review rate limited` response.)
+- [x] Confirm CodeRabbit reviewed the substantive compiler changes despite its head-change notice after the checklist-only commit. (Verified from merged PR #1 review history: CodeRabbit posted a substantive review at 2026-08-18T02:59:16Z.)
 - [x] Review and resolve the additional ITO-QA findings. Failed Rust/WASM compiles now withhold stale live output; integrity reports use atomic replacement for concurrent writes.
 - [x] Verify in-browser that an invalid recompile withholds the prior live trace, source hash, and output projection.
 - [x] Establish a valid Night duality live projection, then prepare the unsupported-mask browser draft for the error-state check.
 - [x] Reset the invalid Night draft and submit a fresh canonical compile to verify post-error projection recovery.
+
+## Fresh external review round
+
+- [x] Review and resolve the new CodeRabbit findings first. (Addressed all nine inline findings, the editable-shortcut finding, and the directly related robustness notes.)
+- [x] Review and resolve the new ITO-QA findings second. (Draft edits now invalidate obsolete live evidence and supersede prior compile generations.)
+- [x] Validate, push, and report the latest unmerged PR review outcome.
+- [x] Verify editor shortcut isolation and reset projection behavior in the rebuilt browser preview.
+- [x] Focus the Night source editor and issue ArrowRight as the editable-target shortcut regression input. (Night remained selected on its obverse face.)
+- [x] Send `f` while the source editor retained focus as the flip-shortcut isolation regression input. (Night remained on its obverse face.)
+- [x] Reset the editor after the focused-key regression to restore the canonical Night source.
+- [x] Compile the canonical Night source live, then invoke Reset to test that the parent discards the live projection.
+- [x] Verify that editing a successfully compiled source immediately withholds its obsolete live projection.
+- [x] Establish a valid live Night projection, then replace its editor draft with a distinct valid k=7 source without compiling it.
+- [x] Compile the edited k=7 draft, confirm the current live trace, then reset the temporary browser draft to the canonical specimen source.
+
+## Immutable authentic-image workflow
+
+- [x] Sync and audit the five replacement originals without modifying their bytes.
+- [x] Move user image data out of Git and introduce a raw-byte-preserving authenticated upload path with provenance records.
+
+## Gallery visual modes
+
+- [x] Render all Robby references in lower-case monotype styling.
+- [x] Add a persisted light/dark visual-mode control with black dark surfaces and orange structural borders.
+- [x] Add a layout-stable image-only concentration mode that leaves only the active image, flip, and previous/next controls visible.
+
+## Header redesign and Night duality audit
+
+- [x] Reorganize the header around a two-line robby identity, compact compiler state, and hamburger navigation.
+- [x] Use the supplied sunglasses and text-visibility SVGs for light/dark and image-only controls.
+- [x] Audit the Night duality derivative against the immutable original and correct any confirmed double-image artifact without transforming the source JPEG.
+
+## Footer identity and links
+
+- [x] Replace the footer’s explanatory copy with the orange observation statement, requested social icon links, and linked Mahesh Shantaram copyright notice.
+
+## Managed-storage cleanup
+
+- [x] Audit managed storage references and remove verified obsolete local legacy remnants, preserving authentic originals and files referenced by the current gallery.
+- [x] Hard-delete obsolete unreferenced managed `/manus-storage` objects through a supported storage-management path, if one is available.
+
+## Secondary-header and control refinements
+
+- [x] Apply the requested orange/black word treatment, remove redundant secondary-header labels, and reduce its height.
+- [x] Preserve the primary header in image-only mode and maintain visible contrast for active visual-mode controls.
+- [x] Increase hamburger-menu content size while retaining accessible navigation.
+
+## Gallery controls and evidence composition
+
+- [x] Move flip and previous/next controls directly beneath the image, eliminating the separate navigation bar.
+- [x] Join the live-source editor visually with the compilation trace as one reverse-L evidence object.
+
+## Secondary-title reflow
+
+- [x] Reflow the secondary title as “Explainable visual composition” followed by “compiler in rust.”
+
+## Artwork-view and image-area refinement
+
+- [x] Preserve orange Explainable/compiler emphasis while refining the supporting sentence’s line length.
+- [x] Add a compact title-size preference and optional full-bleed artwork view.
+- [x] Restore title/signatures, controls, image library, and live-source area as three bordered sections with the requested control alignment.
+
+## Full-bleed touch navigation
+
+- [x] Remove the compact title-size control and its supporting state.
+- [x] Add accessible touch swipe navigation between gallery images in full-bleed artwork view.
+
+## Identity copy and evidence seam
+
+- [x] Add the requested product subtitle and secondary-header two-sided-image question.
+- [x] Increase the gap between image-library thumbnails and the live source section.
+- [x] Remove the live-source section’s right border so it attaches seamlessly to the compilation trace column.
+
+## Trace clarity refinement
+
+- [x] Remove the duplicate specimen title and metadata block beneath the image.
+- [x] Increase the numbered compilation-trace sections for clearer use of the available trace-column space.
+- [x] Restore a valid accessible label for the object stage after removing the under-image title block.
+
+## Identity, controls, trace, and brief pages
+
+- [x] Move the readable product subtitle to the center of the header.
+- [x] Move selected image serial and dimensions below the image; top-align Turn to Inverse with signature badges; place previous/next beneath it.
+- [x] Increase compilation-trace card typography and spacing for readability.
+- [x] Add polished hamburger-menu pages for the hackathon brief and “Even Better Than the Real Thing?” concept document.
 
 ## Trace and toolchain-status refinement
 

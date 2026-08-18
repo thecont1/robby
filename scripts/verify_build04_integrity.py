@@ -10,53 +10,11 @@ from pathlib import Path
 import re
 import tempfile
 
+from gallery_artifacts import DEFAULT_ASSET_ROOT, resolve_gallery_artifacts
+
 
 ROOT = Path(__file__).resolve().parents[1]
 DEMO_DATA = (ROOT / "client/src/lib/demoData.ts").read_text(encoding="utf-8")
-
-SPECIMENS = [
-    {
-        "id": "night-duality",
-        "gallery_key": "night",
-        "script": ROOT / "examples/night-duality.robby",
-        "source": Path("/home/ubuntu/webdev-static-assets/robby-demo/assets/night-street.jpg"),
-        "obverse": Path("/home/ubuntu/webdev-static-assets/robby-demo/output/night-obverse.png"),
-        "manifest": Path("/home/ubuntu/webdev-static-assets/robby-demo/output/night-manifest.json"),
-    },
-    {
-        "id": "ayodhya-mural",
-        "gallery_key": "ayodhya",
-        "script": ROOT / "examples/ayodhya-mural.robby",
-        "source": Path("/home/ubuntu/webdev-static-assets/robby-gallery/assets/MS202401-Ayodhya0041.webp"),
-        "obverse": Path("/home/ubuntu/webdev-static-assets/robby-gallery/output/ayodhya-mural-obverse.png"),
-        "manifest": Path("/home/ubuntu/webdev-static-assets/robby-gallery/output/ayodhya-mural-manifest.json"),
-    },
-    {
-        "id": "urban-fantasy",
-        "gallery_key": "urban",
-        "script": ROOT / "examples/urban-fantasy.robby",
-        "source": Path("/home/ubuntu/webdev-static-assets/robby-gallery/assets/_DSF0739-Enhanced-NR.webp"),
-        "obverse": Path("/home/ubuntu/webdev-static-assets/robby-gallery/output/urban-fantasy-obverse.png"),
-        "manifest": Path("/home/ubuntu/webdev-static-assets/robby-gallery/output/urban-fantasy-manifest.json"),
-    },
-    {
-        "id": "murgeshpalya-passage",
-        "gallery_key": "murgeshpalya",
-        "script": ROOT / "examples/murgeshpalya-passage.robby",
-        "source": Path("/home/ubuntu/webdev-static-assets/robby-gallery/assets/MS201901-Murgeshpalya0018.webp"),
-        "obverse": Path("/home/ubuntu/webdev-static-assets/robby-gallery/output/murgeshpalya-passage-obverse.png"),
-        "manifest": Path("/home/ubuntu/webdev-static-assets/robby-gallery/output/murgeshpalya-passage-manifest.json"),
-    },
-    {
-        "id": "uganda-diptych",
-        "gallery_key": "uganda",
-        "script": ROOT / "examples/uganda-diptych.robby",
-        "source": Path("/home/ubuntu/webdev-static-assets/robby-gallery/assets/MS201508-Uganda0016.webp"),
-        "obverse": Path("/home/ubuntu/webdev-static-assets/robby-gallery/output/uganda-diptych-obverse.png"),
-        "manifest": Path("/home/ubuntu/webdev-static-assets/robby-gallery/output/uganda-diptych-manifest.json"),
-    },
-]
-
 
 def digest(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
@@ -74,6 +32,19 @@ def gallery_script(key: str) -> str:
     if match is None:
         raise SystemExit(f"Missing gallery script literal for {key!r}")
     return match.group(1)
+
+
+def gallery_hashes(specimen_id: str) -> tuple[str, str]:
+    """Return the script and output checksums recorded for one gallery object."""
+    item_pattern = re.compile(rf'id: "{re.escape(specimen_id)}",(?P<item>.*?)(?=^  \{{|^\] as const;)', re.DOTALL | re.MULTILINE)
+    item = item_pattern.search(DEMO_DATA)
+    if item is None:
+        raise SystemExit(f"Missing gallery record for {specimen_id!r}")
+    script_match = re.search(r'scriptHash: "([0-9a-f]{64})"', item.group("item"))
+    output_match = re.search(r'outputHash: "([0-9a-f]{64})"', item.group("item"))
+    if script_match is None or output_match is None:
+        raise SystemExit(f"Missing gallery checksum fields for {specimen_id!r}")
+    return script_match.group(1), output_match.group(1)
 
 
 def write_report_atomically(path: Path, payload: dict[str, object]) -> None:
@@ -102,22 +73,24 @@ def write_report_atomically(path: Path, payload: dict[str, object]) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser(description="Verify Robby Build 04 integrity evidence.")
     parser.add_argument("--out", type=Path, required=True)
+    parser.add_argument("--asset-root", type=Path, default=DEFAULT_ASSET_ROOT, help="Root containing robby-demo/ and robby-gallery/ artifacts.")
     arguments = parser.parse_args()
 
     results: list[dict[str, object]] = []
     failures: list[str] = []
-    for specimen in SPECIMENS:
+    for specimen in resolve_gallery_artifacts(arguments.asset_root):
         script_hash = digest(specimen["script"])
         output_hash = digest(specimen["obverse"])
         native_script_bytes = specimen["script"].read_bytes()
         browser_script = gallery_script(specimen["gallery_key"])
         browser_script_bytes = browser_script.encode("utf-8")
         manifest = json.loads(specimen["manifest"].read_text(encoding="utf-8"))
+        gallery_script_hash, gallery_output_hash = gallery_hashes(specimen["id"])
         checks = {
             "manifest_script_hash_matches": manifest["script_sha256"] == script_hash,
             "manifest_obverse_hash_matches": manifest["outputs"]["obverse"]["sha256"] == output_hash,
-            "gallery_script_hash_matches": script_hash in DEMO_DATA,
-            "gallery_output_hash_matches": output_hash in DEMO_DATA,
+            "gallery_script_hash_matches": gallery_script_hash == script_hash,
+            "gallery_output_hash_matches": gallery_output_hash == output_hash,
             "browser_source_bytes_match": browser_script_bytes == native_script_bytes,
             "browser_source_hash_matches": hashlib.sha256(browser_script_bytes).hexdigest() == script_hash,
         }

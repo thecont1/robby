@@ -4,7 +4,7 @@
 
 > **Pipeline:** source script → AST → validation → JSON IR → image execution → obverse, reverse, manifest.
 
-> **Build 02:** `robby-compiler-v0.1.0` is a portable Rust crate. The same Rust lexer, parser, validator, and `robby-ir-v1` lowerer power the native CLI and the browser WebAssembly adapter. The compiler source is available on the [`dev/ananya` branch](https://github.com/thecont1/robby/tree/dev/ananya).
+> **Build 02:** `robby-compiler-v0.1.0` is a portable Rust crate. The same Rust lexer, parser, validator, and `robby-ir-v1` lowerer power the native CLI and the browser WebAssembly adapter. Download the compiler source as the [`main` branch archive](https://github.com/thecont1/robby/archive/refs/heads/main.zip).
 
 The v1 compiler keeps its grammar deliberately small. It is designed to make a photographic composition traceable, not to become a general-purpose graphics program.
 
@@ -20,7 +20,9 @@ The v1 compiler keeps its grammar deliberately small. It is designed to make a p
 | `src/main.rs` | Thin native `robby` CLI adapter. |
 | `executor/run.py` | Python/Pillow CPU executor, reverse renderers, palette analysis, and manifest writer. |
 | `examples/*.robby` | Valid and invalid scripts that exercise v1 language features. |
-| `client/` | Static React viewer for a generated composition and its process graph. |
+| `client/` | React gallery, Rust/WASM source workbench, and authenticated immutable-original intake. |
+| `server/originals.ts` | Protected raw-byte JPEG intake; it never decodes, transforms, or renames source bytes. |
+| `drizzle/schema.ts` | Metadata-only provenance records for managed original objects. |
 | `scripts/build-wasm.sh` | Rebuilds the deployable browser adapter from the Rust library. |
 
 ## Command language
@@ -81,9 +83,9 @@ uv run python executor/run.py \
 
 If a script requests two reverse modes, the executor writes `-provenance-map` and `-palette-grid` variants derived from the declared reverse filename. The manifest records each emitted path and SHA-256 checksum.
 
-## Run the viewer
+## Run the web application
 
-The React viewer is intentionally static: it displays a compiled library of image-objects and keeps the selected record’s process trace alongside the image stage.
+The web application displays a compiled library of image-objects and keeps the selected record’s process trace alongside the image stage. The browser compiler remains Rust/WASM; server capability is used only for authenticated original-file storage and metadata.
 
 ```bash
 pnpm dev
@@ -102,17 +104,22 @@ pnpm build
 
 The generated `client/src/wasm/` package is intentionally committed because it is the deployable adapter from the Rust source, not a parallel TypeScript implementation of Robby.
 
-## Build 03 signature layer
+## Authentic originals and credential-preserving storage
 
-Every active gallery specimen now exposes two distinct signatures. The **credential signature** is a conservative local scan of the original asset bytes for C2PA/JUMBF markers. The five supplied originals have no detected embedded marker, so the UI correctly reports `C2PA ABSENT`; it does not fabricate issuer, edit-history, or capture assertions. A future full C2PA validator is required before any asset can be labelled `C2PA VERIFIED`.
+Authentic source images are **user data, not repository files**. Store them through the web app’s **Authentic originals** intake or the Management UI File Storage panel. The intake accepts original JPEG byte streams only; it does not crop, resize, decode/re-encode, strip metadata, or rename the original basename. Each object is content-addressed by SHA-256 and an immutable metadata record stores its filename, byte length, storage key, and provenance status. The `gallery/` path is ignored intentionally.
 
-The **colour signature** is real pixel-derived data from the active compiled obverse: a SHA-256 fingerprint of raw RGB pixels, a SHA-256 fingerprint of its deterministic eight-colour palette, and the displayed palette itself. Regenerate the committed evidence record with:
+The active replacement originals have C2PA manifests. Robby records their source-byte SHA-256 values and surfaces a `C2PA PRESENT` badge, while retaining the local verifier warning that its signing credential is not trusted by the configured trust store. This is deliberately more conservative than claiming a fully trusted credential.
+
+The **colour signature** is real pixel-derived data from the active compiled obverse: a SHA-256 fingerprint of raw RGB pixels, a SHA-256 fingerprint of its deterministic eight-colour palette, and the displayed palette itself. Recompute the authentic-source gallery signature record with:
 
 ```bash
-uv run python scripts/derive_signatures.py --out docs/build-03-signatures.json
+uv run python scripts/derive_authentic_gallery_signatures.py \
+  --assets-root /path/to/immutable-originals \
+  --renders-root /path/to/rendered-derivatives \
+  --out /tmp/robby-authentic-signatures.json
 ```
 
-The source-byte audit, signature values, flip-state model, and verification notes are in [`docs/build-03-audit.md`](docs/build-03-audit.md) and [`docs/build-03-signatures.json`](docs/build-03-signatures.json). The C2PA absence state and the colour signature are real local data; no credential assertion in this build is stubbed.
+The source-byte audit, signature values, flip-state model, and verification notes remain available in the Build 03 records. No credential assertion in the gallery is stubbed.
 
 ## Known v1 boundaries
 

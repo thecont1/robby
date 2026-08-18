@@ -103,6 +103,9 @@ pub fn lex(source: &str) -> CompileResult<Vec<Token>> {
                         let Some(escaped) = characters.get(index + 1).copied() else {
                             return Err(CompilerError::at(line, "Unterminated escape sequence in string literal."));
                         };
+                        if escaped == '\n' {
+                            return Err(CompilerError::at(line, "Unterminated string literal."));
+                        }
                         value.push(match escaped {
                             'n' => '\n',
                             '\\' => '\\',

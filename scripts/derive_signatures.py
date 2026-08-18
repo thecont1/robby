@@ -21,35 +21,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from executor.run import kmeans_palette  # noqa: E402
-
-
-SPECIMENS = [
-    {
-        "id": "night-duality",
-        "source": Path("/home/ubuntu/webdev-static-assets/robby-demo/assets/night-street.jpg"),
-        "obverse": Path("/home/ubuntu/webdev-static-assets/robby-demo/output/night-obverse.png"),
-    },
-    {
-        "id": "ayodhya-mural",
-        "source": Path("/home/ubuntu/webdev-static-assets/robby-gallery/assets/MS202401-Ayodhya0041.webp"),
-        "obverse": Path("/home/ubuntu/webdev-static-assets/robby-gallery/output/ayodhya-mural-obverse.png"),
-    },
-    {
-        "id": "urban-fantasy",
-        "source": Path("/home/ubuntu/webdev-static-assets/robby-gallery/assets/_DSF0739-Enhanced-NR.webp"),
-        "obverse": Path("/home/ubuntu/webdev-static-assets/robby-gallery/output/urban-fantasy-obverse.png"),
-    },
-    {
-        "id": "murgeshpalya-passage",
-        "source": Path("/home/ubuntu/webdev-static-assets/robby-gallery/assets/MS201901-Murgeshpalya0018.webp"),
-        "obverse": Path("/home/ubuntu/webdev-static-assets/robby-gallery/output/murgeshpalya-passage-obverse.png"),
-    },
-    {
-        "id": "uganda-diptych",
-        "source": Path("/home/ubuntu/webdev-static-assets/robby-gallery/assets/MS201508-Uganda0016.webp"),
-        "obverse": Path("/home/ubuntu/webdev-static-assets/robby-gallery/output/uganda-diptych-obverse.png"),
-    },
-]
+from gallery_artifacts import DEFAULT_ASSET_ROOT, resolve_gallery_artifacts  # noqa: E402
 
 
 def sha256_bytes(value: bytes) -> str:
@@ -93,14 +65,15 @@ def colour_signature(obverse: Path) -> dict[str, object]:
 def main() -> None:
     parser = argparse.ArgumentParser(description="Derive Robby Build 03 signatures.")
     parser.add_argument("--out", type=Path, required=True, help="Destination JSON file.")
+    parser.add_argument("--asset-root", type=Path, default=DEFAULT_ASSET_ROOT, help="Root containing robby-demo/ and robby-gallery/ artifacts.")
     arguments = parser.parse_args()
 
     records: dict[str, object] = {}
-    for specimen in SPECIMENS:
+    for specimen in resolve_gallery_artifacts(arguments.asset_root):
         source = specimen["source"]
         obverse = specimen["obverse"]
         if not source.is_file() or not obverse.is_file():
-            raise SystemExit(f"Missing source or obverse for {specimen['id']}.")
+            raise SystemExit(f"Missing source or obverse for {specimen['id']} under {arguments.asset_root}. Pass --asset-root for your local artifact tree.")
         records[specimen["id"]] = {
             "credential_signature": credential_signature(source),
             "colour_signature": colour_signature(obverse),
