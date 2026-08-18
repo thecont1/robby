@@ -253,3 +253,9 @@
 
 - [x] Accept Rust compiler IR canvas dimensions emitted as null when a base-only script intentionally preserves the source image’s native size.
 - [x] Add regression coverage for native-dimension refreshed gallery IR through the live-render validator.
+
+## Stable subfooter tabs
+
+- [x] Keep the provenance subfooter’s overall height fixed while switching Object Provenance, Runtime Manifest, and Reverse Record tabs.
+- [x] Correct the Reverse Record triage-link cell alignment so its text stays within the shared panel geometry.
+- [x] Verify stationary tab-panel geometry on desktop and mobile.

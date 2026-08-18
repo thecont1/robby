@@ -35,3 +35,11 @@ The active gallery now starts with **Bipasha & Aashish** rather than the retired
 The live gallery control exposed `01 / 10` for Bipasha & Aashish and advanced successfully to the second refreshed specimen, Uganda diptych. The normal gallery slide remained available during this first refreshed navigation transition.
 
 The live server renderer accepted the fresh Bipasha & Aashish IR after its native-dimension compatibility fix, revalidated the immutable source SHA-256, and returned newly generated obverse, inverse, and manifest URLs with an HTTP `201` response.
+
+## Stable subfooter tabs — 2026-08-18
+
+At phone-width layout, the Object Provenance tab now occupies a fixed `338px` content box inside a `393px` provenance module. This establishes the shared baseline used for the Runtime Manifest and Reverse Record comparisons.
+
+The Runtime Manifest tab measured the same `338px` content box and `393px` outer module after activation, confirming that this tab no longer changes the subfooter’s layout footprint.
+
+Reverse Record preserved that same `338px` / `393px` mobile geometry. Its triage cell measured `70px` high, with the explanatory text ending one pixel above the cell boundary. At desktop width, the shared content box measured `158px`, the module measured `221px`, and the `92px` triage cell likewise kept its lower text one pixel inside the cell.
