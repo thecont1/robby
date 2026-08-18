@@ -206,6 +206,7 @@ export default function Home() {
           <img src="/manus-storage/robby-registration-mark_658aceee.png" alt="robby split registration disc" />
           <span className="brand-copy">
             <span className="brand-title">robby <span className="brand-slash">/</span> <span className="brand-suffix">v1</span></span>
+            <span className="brand-subtitle">The Reverse-Obverse Image Duality Compiler</span>
             <span className={`compile-status ${compilerState}`}>{compilerLabel}</span>
           </span>
         </a>
@@ -236,7 +237,7 @@ export default function Home() {
         </div>
         <div className="intro-note">
           <span className="note-rule" />
-          <p>Like a postcard or coin, <span className="product-name">robby</span> reveals one face at a time. The trace stays in view.</p>
+          <p>What if a digital image could be a two-sided image-object, like a post card or a coin?</p>
           <div className="intro-tools"><span className="mono text-[10px] tracking-[0.13em]">← → TO CYCLE · F TO FLIP</span></div>
         </div>
       </section>

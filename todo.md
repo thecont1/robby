@@ -133,3 +133,9 @@
 
 - [x] Remove the compact title-size control and its supporting state.
 - [x] Add accessible touch swipe navigation between gallery images in full-bleed artwork view.
+
+## Identity copy and evidence seam
+
+- [x] Add the requested product subtitle and secondary-header two-sided-image question.
+- [x] Increase the gap between image-library thumbnails and the live source section.
+- [x] Remove the live-source section’s right border so it attaches seamlessly to the compilation trace column.
