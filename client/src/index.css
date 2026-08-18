@@ -186,7 +186,22 @@
 .object-stage { container-type:inline-size; }
 .two-sided-object,
 .two-sided-object.four-three,
-.two-sided-object.three-two { aspect-ratio:auto; height:min(75cqi, 620px); }
+.two-sided-object.three-two { aspect-ratio:auto; height:min(82cqi, 690px); }
 @media (max-width:560px) { .two-sided-object,
   .two-sided-object.four-three,
-  .two-sided-object.three-two { height:min(75cqi, 360px); } }
+  .two-sided-object.three-two { height:min(82cqi, 390px); } }
+
+/* Sacred artwork stage: visual labels, frame marks, and the full-view action
+ * live outside the image bitmap. Gallery navigation slides the whole object;
+ * the inner turner alone continues to own the obverse/inverse card flip. */
+.artwork-stage-frame { margin:-12px; padding:12px; position:relative; }
+.artwork-stage-viewport { overflow:hidden; position:relative; }
+.stage-corner { border-color:rgba(28,26,25,.72); border-style:solid; height:11px; pointer-events:none; position:absolute; width:11px; z-index:1; }.stage-corner.top-left { border-width:1px 0 0 1px; left:1px; top:1px; }.stage-corner.top-right { border-width:1px 1px 0 0; right:1px; top:1px; }.stage-corner.bottom-left { border-width:0 0 1px 1px; bottom:1px; left:1px; }.stage-corner.bottom-right { border-width:0 1px 1px 0; bottom:1px; right:1px; }
+.stage-display-tools { align-items:center !important; display:flex; gap:9px !important; }.artwork-view-control { align-items:center; background:transparent; border:1px solid rgba(28,26,25,.4); color:#1c1a19; display:inline-flex; height:28px; justify-content:center; padding:0; transition:background-color .16s cubic-bezier(.23,1,.32,1),color .16s cubic-bezier(.23,1,.32,1),transform .16s cubic-bezier(.23,1,.32,1); width:28px; }.artwork-view-control:hover { background:#e3442f; border-color:#e3442f; color:#fff8e9; }.artwork-view-control:active { transform:scale(.97); }
+.two-sided-object { will-change:transform,opacity; }.two-sided-object.gallery-slide-out-forward { animation:gallery-slide-out-left 190ms cubic-bezier(.55,0,1,.45) both; }.two-sided-object.gallery-slide-out-backward { animation:gallery-slide-out-right 190ms cubic-bezier(.55,0,1,.45) both; }.two-sided-object.gallery-slide-in-forward { animation:gallery-slide-in-right 240ms cubic-bezier(.23,1,.32,1) both; }.two-sided-object.gallery-slide-in-backward { animation:gallery-slide-in-left 240ms cubic-bezier(.23,1,.32,1) both; }
+@keyframes gallery-slide-out-left { to { opacity:0; transform:translateX(-14%); } }@keyframes gallery-slide-out-right { to { opacity:0; transform:translateX(14%); } }@keyframes gallery-slide-in-right { from { opacity:0; transform:translateX(14%); } to { opacity:1; transform:translateX(0); } }@keyframes gallery-slide-in-left { from { opacity:0; transform:translateX(-14%); } to { opacity:1; transform:translateX(0); } }
+.artwork-view-frame { display:grid; grid-template-rows:minmax(0,1fr) auto; }.artwork-view-image-viewport { align-items:center; display:flex; justify-content:center; min-height:0; overflow:hidden; }.artwork-view-image-viewport img { display:block; height:100%; max-height:100%; max-width:100%; object-fit:contain; width:100%; }.artwork-view-controls { align-items:center; border-top:1px solid rgba(244,239,225,.32); display:flex; justify-content:space-between; min-height:46px; padding-top:9px; }.artwork-view-meta { bottom:auto; left:auto; position:static; right:auto; }.artwork-view-frame > .artwork-view-controls > button { position:static; flex:0 0 auto; }
+.dark .stage-corner,.dark .artwork-view-control { border-color:#e3442f; }.dark .artwork-view-control { color:#f7efe0; }.dark .artwork-view-control:hover { background:#e3442f; color:#000; }.dark .artwork-view-controls { border-top-color:#e3442f; }
+.image-only .stage-metadata { pointer-events:none; visibility:hidden; }
+@media (max-width:560px) { .stage-display-tools { align-items:center !important; width:100%; }.artwork-view-controls { align-items:flex-start; gap:12px; }.artwork-view-meta { display:flex; flex-direction:column; gap:4px; line-height:1.3; }.artwork-view-frame > .artwork-view-controls > button { height:34px; width:34px; } }
+@media (prefers-reduced-motion:reduce) { .two-sided-object.gallery-slide-out-forward,.two-sided-object.gallery-slide-out-backward,.two-sided-object.gallery-slide-in-forward,.two-sided-object.gallery-slide-in-backward { animation:none; } }

@@ -221,3 +221,11 @@
 ## Stable stage mobile interaction check
 
 - [x] Measure the mobile image-window height and Next-control position before and after cycling across specimens.
+
+## Sacred artwork stage and transition
+
+- [x] Remove all artificial interface pixels, controls, and indicators from on-image positions.
+- [x] Move the full-bleed action and face/registration indicators into neutral space around the artwork.
+- [x] Increase the stable image viewing-window height without moving navigation controls between specimens.
+- [x] Add a reduced-motion-safe directional slide transition when the selected image changes, distinct from the 3D face-turn.
+- [x] Verify overlay-free artwork, stable controls, and slide/flip behavior on desktop and mobile.
