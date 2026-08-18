@@ -214,3 +214,11 @@
 /* The stable viewing window preserves controls, not a black matte. Any unused
  * contain area is intentionally transparent, revealing the active page ground. */
 .two-sided-object,.object-face,.object-face-inverse { background:transparent; box-shadow:none; }.object-face .object-image,.object-face-inverse .object-image { background:transparent; }
+
+/* Dark mode must preserve the same transparent image containment; its black
+ * background belongs to the page itself, never to a letterbox behind the work. */
+.dark .two-sided-object,.dark .object-face,.dark .object-face-inverse,.dark .object-face .object-image,.dark .object-face-inverse .object-image { background:transparent; box-shadow:none; }
+
+/* The physical object controls share one line: metadata / turn / navigation. */
+.stage-caption { display:block; padding:10px 0 12px; }.stage-control-row { align-items:center; display:grid; grid-template-columns:minmax(0,1fr) auto minmax(0,1fr); width:100%; }.stage-control-row .stage-metadata { grid-column:1; justify-content:flex-start; padding:0; }.stage-control-row .caption-turn { grid-column:2; justify-self:center; }.stage-control-row .caption-navigation { grid-column:3; justify-self:end; }.stage-display-tools { gap:7px !important; }.stage-face-record { align-items:baseline; display:inline-flex; gap:6px; white-space:nowrap; }.stage-control-row .navigation-current { color:#e3442f; font-size:10px; font-weight:700; letter-spacing:.14em; }.dark .stage-control-row .navigation-current { color:#e3442f; }
+@media (max-width:560px) { .stage-caption { padding:10px 0 12px; }.stage-control-row { grid-template-columns:minmax(0,1fr) auto; row-gap:8px; }.stage-control-row .stage-metadata { grid-column:1; grid-row:1; min-width:0; }.stage-control-row .caption-turn { grid-column:2; grid-row:1; }.stage-control-row .caption-navigation { grid-column:1 / -1; grid-row:2; justify-self:stretch; }.stage-control-row .object-navigation { justify-content:space-between; width:100%; }.stage-control-row .stage-display-tools { min-width:0; }.stage-control-row .stage-face-record { gap:4px; overflow:hidden; text-overflow:ellipsis; }.stage-control-row .stage-dimensions { font-size:8px; } }

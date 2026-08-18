@@ -57,3 +57,9 @@ The stable-stage surface was changed from a black matte to a transparent surface
 The live 3:2 Uganda selection reported transparent computed backgrounds for both the fixed stage and active image face (`rgba(0, 0, 0, 0)`). It remains wholly within the `841.12 × 689.72px` desktop stage, retaining `object-fit: contain` behavior without a separate matte surface.
 
 The desktop 4:3 visual review confirms that the fixed stage’s unused vertical space now reveals the archival paper background; no black top, bottom, left, or right bars remain around the image.
+
+## Dark-stage transparency and unified controls — 2026-08-18
+
+The light-mode desktop view now presents one artwork-control row: expand plus `OBVERSE · dimensions` at left, the face-turn centered, and Previous / orange mono serial / Next at right. The superseded standalone metadata strip is absent.
+
+The responsive phone layout retains these three groups within the same control container: metadata and the face-turn share the first line when space is constrained, while Previous / orange serial / Next remain an undisturbed navigation line immediately below. The final stylesheet adds a later, explicit dark-mode transparency rule for the stage, both faces, and both image selectors, overriding the prior black dark-mode face background.

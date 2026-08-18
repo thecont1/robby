@@ -273,3 +273,10 @@
 - [x] Remove black letterbox surfaces from the obverse and inverse faces while retaining full-image containment.
 - [x] Make unused stable-stage area resolve to the archival page background for portrait and landscape specimens.
 - [x] Verify representative 4:3 and 3:2 images on desktop and mobile without clipping or black bars.
+
+## Dark-stage transparency and unified control row
+
+- [x] Remove any remaining dark-mode black letterbox surface from the stable viewing window and image faces.
+- [x] Place the expand control before the obverse/dimensions metadata, the face-turn at center, and Previous/Next with orange serial on one desktop control row.
+- [x] Preserve an accessible responsive arrangement when the three control groups no longer fit on a phone-width row.
+- [x] Verify light/dark face containment and control placement on desktop and mobile.
