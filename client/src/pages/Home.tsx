@@ -6,6 +6,13 @@
  */
 
 import SourceEditor from "@/components/SourceEditor";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useTheme } from "@/contexts/ThemeContext";
 import { gallery, type TraceStep } from "@/lib/demoData";
 import { compileWithRust, rustCompilerVersion, type RobbyIr } from "@/lib/robbyCompiler";
@@ -22,12 +29,10 @@ import {
   FlipHorizontal2,
   RotateCcw,
   LockKeyhole,
+  Menu,
   ShieldCheck,
   ShieldX,
   Sparkles,
-  Moon,
-  Scan,
-  Sun,
 } from "lucide-react";
 import { Link } from "wouter";
 import { useEffect, useState } from "react";
@@ -164,27 +169,29 @@ export default function Home() {
       <header className="site-header" inert={imageOnly}>
         <a className="brand-lockup" href="#gallery" aria-label="robby gallery">
           <img src="/manus-storage/robby-registration-mark_658aceee.png" alt="robby split registration disc" />
-          <span>robby<span className="brand-suffix">/ v1</span></span>
+          <span className="brand-copy">
+            <span className="brand-title">robby <span className="brand-slash">/</span> <span className="brand-suffix">v1</span></span>
+            <span className={`compile-status ${compilerState}`}>{compilerLabel}</span>
+          </span>
         </a>
-        <div className="header-center">
-          <span className="header-kicker">Explainable visual composition compiler</span>
-          <span className="header-dot" />
-          <span className="mono text-[10px] tracking-[0.14em]">GALLERY · 05 OBJECTS</span>
-        </div>
-        <div className="header-actions">
-          <Link className="manual-link" href="/manual"><BookOpen size={13} strokeWidth={2.5} /> LANGUAGE MANUAL</Link>
-          <Link className="source-download" href="/originals"><LockKeyhole size={13} strokeWidth={2.5} /> AUTHENTIC ORIGINALS</Link>
-          <a className="source-download" href="https://github.com/thecont1/robby/archive/refs/heads/main.zip" target="_blank" rel="noreferrer">
-            <Download size={13} strokeWidth={2.5} /> DOWNLOAD RUST SOURCE
-          </a>
-          <button type="button" className="feature-control" onClick={toggleTheme} aria-label={themeControlLabel(theme)} aria-pressed={theme === "dark"} title={themeControlLabel(theme)}>
-            {theme === "dark" ? <Sun size={13} strokeWidth={2.4} /> : <Moon size={13} strokeWidth={2.4} />}
-            <span>{theme === "dark" ? "LIGHT MODE" : "DARK MODE"}</span>
+        <div className="header-actions header-toolset">
+          <button type="button" className="feature-control icon-control" onClick={toggleTheme} aria-label={themeControlLabel(theme)} aria-pressed={theme === "dark"} title={themeControlLabel(theme)}>
+            <img src={theme === "light" ? "/manus-storage/thin-sunglasses_23303233.svg" : "/manus-storage/regular-sunglasses_28c9e1cf.svg"} alt="" />
           </button>
-          <button type="button" className="feature-control image-only-toggle" onClick={() => setImageOnly((current) => !current)} aria-pressed={imageOnly} aria-label="Enable image-only concentration mode" title="Image-only concentration mode. Press Escape to return.">
-            <Scan size={13} strokeWidth={2.4} /> <span>IMAGE ONLY</span>
+          <button type="button" className="feature-control icon-control image-only-toggle" onClick={() => setImageOnly((current) => !current)} aria-pressed={imageOnly} aria-label={imageOnly ? "Restore interface text" : "Enable image-only concentration mode"} title="Image-only concentration mode. Press Escape to return.">
+            <img src={imageOnly ? "/manus-storage/text-hidden_1b455537.svg" : "/manus-storage/text-visible_5e9d8f58.svg"} alt="" />
           </button>
-          <div className={`compile-status ${compilerState}`}><Check size={13} strokeWidth={3} /> {compilerLabel}</div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button type="button" className="menu-control" aria-label="Open site menu" title="Site menu"><Menu size={18} strokeWidth={2.2} /></button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="robby-menu-content">
+              <DropdownMenuItem asChild><Link href="/manual"><BookOpen size={14} /> Language manual</Link></DropdownMenuItem>
+              <DropdownMenuItem asChild><Link href="/originals"><LockKeyhole size={14} /> Authentic originals</Link></DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem asChild><a href="https://github.com/thecont1/robby/archive/refs/heads/main.zip" target="_blank" rel="noreferrer"><Download size={14} /> Download Rust source</a></DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </header>
 
@@ -192,7 +199,7 @@ export default function Home() {
         <div className="intro-index" aria-hidden="true"><span>01</span><span>—</span><span>GALLERY</span></div>
         <div className="intro-copy">
           <p className="eyebrow">Obverse / inverse image library</p>
-          <h1>One object.<br />One face <em>at a time.</em></h1>
+          <h1>Explainable visual<br /><em>composition compiler.</em></h1>
         </div>
         <div className="intro-note">
           <span className="note-rule" />

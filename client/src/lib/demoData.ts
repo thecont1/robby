@@ -57,14 +57,10 @@ const paletteTrace = (source: string, dimensions: string): readonly TraceStep[] 
 ];
 
 const galleryScripts = {
-  night: String.raw`# A one-layer composition using the supplied street photograph as its base.
+  night: String.raw`# A base-image study using the supplied authenticated street photograph.
 base("IMG_20210916_185510.jpg", width: 1440, height: 1080)
 
-cutout(source: "courier.png", mask: "person", id: "courier")
-place(cutout: "courier", x: 0.72, y: 0.64, scale: 0.92, rotation: -2, opacity: 0.96, blend: "normal")
-
 palette(k: 8)
-reverse(mode: "provenance-map")
 reverse(mode: "palette-grid", k: 8)
 
 output(obverse: "night-obverse.png", reverse: "night-reverse.png", manifest: "night-manifest.json")
@@ -121,29 +117,23 @@ export const gallery: readonly GalleryItem[] = [
     id: "night-duality",
     serial: "01 / 05",
     title: "Night duality",
-    subtitle: "Street image / composite study",
+    subtitle: "Street image / source study",
     date: "2021",
     source: "IMG_20210916_185510.jpg",
     dimensions: "1440 × 1080",
     ratio: "four-three",
-    obverse: "/manus-storage/night-obverse_3cc9652f.png",
-    reverse: "/manus-storage/night-reverse_704fbdd1.png",
-    reverseMode: "provenance-map",
-    reverseKind: "Provenance map",
-    reverseDescription: "A spatial contribution map: vermilion identifies the placed courier layer.",
-    scriptHash: "365294f8130727987c35fca286cc84789c617e3ddf5c884e1990eeeecc37f4b5",
-    outputHash: "6c103e573eff762ea5138e766f27901b955ca8f3ca500b787c95f44193264327",
-    palette: ["#423F47", "#6899E6", "#C0A8DD", "#7B787C", "#14151B", "#ABAFA9", "#DAE0E6", "#3B56C5"],
+    obverse: "/manus-storage/night-obverse_4f48d3ec.png",
+    reverse: "/manus-storage/night-reverse_02883489.png",
+    reverseMode: "palette-grid",
+    reverseKind: "Palette plate",
+    reverseDescription: "Eight calculated colour clusters form an audit plate from the authentic street-image source.",
+    scriptHash: "83b4ea166c34241cd23591f9f654ab83493b47fec8df94bf78a3a489afbfa14a",
+    outputHash: "912acbcdd675ba943c850bf9c2fb3bcdb831eae28e6148a1d152d4760e026cc3",
+    palette: ["#3B3740", "#938691", "#101016", "#6D8FE5", "#B9AEC2", "#656360", "#D8D3E9", "#3A4DB3"],
     script: galleryScripts.night,
     credentialSignature: presentCredential("a30fed1f8409c20224935861f158b40b05552bf3b932e264bb262549704843bb", "lightroom_classic/15.3.1"),
-    colourSignature: colourSignature("5d3a0e2864b357816e94c417e40a67901ca524f201dd7b9aa5eb724f2b7f12e0", "60f7f329e81c9ca559e407a36c8efb39a756d02c7cd19ecd253213e4f32fb9c8"),
-    trace: [
-      { stage: "01", label: "Base canvas", code: 'base("IMG_20210916_185510.jpg")', detail: "1440 × 1080 · source checksum recorded" },
-      { stage: "02", label: "Extract subject", code: 'cutout(mask: "person")', detail: "courier.png · auto-foreground mask" },
-      { stage: "03", label: "Place layer", code: "place(x: .72, y: .64)", detail: "normal blend · 0.92 scale · −2° rotation", color: "#E3442F" },
-      { stage: "04", label: "Render inverse", code: 'reverse("provenance-map")', detail: "spatial contribution audit" },
-      { stage: "05", label: "Write manifest", code: "output(…manifest.json)", detail: "process graph and output checksums recorded" },
-    ],
+    colourSignature: colourSignature("23efb748c347316e62b3c65c42bd52938fd81ef2c9ec0d7b8fa0f6f2fcaef808", "a07bef30e4df2ae81852757e39e3a8ca1e4e3bc6999783d0f747edae2b9f8f8c"),
+    trace: paletteTrace("IMG_20210916_185510.jpg", "1440 × 1080"),
   },
   {
     id: "ayodhya-mural",

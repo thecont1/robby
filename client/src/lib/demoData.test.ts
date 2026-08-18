@@ -31,4 +31,12 @@ describe("authentic-source gallery records", () => {
       expect(specimen?.obverse).not.toBe(specimen?.reverse);
     }
   });
+
+  it("keeps Night duality as a base-only study after removing the duplicate full-scene layer", () => {
+    const night = gallery.find(item => item.id === "night-duality");
+    expect(night?.script).not.toContain("courier.png");
+    expect(night?.script).not.toContain("cutout(");
+    expect(night?.script).not.toContain("place(");
+    expect(night?.reverseMode).toBe("palette-grid");
+  });
 });

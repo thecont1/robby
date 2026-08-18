@@ -55,7 +55,7 @@ def main() -> None:
         "uganda-diptych": ("MS201508-Uganda0016.jpg", "uganda-diptych-obverse.png"),
     }
     records = {
-        specimen: signature(arguments.assets_root / source, arguments.renders_root / specimen / output)
+        specimen: signature(arguments.assets_root / source, arguments.renders_root / output)
         for specimen, (source, output) in mapping.items()
     }
     arguments.out.write_text(json.dumps(records, indent=2) + "\n", encoding="utf-8")
