@@ -267,3 +267,9 @@
 - [x] Move compilation-trace tabs left, remove the orange rule above step 01, and increase trace-card spacing and text size slightly.
 - [x] Replace the under-image selected-object line with `OBVERSE · dimensions`, center the face-turn control, and place Previous/Next plus the mono serial at bottom-right.
 - [x] Verify compact desktop and mobile layout, horizontal thumbnail scroll, navigation, and preserved trace readability.
+
+## Background-only artwork stage
+
+- [x] Remove black letterbox surfaces from the obverse and inverse faces while retaining full-image containment.
+- [x] Make unused stable-stage area resolve to the archival page background for portrait and landscape specimens.
+- [x] Verify representative 4:3 and 3:2 images on desktop and mobile without clipping or black bars.

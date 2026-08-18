@@ -49,3 +49,11 @@ Reverse Record preserved that same `338px` / `393px` mobile geometry. Its triage
 Desktop inspection confirms that the compilation trace tabs now begin nearer the trace’s left edge, leave breathing room after `Failure`, and no longer show the former vermilion rule before step 01. The trace cards use larger type with expanded internal spacing, while signature evidence follows the final evidence step rather than appearing beneath the artwork.
 
 The refreshed desktop gallery now renders six thumbnail crops in one horizontal scrollable strip rather than two rows, with the compact face/dimensions line, centered face-turn control, and mono Previous/Next serial in place. Mobile retains the same single-row thumbnail strip and trace hierarchy; a final CSS adjustment is reserved for the narrow metadata line so its dimensions cannot wrap.
+
+## Background-only artwork stage — 2026-08-18
+
+The stable-stage surface was changed from a black matte to a transparent surface, so its unused contain area inherits the active archival page ground. The verification run is checking the initial 4:3 image alongside the 3:2 Uganda specimen, which exercises the contrasting fit-height geometry.
+
+The live 3:2 Uganda selection reported transparent computed backgrounds for both the fixed stage and active image face (`rgba(0, 0, 0, 0)`). It remains wholly within the `841.12 × 689.72px` desktop stage, retaining `object-fit: contain` behavior without a separate matte surface.
+
+The desktop 4:3 visual review confirms that the fixed stage’s unused vertical space now reveals the archival paper background; no black top, bottom, left, or right bars remain around the image.
