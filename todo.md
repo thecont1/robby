@@ -113,3 +113,8 @@
 - [x] Apply the requested orange/black word treatment, remove redundant secondary-header labels, and reduce its height.
 - [x] Preserve the primary header in image-only mode and maintain visible contrast for active visual-mode controls.
 - [x] Increase hamburger-menu content size while retaining accessible navigation.
+
+## Gallery controls and evidence composition
+
+- [x] Move flip and previous/next controls directly beneath the image, eliminating the separate navigation bar.
+- [x] Join the live-source editor visually with the compilation trace as one reverse-L evidence object.

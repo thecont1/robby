@@ -240,6 +240,18 @@ export default function Home() {
             <span className="face-corner top-left" /><span className="face-corner top-right" /><span className="face-corner bottom-left" /><span className="face-corner bottom-right" />
           </div>
 
+          <div className="object-controls">
+            <button type="button" className="flip-control" onClick={turnOver} disabled={isFlipping} aria-label={face === "inverse" ? `Return ${selected.title} to its obverse` : `Flip ${selected.title} to its inverse`}>
+              {face === "inverse" ? <RotateCcw size={18} /> : <FlipHorizontal2 size={18} />}
+              <span>{isFlipping ? "Turning object" : face === "inverse" ? "Return to obverse" : "Turn to inverse"}</span>
+              <small>F</small>
+            </button>
+            <div className="object-navigation">
+              <button type="button" onClick={() => selectImage(selectedIndex - 1)} disabled={isFlipping} aria-label="Previous image"><ChevronLeft size={17} /> Previous</button>
+              <button type="button" onClick={() => selectImage(selectedIndex + 1)} disabled={isFlipping} aria-label="Next image">Next <ChevronRight size={17} /></button>
+            </div>
+          </div>
+
           <div className="stage-caption">
             <div className="caption-record" inert={imageOnly}>
               <p className="caption-face">{face === "inverse" ? selected.reverseKind : "Obverse"}</p>
@@ -278,17 +290,6 @@ export default function Home() {
               <p className="signature-tension">One signature is cryptographic. One is visual. Only one is human-readable.</p>
               {liveIr && <p className="static-artifact-note">STATIC ARTIFACT · RENDER PENDING — the live Rust IR changes this trace and manifest target; bitmap faces remain the selected pre-rendered specimen.</p>}
             </div>
-            <button type="button" className="flip-control" onClick={turnOver} disabled={isFlipping} aria-label={face === "inverse" ? `Return ${selected.title} to its obverse` : `Flip ${selected.title} to its inverse`}>
-              {face === "inverse" ? <RotateCcw size={18} /> : <FlipHorizontal2 size={18} />}
-              <span>{isFlipping ? "Turning object" : face === "inverse" ? "Return to obverse" : "Turn to inverse"}</span>
-              <small>F</small>
-            </button>
-          </div>
-
-          <div className="stage-navigation">
-            <button type="button" onClick={() => selectImage(selectedIndex - 1)} disabled={isFlipping} aria-label="Previous image"><ChevronLeft size={17} /> Previous</button>
-            <span className="navigation-current">{selected.serial}</span>
-            <button type="button" onClick={() => selectImage(selectedIndex + 1)} disabled={isFlipping} aria-label="Next image">Next <ChevronRight size={17} /></button>
           </div>
 
           <nav className="bottom-filmstrip" aria-label="Gallery navigation" inert={imageOnly}>
@@ -312,18 +313,6 @@ export default function Home() {
             </ol>
           </nav>
 
-          <div className="source-workbench-wrap" inert={imageOnly}>
-            <SourceEditor
-              specimenId={selected.id}
-              title={selected.title}
-              source={selected.script}
-              onCompiled={applyCompiledSource}
-              onCompileStart={clearLiveProjection}
-              onCompileError={markProjectionUnavailable}
-              onDraftChange={markDraftProjectionUnavailable}
-              onReset={resetLiveProjection}
-            />
-          </div>
         </section>
 
         <aside className="trace-panel" aria-label={`Compilation trace for ${selected.title}`} inert={imageOnly}>
@@ -379,6 +368,18 @@ export default function Home() {
             )}
           </div>
         </aside>
+        <div className="source-workbench-wrap" inert={imageOnly}>
+          <SourceEditor
+            specimenId={selected.id}
+            title={selected.title}
+            source={selected.script}
+            onCompiled={applyCompiledSource}
+            onCompileStart={clearLiveProjection}
+            onCompileError={markProjectionUnavailable}
+            onDraftChange={markDraftProjectionUnavailable}
+            onReset={resetLiveProjection}
+          />
+        </div>
       </section>
 
       <section className="manifest-strip" aria-label="Gallery manifest record" inert={imageOnly}>
