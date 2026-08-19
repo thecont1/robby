@@ -232,6 +232,23 @@
 .provenance-module { padding-top:9px; }.provenance-tablist { gap:9px; margin-bottom:-4px; position:relative; z-index:1; }.provenance-tablist button { align-items:center; display:inline-flex; gap:8px; justify-content:center; min-width:176px; padding:0 20px; }.provenance-tablist button:first-child { padding-left:20px; }.provenance-tablist button svg { flex:0 0 auto; }.provenance-tablist button.active { box-shadow:inset 0 0 0 4px #1c1a19; }.dark .provenance-tablist button.active { box-shadow:inset 0 0 0 4px #e3442f; }.provenance-content { height:158px; min-height:158px; margin-top:0; padding:17px 19px; }.record-grid { grid-auto-rows:124px; }.record-field { height:124px; }.record-field > button { gap:9px; min-height:124px; padding:17px; }.record-field > button > span:first-child { font-size:8px; }.record-field > button b { font-size:11px; line-height:1.38; }.reverse-jump > button { min-height:72px; }.reverse-jump p { font-size:9px; line-height:1.35; padding:0 17px 13px; }
 @media (max-width:790px) { .provenance-module { padding-top:8px; }.provenance-tablist { gap:6px; margin-bottom:-3px; }.provenance-tablist button { gap:6px; min-width:136px; padding:0 13px; }.provenance-tablist button:first-child { padding-left:13px; }.provenance-content { height:338px; min-height:338px; margin-top:0; padding:14px; }.record-grid { grid-auto-rows:76px; }.record-field,.record-field:nth-child(2n) { height:76px; }.record-field > button { gap:6px; min-height:76px; padding:10px 13px; }.record-field > button > span:first-child { font-size:8px; }.record-field > button b { font-size:10px; }.reverse-jump > button { min-height:47px; }.reverse-jump p { font-size:8px; padding:0 13px 7px; } }
 
+/* Credential provenance uses the same fixed-height record rhythm as the other
+ * tabs. Flatten both lists so source and credential evidence share one row. */
+.provenance-records { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); }
+.provenance-records > dl { display:contents; }
+.provenance-records > dl > div { border-right:1px solid rgba(244,239,225,.16); min-width:0; padding:13px; }
+.provenance-records > dl:last-child > div:last-child { border-right:0; }
+.provenance-records dt { color:#a89e91; font-family:"DM Mono",ui-monospace,monospace; font-size:7px; font-weight:700; letter-spacing:.1em; }
+.provenance-records dd { font-family:"DM Mono",ui-monospace,monospace; font-size:9px; line-height:1.32; margin:7px 0 0; overflow-wrap:anywhere; }
+.provenance-records dd strong { font-weight:700; }
+.provenance-records .c2pa-badge { height:18px; margin-top:7px; width:auto; }
+@media (max-width:790px) {
+  .provenance-records { grid-template-columns:1fr; }
+  .provenance-records > dl { display:block; }
+  .provenance-records > dl > div { border-bottom:1px solid rgba(244,239,225,.16); border-right:0; padding:8px 10px; }
+  .provenance-content:has(.provenance-records) { height:auto; min-height:338px; overflow:visible; }
+}
+
 /* C2PA Content Credentials badge — sits directly in the record field */
 .provenance-module .record-field .c2pa-badge { 
   align-self: flex-start; 
