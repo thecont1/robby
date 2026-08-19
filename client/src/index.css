@@ -249,7 +249,7 @@
   opacity: 1; 
   pointer-events: none; 
   width: auto; } 
-.provenance-module .record-field .c2pa-badge + b .credential-status { 
+.provenance-module .record-field .credential-status { 
   display: block; 
   color: #ffffff;
   font-family: Helvetica, Arial, sans-serif; 
@@ -258,8 +258,9 @@
   transform: scaleX(1.05);
   line-height: 1.1;
   letter-spacing: 0.25px;
-  margin: -12px 0 0 32px; 
-  text-transform: lowercase; }
+  text-transform: lowercase; } 
+.provenance-module .record-field .c2pa-badge + b .credential-status { 
+  margin: -12px 0 0 32px; }
 
 /* Trace tab intros and larger reading text to match the Evidence/Pedagogic tabs */
 .trace-tab-intro { color: #d8cebc; font-family: "DM Mono", ui-monospace, monospace; font-size: 11px; line-height: 1.45; margin: 0 0 14px 0; }
