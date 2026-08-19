@@ -1,8 +1,10 @@
 import crypto from "node:crypto";
 import express, { type Express } from "express";
 import { Reader } from "@contentauth/c2pa-node";
-import { getLiveRenderSource } from "./liveRenderCatalog";
-import { storageGetSignedUrl } from "./storage";
+import { existsSync, readFileSync } from "node:fs";
+import { join, resolve } from "node:path";
+
+const GALLERY_DIR = resolve(process.cwd(), "gallery");
 
 const CACHE_TTL_MS = 5 * 60 * 1000;
 
@@ -24,7 +26,7 @@ export type C2paReaderSummary = {
 };
 
 const cache = new Map<string, { expiresAt: number; result: C2paCredentialInspection }>();
-const verificationMethod = "Official CAI C2PA Node SDK validation of exact managed JPEG bytes";
+const verificationMethod = "Official CAI C2PA Node SDK validation of exact local JPEG bytes";
 
 function noticeText(notices: ValidationNotice[] | null | undefined) {
   return (notices ?? [])
@@ -68,25 +70,18 @@ export function credentialFromReaderSummary(
 }
 
 export async function inspectGalleryCredential(sourceName: string): Promise<C2paCredentialInspection> {
-  const source = getLiveRenderSource(sourceName);
-  if (!source) throw new Error(`Unknown immutable gallery source: ${sourceName}`);
+  const filePath = join(GALLERY_DIR, sourceName);
+  if (!existsSync(filePath)) throw new Error(`Gallery file not found: ${sourceName}`);
 
   const cached = cache.get(sourceName);
   if (cached && cached.expiresAt > Date.now()) return cached.result;
 
-  const signedUrl = await storageGetSignedUrl(source.storageKey);
-  const response = await fetch(signedUrl);
-  if (!response.ok) throw new Error(`Unable to retrieve immutable source (${response.status})`);
-
-  const bytes = Buffer.from(await response.arrayBuffer());
-  const actualSha256 = crypto.createHash("sha256").update(bytes).digest("hex");
-  if (actualSha256 !== source.sha256) {
-    throw new Error("Immutable source checksum mismatch during C2PA inspection");
-  }
+  const bytes = readFileSync(filePath);
+  const sourceSha256 = crypto.createHash("sha256").update(bytes).digest("hex");
 
   const reader = await Reader.fromAsset({ buffer: bytes, mimeType: "image/jpeg" });
   const manifestStore = reader?.json();
-  const result = credentialFromReaderSummary(source.sha256, {
+  const result = credentialFromReaderSummary(sourceSha256, {
     embedded: Boolean(reader?.isEmbedded()),
     active: reader?.getActive(),
     validationState: manifestStore?.validation_state,
@@ -99,8 +94,14 @@ export async function inspectGalleryCredential(sourceName: string): Promise<C2pa
 export function createC2paInspectionHandler() {
   return async (req: express.Request, res: express.Response) => {
     const source = req.params.source;
-    if (!source || !getLiveRenderSource(source)) {
-      res.status(404).json({ error: "Unknown immutable gallery source" });
+    if (!source) {
+      res.status(400).json({ error: "Missing source filename" });
+      return;
+    }
+
+    const filePath = join(GALLERY_DIR, source);
+    if (!existsSync(filePath)) {
+      res.status(404).json({ error: "Gallery file not found" });
       return;
     }
 
