@@ -1,8 +1,8 @@
 import crypto from "node:crypto";
 import express, { type Express } from "express";
 import { Reader } from "@contentauth/c2pa-node";
-import { existsSync, readFileSync } from "node:fs";
-import { join, resolve } from "node:path";
+import { existsSync, readFileSync, statSync } from "node:fs";
+import { basename, join, resolve } from "node:path";
 
 const GALLERY_DIR = resolve(process.cwd(), "gallery");
 
@@ -25,8 +25,20 @@ export type C2paReaderSummary = {
   validationStatus?: ValidationNotice[] | null;
 };
 
-const cache = new Map<string, { expiresAt: number; result: C2paCredentialInspection }>();
+const cache = new Map<string, { expiresAt: number; mtimeMs: number; size: number; result: C2paCredentialInspection }>();
 const verificationMethod = "Official CAI C2PA Node SDK validation of exact local JPEG bytes";
+
+/** Validate that sourceName is a single flat JPEG filename — no path separators, no traversal, no non-JPEG names. */
+function validateSourceName(sourceName: string): string {
+  if (!sourceName || sourceName.includes("/") || sourceName.includes("\\") || sourceName.includes("..")) {
+    throw new Error("Invalid source filename");
+  }
+  const name = basename(sourceName);
+  if (!/\.(jpg|jpeg)$/i.test(name)) {
+    throw new Error("Source must be a JPEG filename");
+  }
+  return name;
+}
 
 function noticeText(notices: ValidationNotice[] | null | undefined) {
   return (notices ?? [])
@@ -44,7 +56,7 @@ export function credentialFromReaderSummary(
       status: "absent",
       sourceSha256,
       verificationMethod,
-      note: "The official C2PA reader examined the exact managed JPEG bytes and found no embedded or resolvable active C2PA manifest.",
+      note: "The official C2PA reader examined the exact local JPEG bytes and found no embedded or resolvable active C2PA manifest.",
     };
   }
 
@@ -64,17 +76,21 @@ export function credentialFromReaderSummary(
     status: "present",
     sourceSha256,
     verificationMethod,
-    note: `An embedded C2PA manifest was parsed from the exact managed JPEG bytes. Validation state: ${summary.validationState ?? "not reported"}.${suffix}`,
+    note: `An embedded C2PA manifest was parsed from the exact local JPEG bytes. Validation state: ${summary.validationState ?? "not reported"}.${suffix}`,
     claimGenerator: summary.active.claim_generator ?? undefined,
   };
 }
 
 export async function inspectGalleryCredential(sourceName: string): Promise<C2paCredentialInspection> {
-  const filePath = join(GALLERY_DIR, sourceName);
-  if (!existsSync(filePath)) throw new Error(`Gallery file not found: ${sourceName}`);
+  const safeName = validateSourceName(sourceName);
+  const filePath = join(GALLERY_DIR, safeName);
+  if (!existsSync(filePath)) throw new Error(`Gallery file not found: ${safeName}`);
 
-  const cached = cache.get(sourceName);
-  if (cached && cached.expiresAt > Date.now()) return cached.result;
+  const stat = statSync(filePath);
+  const cached = cache.get(safeName);
+  if (cached && cached.expiresAt > Date.now() && cached.mtimeMs === stat.mtimeMs && cached.size === stat.size) {
+    return cached.result;
+  }
 
   const bytes = readFileSync(filePath);
   const sourceSha256 = crypto.createHash("sha256").update(bytes).digest("hex");
@@ -87,7 +103,7 @@ export async function inspectGalleryCredential(sourceName: string): Promise<C2pa
     validationState: manifestStore?.validation_state,
     validationStatus: manifestStore?.validation_status,
   });
-  cache.set(sourceName, { expiresAt: Date.now() + CACHE_TTL_MS, result });
+  cache.set(safeName, { expiresAt: Date.now() + CACHE_TTL_MS, mtimeMs: stat.mtimeMs, size: stat.size, result });
   return result;
 }
 
@@ -99,14 +115,22 @@ export function createC2paInspectionHandler() {
       return;
     }
 
-    const filePath = join(GALLERY_DIR, source);
+    let safeName: string;
+    try {
+      safeName = validateSourceName(source);
+    } catch {
+      res.status(400).json({ error: "Invalid source filename" });
+      return;
+    }
+
+    const filePath = join(GALLERY_DIR, safeName);
     if (!existsSync(filePath)) {
       res.status(404).json({ error: "Gallery file not found" });
       return;
     }
 
     try {
-      res.json(await inspectGalleryCredential(source));
+      res.json(await inspectGalleryCredential(safeName));
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unable to inspect C2PA credentials";
       res.status(500).json({ error: message });
