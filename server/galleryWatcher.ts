@@ -61,6 +61,51 @@ function computeRatio(width: number, height: number): "four-three" | "three-two"
   return Math.abs(ratio - 4 / 3) < Math.abs(ratio - 3 / 2) ? "four-three" : "three-two";
 }
 
+const PALETTE_SCRIPT = `
+from PIL import Image
+import numpy as np, sys, json, hashlib
+img = Image.open(sys.argv[1])
+rgb = np.asarray(img.convert("RGB"), dtype=np.float32).reshape(-1, 3)
+stride = max(1, len(rgb) // 50000)
+samples = rgb[::stride]
+k = int(sys.argv[2])
+indices = np.linspace(0, len(samples) - 1, k, dtype=int)
+centers = samples[indices].copy()
+for _ in range(16):
+    assignments = np.empty(len(samples), dtype=np.int16)
+    for start in range(0, len(samples), 5000):
+        chunk = samples[start:start+5000]
+        distances = np.sum((chunk[:, None, :] - centers[None, :, :]) ** 2, axis=2)
+        assignments[start:start+len(chunk)] = np.argmin(distances, axis=1)
+    next_centers = centers.copy()
+    for index in range(k):
+        members = samples[assignments == index]
+        if len(members): next_centers[index] = members.mean(axis=0)
+    if np.allclose(next_centers, centers, atol=1.0): centers = next_centers; break
+    centers = next_centers
+counts = np.bincount(assignments, minlength=k)
+order = np.argsort(-counts)
+palette = ["#{:02X}{:02X}{:02X}".format(*centers[i].astype(int)) for i in order]
+pixel_sha = hashlib.sha256(rgb.tobytes()).hexdigest()
+palette_sha = hashlib.sha256("|".join(palette).encode("ascii")).hexdigest()
+print(json.dumps({"palette": palette, "pixelSha256": pixel_sha, "paletteSha256": palette_sha}))
+`;
+
+function computePalette(filePath: string, k: number): { palette: string[]; pixelSha256: string; paletteSha256: string } {
+  // Use the project venv Python which has PIL/NumPy installed
+  const venvPython = resolve(process.cwd(), ".venv", "bin", "python3");
+  const pythonBin = existsSync(venvPython) ? venvPython : "python3";
+  try {
+    const output = execFileSync(pythonBin, ["-c", PALETTE_SCRIPT, filePath, String(k)], {
+      encoding: "utf-8",
+      timeout: 15000,
+    });
+    return JSON.parse(output.trim());
+  } catch {
+    return { palette: [], pixelSha256: "", paletteSha256: "" };
+  }
+}
+
 function defaultScript(id: string, source: string): string {
   return `base("${source}")
 palette(k: 8)
@@ -150,6 +195,7 @@ function scanGallery(): DynamicGalleryItem[] {
     const date = filename.match(/^MS(\d{4})/)?.[1] ?? "unknown";
     const script = getOrGenerateScript(id, filename);
     const { paletteK, reverseMode } = parseScriptMeta(script);
+    const { palette, pixelSha256, paletteSha256 } = computePalette(filePath, paletteK);
 
     return {
       id,
@@ -167,11 +213,11 @@ function scanGallery(): DynamicGalleryItem[] {
       reverseDescription: "",
       scriptHash: "",
       outputHash: "",
-      palette: [],
+      palette,
       script,
       trace: buildTrace(script, filename, dimensions),
       credentialSignature: { status: "absent", sourceSha256: "", verificationMethod: "none", note: "C2PA not yet inspected" },
-      colourSignature: { pixelSha256: "", paletteSha256: "", algorithm: `kmeans-${paletteK}` },
+      colourSignature: { pixelSha256, paletteSha256, algorithm: `kmeans-${paletteK}` },
     };
   });
 }
