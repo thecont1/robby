@@ -1,7 +1,7 @@
 import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it } from "vitest";
 import initWasm, { render_reverse_json as renderWasm } from "../client/src/wasm/robby_compiler.js";
 
 const root = resolve(import.meta.dirname, "..");
@@ -9,6 +9,14 @@ const sourcePath = resolve(root, "tests", "fixtures", "render-source.jpg");
 const sourceBytes = readFileSync(sourcePath);
 const wasmBytes = readFileSync(resolve(root, "client", "src", "wasm", "robby_compiler_bg.wasm"));
 const nativeBinary = resolve(root, "target", "release", "robby");
+
+beforeAll(() => {
+  const build = spawnSync("cargo", ["build", "--release", "--locked"], {
+    cwd: root,
+    encoding: "utf8",
+  });
+  if (build.status !== 0) throw new Error(`native renderer build failed:\n${build.stderr}`);
+});
 
 function renderNative(settings: string) {
   const result = spawnSync(nativeBinary, ["render", sourcePath, "--settings", settings], {
