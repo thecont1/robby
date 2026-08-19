@@ -4,7 +4,7 @@ import { basename, join, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { scanGallery } from "./galleryWatcher";
 
-const fixture = resolve(process.cwd(), "gallery", "MS202401-Ayodhya0041.jpg");
+const fixture = resolve(process.cwd(), "tests", "fixtures", "render-source.jpg");
 
 function tempGallery() {
   return mkdtempSync(join(tmpdir(), "robby-gallery-watcher-"));

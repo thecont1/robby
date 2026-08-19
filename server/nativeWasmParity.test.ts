@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 import initWasm, { render_reverse_json as renderWasm } from "../client/src/wasm/robby_compiler.js";
 
 const root = resolve(import.meta.dirname, "..");
-const sourcePath = resolve(root, "gallery", "MS202401-Ayodhya0041.jpg");
+const sourcePath = resolve(root, "tests", "fixtures", "render-source.jpg");
 const sourceBytes = readFileSync(sourcePath);
 const wasmBytes = readFileSync(resolve(root, "client", "src", "wasm", "robby_compiler_bg.wasm"));
 const nativeBinary = resolve(root, "target", "release", "robby");
