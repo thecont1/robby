@@ -426,7 +426,6 @@ export default function Home() {
                             <img src={gallery[slideTransition.incomingIndex].obverse} alt={`${gallery[slideTransition.incomingIndex].title} obverse`} className="object-image" />
                           </div>
                           <div className="object-face object-face-inverse" aria-hidden={true}>
-                            <img src={gallery[slideTransition.incomingIndex].reverse} alt="" className="object-image" />
                           </div>
                         </div>
                       </div>
@@ -439,7 +438,6 @@ export default function Home() {
                             <img src={gallery[slideTransition.incomingIndex].obverse} alt={`${gallery[slideTransition.incomingIndex].title} obverse`} className="object-image" />
                           </div>
                           <div className="object-face object-face-inverse" aria-hidden={true}>
-                            <img src={gallery[slideTransition.incomingIndex].reverse} alt="" className="object-image" />
                           </div>
                         </div>
                       </div>
@@ -449,7 +447,7 @@ export default function Home() {
                             <img src={displayedObverse} alt="" className="object-image" />
                           </div>
                           <div className="object-face object-face-inverse" aria-hidden={face !== "inverse"}>
-                            <img src={displayedInverse} alt="" className="object-image" />
+                            {displayedInverse && <img src={displayedInverse} alt="" className="object-image" />}
                           </div>
                         </div>
                       </div>
@@ -463,7 +461,7 @@ export default function Home() {
                       <img src={displayedObverse} alt={`${selected.title} obverse`} className="object-image" />
                     </div>
                     <div className="object-face object-face-inverse" aria-hidden={face !== "inverse"}>
-                      <img src={displayedInverse} alt={`${selected.title} inverse: ${selected.reverseDescription}`} className="object-image" />
+                      {displayedInverse && <img src={displayedInverse} alt={`${selected.title} inverse: ${selected.reverseDescription}`} className="object-image" />}
                     </div>
                   </div>
                 </div>
@@ -548,7 +546,11 @@ export default function Home() {
       </footer>
       {artworkView && <div className="artwork-view" role="dialog" aria-modal="true" aria-label={`${selected.title} full-bleed artwork view`} onClick={() => setArtworkView(false)}>
         <div className="artwork-view-frame" onClick={event => event.stopPropagation()} onTouchStart={handleArtworkTouchStart} onTouchEnd={handleArtworkTouchEnd}>
-          <div className="artwork-view-image-viewport"><img src={face === "obverse" ? displayedObverse : displayedInverse} alt={`${selected.title} ${face}`} /></div>
+          <div className="artwork-view-image-viewport">
+            {face === "obverse"
+              ? <img src={displayedObverse} alt={`${selected.title} obverse`} />
+              : displayedInverse && <img src={displayedInverse} alt={`${selected.title} inverse`} />}
+          </div>
           <div className="artwork-view-controls"><div className="artwork-view-meta"><span>{selected.title} / {face}</span><span>SWIPE TO BROWSE · ESC TO CLOSE</span></div><button type="button" onClick={() => setArtworkView(false)} aria-label="Close full-bleed artwork view" title="Close full-bleed artwork view"><Minimize2 size={19} /></button></div>
         </div>
       </div>}

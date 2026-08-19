@@ -329,3 +329,8 @@
 - [x] Delete only verified generated reverse artifacts from managed storage; retain approved logo and non-reverse identity assets. (Removed local generated PNG staging; retired the static gallery-artifact builder and all active reverse storage references. The exposed managed-storage interface has no physical-delete method; unreferenced keys are unreachable.)
 - [x] Add regression coverage for on-demand execution, no-persistence behavior, deterministic output, and source immutability.
 - [x] Verify gallery flip behavior, C2PA evidence, TypeScript, tests, Rust tests, and production build after the migration.
+
+## Empty transient-image source regression
+
+- [x] Remove every stage render path that passes an empty string to an image `src` while no ephemeral inverse exists.
+- [x] Add regression coverage for the empty-source guard and verify the browser console stays clear on gallery load and inverse turns. (The fresh gallery load returned no browser-console output; TypeScript, 35 Vitest tests, and production build pass.)
