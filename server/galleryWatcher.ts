@@ -42,15 +42,22 @@ export type DynamicGalleryItem = {
   colourSignature: { pixelSha256: string; paletteSha256: string; algorithm: string };
 };
 
+const DIMENSIONS_SCRIPT = `
+from PIL import Image
+import sys, json
+img = Image.open(sys.argv[1])
+print(json.dumps({"width": img.width, "height": img.height}))
+`;
+
 function measureImage(filePath: string): { width: number; height: number } {
+  const venvPython = resolve(process.cwd(), ".venv", "bin", "python3");
+  const pythonBin = existsSync(venvPython) ? venvPython : "python3";
   try {
-    const output = execFileSync("sips", ["-g", "pixelWidth", "-g", "pixelHeight", filePath], {
+    const output = execFileSync(pythonBin, ["-c", DIMENSIONS_SCRIPT, filePath], {
       encoding: "utf-8",
       timeout: 5000,
     });
-    const width = parseInt(output.match(/pixelWidth:\s*(\d+)/)?.[1] ?? "0", 10);
-    const height = parseInt(output.match(/pixelHeight:\s*(\d+)/)?.[1] ?? "0", 10);
-    return { width, height };
+    return JSON.parse(output.trim());
   } catch {
     return { width: 0, height: 0 };
   }
