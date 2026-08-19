@@ -15,9 +15,9 @@ export type TraceStep = {
 };
 
 export type CredentialSignature = {
-  status: "absent" | "present" | "candidate";
+  status: "absent" | "present" | "candidate" | "checking";
   sourceSha256: string;
-  markerScan: string;
+  verificationMethod: string;
   note: string;
   claimGenerator?: string;
 };
@@ -67,19 +67,17 @@ reverse(mode: "palette-grid", k: 8)
 output(obverse: "${id}-obverse.png", reverse: "${id}-inverse.png", manifest: "${id}-manifest.json")
 `;
 
-const absentCredential = (sourceSha256: string): CredentialSignature => ({
-  status: "absent",
+const checkingCredential = (sourceSha256: string): CredentialSignature => ({
+  status: "checking",
   sourceSha256,
-  markerScan: "C2PA/JUMBF raw-byte marker scan",
-  note: "No C2PA or JUMBF marker was found in the unchanged source JPEG bytes during the gallery refresh.",
+  verificationMethod: "Awaiting official C2PA validation of exact managed JPEG bytes",
+  note: "The gallery does not infer C2PA absence from raw marker strings. Robby is reading the exact managed source bytes now.",
 });
 
-const candidateCredential = (sourceSha256: string): CredentialSignature => ({
-  status: "candidate",
-  sourceSha256,
-  markerScan: "C2PA/JUMBF raw-byte marker scan",
-  note: "A C2PA/JUMBF marker was found in the unchanged source bytes. The refresh did not run a cryptographic C2PA validator, so Robby labels this evidence conservatively as a candidate rather than a validated claim.",
-});
+// The gallery mounts with an honest pending state. The server replaces this
+// record with an official C2PA SDK result for the exact allowlisted source.
+const absentCredential = checkingCredential;
+const candidateCredential = checkingCredential;
 
 const colourSignature = (pixelSha256: string, paletteSha256: string): ColourSignature => ({
   pixelSha256,

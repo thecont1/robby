@@ -19,7 +19,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useTheme } from "@/contexts/ThemeContext";
-import { gallery, type TraceStep } from "@/lib/demoData";
+import { gallery, type CredentialSignature, type TraceStep } from "@/lib/demoData";
+import { inspectC2paCredential } from "@/lib/c2paCredentials";
 import { footerSocialLinks } from "@/lib/footerLinks";
 import { compileWithRust, rustToolchainVersion, type RobbyIr } from "@/lib/robbyCompiler";
 import { gallerySlideDirection, isImageOnlyExitKey, swipeGalleryOffset, themeControlLabel, type GallerySlideDirection } from "@/lib/visualModes";
@@ -91,10 +92,12 @@ export default function Home() {
   const [imageOnly, setImageOnly] = useState(false);
   const [artworkView, setArtworkView] = useState(false);
   const [slideTransition, setSlideTransition] = useState<SlideTransition | null>(null);
+  const [credentialOverride, setCredentialOverride] = useState<CredentialSignature | null>(null);
   const artworkTouchStartX = useRef<number | null>(null);
   const compileHistory = useRef<Record<string, CompileSnapshot[]>>({});
   const { theme, toggleTheme } = useTheme();
   const selected = gallery[selectedIndex];
+  const selectedWithCredential = credentialOverride ? { ...selected, credentialSignature: credentialOverride } : selected;
   const activeFace = face;
   const liveIr = projectionState === "live" && compiledEdit?.specimenId === selected.id ? compiledEdit.ir : null;
   const activeDerivative = liveDerivative?.specimenId === selected.id ? liveDerivative.result : null;
@@ -106,6 +109,15 @@ export default function Home() {
   const liveReverseMode = projectionUnavailable ? null : liveIr?.reverse.map((item) => item.k ? `${item.mode} (k=${item.k})` : item.mode).join(" + ") ?? selected.reverseMode;
   const currentHistory = compileHistory.current[selected.id] ?? [];
   const isSlideTransitioning = Boolean(slideTransition);
+
+  useEffect(() => {
+    let active = true;
+    setCredentialOverride(null);
+    void inspectC2paCredential(selected.source)
+      .then(result => { if (active) setCredentialOverride(result); })
+      .catch(() => { /* Retain C2PA CHECKING when the validator cannot complete. */ });
+    return () => { active = false; };
+  }, [selected.source]);
 
   const hashValue = async (value: string) => {
     const bytes = new TextEncoder().encode(value);
@@ -464,7 +476,7 @@ export default function Home() {
         <aside className="trace-panel" aria-label={`Compilation trace for ${selected.title}`} inert={imageOnly}>
           <div className="trace-heading"><div><CircleDotDashed size={15} /><MonoLabel>Compilation trace</MonoLabel></div><span>{projectionState === "draft" ? "DRAFT" : projectionState === "compiling" ? "VALIDATING" : projectionState === "error" ? "UNAVAILABLE" : `${trace.length} STEPS`}</span></div>
           <div className="trace-title"><p className="eyebrow">Evidence beside object</p><h3>{selected.source}<br /><em>/ {activeFace}</em></h3></div>
-          <CompilationTraceModes item={selected} trace={trace} activeMode={traceMode} onModeChange={setTraceMode} projectionState={projectionState} failureMessage={failureMessage} history={currentHistory} runtime={runtimeRecord} onExportRegistrar={exportRegistrar} />
+          <CompilationTraceModes item={selectedWithCredential} trace={trace} activeMode={traceMode} onModeChange={setTraceMode} projectionState={projectionState} failureMessage={failureMessage} history={currentHistory} runtime={runtimeRecord} onExportRegistrar={exportRegistrar} />
         </aside>
         <div className="source-workbench-wrap" inert={imageOnly}>
           <SourceEditor
@@ -480,7 +492,7 @@ export default function Home() {
         </div>
       </section>
 
-      <div inert={imageOnly}><ProvenanceModule item={selected} runtime={runtimeRecord} onFocusReverse={focusReverseStep} /></div>
+      <div inert={imageOnly}><ProvenanceModule item={selectedWithCredential} runtime={runtimeRecord} onFocusReverse={focusReverseStep} /></div>
 
       <footer className="site-footer" inert={imageOnly}>
         <div className="footer-left">

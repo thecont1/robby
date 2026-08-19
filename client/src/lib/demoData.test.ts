@@ -10,15 +10,14 @@ describe("authentic-source gallery records", () => {
       expect(specimen).toBeDefined();
       expect(specimen?.source).toMatch(/\.jpe?g$/i);
       expect(specimen?.script).not.toContain(".webp");
-      expect(["absent", "candidate", "present"]).toContain(specimen?.credentialSignature.status);
+      expect(["absent", "candidate", "present", "checking"]).toContain(specimen?.credentialSignature.status);
       expect(specimen?.credentialSignature.sourceSha256).toMatch(/^[0-9a-f]{64}$/);
+      expect(specimen?.credentialSignature.verificationMethod).not.toMatch(/marker scan/i);
     }
   });
 
-  it("keeps raw C2PA-marker evidence conservative until cryptographic validation is available", () => {
-    const candidates = gallery.filter(item => item.credentialSignature.status === "candidate");
-    expect(candidates).toHaveLength(1);
-    expect(gallery.filter(item => item !== candidates[0]).every(item => item.credentialSignature.status === "absent")).toBe(true);
+  it("starts C2PA evidence in an explicit checking state until the official validator reads each exact managed source", () => {
+    expect(gallery.every(item => item.credentialSignature.status === "checking")).toBe(true);
   });
 
   it("uses separate managed-storage faces for the obverse and its inverse", () => {

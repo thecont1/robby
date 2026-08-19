@@ -307,6 +307,7 @@
 
 - [x] Trace the currently rendered managed-storage JPEG bytes through the C2PA badge data flow. (The UI is hardcoded to historical marker-scan records; the current catalogue keys match the served and allowlisted source SHA-256 values.)
 - [x] Run an actual C2PA validator against the exact gallery JPEG bytes and preserve its evidence without altering originals. (Official `c2patool` validates a Lightroom Classic 15.1 manifest for Ghana; the other ten currently mapped objects return “No claim found,” indicating the fresh storage uploads have not yet been linked.)
-- [ ] Replace stale marker-only credential states with measured validation outcomes and claim metadata where available.
-- [ ] Add regression coverage so credential-bearing JPEGs cannot silently display C2PA ABSENT.
-- [ ] Verify gallery badges, TypeScript, unit tests, Rust tests, and production build before deployment.
+- [x] Replace stale marker-only credential states with measured validation outcomes and claim metadata where available. (The gallery starts as C2PA CHECKING and overlays official CAI Node SDK evidence after checksum-verifying the exact managed source bytes.)
+- [x] Add regression coverage so credential-bearing JPEGs cannot silently display C2PA ABSENT. (Validator summaries distinguish present, candidate/invalid, and absent outcomes.)
+- [x] Verify gallery badges, TypeScript, unit tests, Rust tests, and production build before deployment. (Ghana renders C2PA PRESENT with `lightroom_classic/15.1`; 33 Vitest tests and 11 Rust tests pass.)
+- [ ] Reconcile the freshly uploaded credential-bearing storage objects to the gallery when their authorized Manus storage keys or URLs are available. (The current mapped catalogue contains Ghana’s validated manifest; the other fresh uploads are not yet accessible from this project session.)
