@@ -20,12 +20,11 @@ describe("authentic-source gallery records", () => {
     expect(gallery.every(item => item.credentialSignature.status === "checking")).toBe(true);
   });
 
-  it("uses separate managed-storage faces for the obverse and its inverse", () => {
+  it("keeps only the immutable JPEG obverse in the catalogue; inverses are generated on demand", () => {
     for (const id of authenticIds) {
       const specimen = gallery.find(item => item.id === id);
-      expect(specimen?.obverse).toMatch(/^\/manus-storage\/.+\.(png|jpg)$/);
-      expect(specimen?.reverse).toMatch(/^\/manus-storage\/.+\.png$/);
-      expect(specimen?.obverse).not.toBe(specimen?.reverse);
+      expect(specimen?.obverse).toMatch(/^\/manus-storage\/.+\.jpg$/);
+      expect(specimen?.reverse).toBe("");
     }
   });
 

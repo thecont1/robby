@@ -85,17 +85,17 @@ If a script requests two reverse modes, the executor writes `-provenance-map` an
 
 ## Run the web application
 
-The web application displays a compiled library of image-objects and keeps the selected record’s process trace alongside the image stage. The browser compiler remains Rust/WASM. A successful editor compilation is then submitted to the server-side Python executor, which reads a checksum-verified immutable original into a temporary workspace and uploads only newly derived obverse, inverse, and manifest artifacts. The selected stage swaps to those fresh derivative URLs after execution; it never overwrites or transforms the authentic JPEG in storage.
+The web application displays a library of image-objects and keeps the selected record’s process trace alongside the image stage. The browser compiler remains Rust/WASM. A successful editor compilation updates the active IR only; it does **not** render or upload an image. When a visitor explicitly selects **Turn to inverse**, the server reads the checksum-verified immutable original into a temporary workspace, runs the Python executor once, and returns reverse PNG bytes directly in a `Cache-Control: no-store` response. The browser displays those bytes through a revocable `blob:` URL, then discards them when the object turns back or changes. No reverse, manifest, or obverse derivative is uploaded, stored in the database, or assigned a durable URL.
 
 ```bash
 pnpm dev
 ```
 
-The gallery starts on an obverse. Selecting another record also starts that record on its obverse. The **Turn to inverse** control (or the `F` key) replaces the stage image with its compiled reverse; the faces are never shown side by side. Left and right arrow keys cycle the library. The historical `examples/*.robby` files remain compact compiler fixtures; the active gallery records are regenerated from the immutable current source set with `scripts/build_refreshed_gallery.py`.
+The gallery starts on an obverse. Selecting another record also starts that record on its obverse. The **Turn to inverse** control (or the `F` key) asks the live compiler for a fresh transient reverse; turning back revokes it. The same authenticated source bytes and validated IR produce byte-identical reverse bytes on repeated requests. The faces are never shown side by side. Left and right arrow keys cycle the library. The historical `examples/*.robby` files remain compact compiler fixtures; active gallery records bind only immutable current JPEG originals.
 
 ### Change gallery order
 
-The active gallery sequence is controlled in **`client/src/lib/demoData.ts`**, in the exported `galleryOrder` list. Move an image id earlier or later in that list to change the filmstrip, serial numbers, Previous/Next behavior, keyboard cycling, and full-screen swipe order. Remove an id from that list to hide the specimen without deleting its immutable original or stored derivatives.
+The active gallery sequence is controlled in **`client/src/lib/demoData.ts`**, in the exported `galleryOrder` list. Move an image id earlier or later in that list to change the filmstrip, serial numbers, Previous/Next behavior, keyboard cycling, and full-screen swipe order. Remove an id from that list to hide the specimen without deleting its immutable original.
 
 The viewer validates the selected `.robby` script with the generated **Rust WebAssembly** adapter before it reports `VALID IR · RUST <toolchain>`. The value is not hardcoded in the UI: `build.rs` runs the same `rustc --version` used by Cargo while building the native/WASM compiler and embeds that toolchain label in the generated adapter. The separate `robby-compiler-v0.1.0` value remains the crate release, not the Rust toolchain. Rebuild the adapter from the same library after changing compiler code or the installed Rust toolchain:
 
@@ -110,7 +110,7 @@ The generated `client/src/wasm/` package is intentionally committed because it i
 
 ### Live web execution boundary
 
-The current live endpoint supports the gallery’s **base-only** scripts and the `palette-grid` or `provenance-map` reverse modes. It limits live canvases to 12 megapixels, permits only the five registered immutable gallery originals, verifies their byte SHA-256 before execution, serializes CPU rendering, and writes each output under a new managed-storage key. Cutout-based live rendering remains unavailable until cutout sources receive the same immutable storage registry and audit path as base originals.
+The current live endpoint supports the gallery’s **base-only** scripts and the `palette-grid` or `provenance-map` reverse modes. It limits live canvases to 12 megapixels, permits only registered immutable gallery originals, verifies their byte SHA-256 before execution, serializes CPU rendering, and deletes its per-request workspace before responding. The endpoint returns PNG bytes with source and output SHA-256 response headers, `Cache-Control: no-store`, and no storage write. Cutout-based live rendering remains unavailable until cutout sources receive the same immutable storage registry and audit path as base originals.
 
 ## Authentic originals and credential-preserving storage
 

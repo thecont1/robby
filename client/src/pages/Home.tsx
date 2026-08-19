@@ -9,7 +9,7 @@ import SourceEditor from "@/components/SourceEditor";
 import { CompilationTraceModes, ProvenanceModule, type RuntimeRecord, type TraceMode } from "@/components/Build06Panels";
 import { loadCompileHistory, persistCompileSnapshot, type CompileSnapshot } from "@/lib/compileHistory";
 import { verifiedCompilerStatus } from "@/lib/compilerStatus";
-import { requestLiveRender, type LiveRenderResult } from "@/lib/liveRender";
+import { requestEphemeralReverse, type EphemeralReverseResult } from "@/lib/liveRender";
 import { createSignedRegistrarRecord, downloadSignedRegistrarJson, downloadSignedRegistrarPdf } from "@/lib/registrarExport";
 import {
   DropdownMenu,
@@ -68,7 +68,7 @@ function traceFromIr(ir: RobbyIr): TraceStep[] {
   ir.layers.forEach((layer, index) => trace.push({ stage: String(trace.length + 1).padStart(2, "0"), label: "Place layer", code: `place(x: ${layer.x}, y: ${layer.y})`, detail: `${layer.blend} · ${layer.scale} scale · ${layer.rotation}° rotation`, color: index === 0 ? "#E3442F" : undefined }));
   if (ir.palette) trace.push({ stage: String(trace.length + 1).padStart(2, "0"), label: "Calculate palette", code: `palette(k: ${ir.palette.k})`, detail: "live IR palette declaration" });
   ir.reverse.forEach((reverse) => trace.push({ stage: String(trace.length + 1).padStart(2, "0"), label: "Render inverse", code: `reverse("${reverse.mode}")`, detail: reverse.k ? `palette grid · k=${reverse.k}` : "provenance declaration" }));
-  trace.push({ stage: String(trace.length + 1).padStart(2, "0"), label: "Write manifest", code: `output(…${ir.output.manifest})`, detail: "static deployment · image render pending" });
+  trace.push({ stage: String(trace.length + 1).padStart(2, "0"), label: "Prepare reverse record", code: `output(…${ir.output.manifest})`, detail: "ephemeral output · generated only when the inverse is requested" });
   return trace;
 }
 
@@ -82,7 +82,7 @@ export default function Home() {
   const [compilerState, setCompilerState] = useState<"checking" | "verified" | "error">("checking");
   const [compilerLabel, setCompilerLabel] = useState("RUST CORE · LOADING");
   const [compiledEdit, setCompiledEdit] = useState<{ specimenId: string; ir: RobbyIr; source: string } | null>(null);
-  const [liveDerivative, setLiveDerivative] = useState<{ specimenId: string; result: LiveRenderResult } | null>(null);
+  const [ephemeralReverse, setEphemeralReverse] = useState<{ specimenId: string; url: string; result: EphemeralReverseResult } | null>(null);
   const [projectionState, setProjectionState] = useState<ProjectionState>("gallery");
   const [traceMode, setTraceMode] = useState<TraceMode>("evidence");
   const [failureMessage, setFailureMessage] = useState<string | null>(null);
@@ -93,16 +93,18 @@ export default function Home() {
   const [artworkView, setArtworkView] = useState(false);
   const [slideTransition, setSlideTransition] = useState<SlideTransition | null>(null);
   const [credentialOverride, setCredentialOverride] = useState<CredentialSignature | null>(null);
+  const [isRenderingReverse, setIsRenderingReverse] = useState(false);
   const artworkTouchStartX = useRef<number | null>(null);
   const compileHistory = useRef<Record<string, CompileSnapshot[]>>({});
+  const reverseUrlRef = useRef<string | null>(null);
+  const discardReverseAfterFlip = useRef(false);
   const { theme, toggleTheme } = useTheme();
   const selected = gallery[selectedIndex];
   const selectedWithCredential = credentialOverride ? { ...selected, credentialSignature: credentialOverride } : selected;
   const activeFace = face;
   const liveIr = projectionState === "live" && compiledEdit?.specimenId === selected.id ? compiledEdit.ir : null;
-  const activeDerivative = liveDerivative?.specimenId === selected.id ? liveDerivative.result : null;
-  const displayedObverse = activeDerivative?.obverseUrl ?? selected.obverse;
-  const displayedInverse = activeDerivative?.inverseUrl ?? selected.reverse;
+  const displayedObverse = selected.obverse;
+  const displayedInverse = ephemeralReverse?.specimenId === selected.id ? ephemeralReverse.url : undefined;
   const projectionUnavailable = projectionState === "draft" || projectionState === "compiling" || projectionState === "error";
   const trace = projectionUnavailable ? [] : liveIr ? traceFromIr(liveIr) : selected.trace;
   const liveScriptHash = projectionUnavailable ? null : liveIr?.meta.script_sha256 ?? selected.scriptHash;
@@ -125,6 +127,14 @@ export default function Home() {
     return Array.from(new Uint8Array(digest)).map(byte => byte.toString(16).padStart(2, "0")).join("");
   };
 
+  const discardEphemeralReverse = () => {
+    if (reverseUrlRef.current) URL.revokeObjectURL(reverseUrlRef.current);
+    reverseUrlRef.current = null;
+    setEphemeralReverse(null);
+  };
+
+  useEffect(() => () => { if (reverseUrlRef.current) URL.revokeObjectURL(reverseUrlRef.current); }, []);
+
   useEffect(() => {
     let active = true;
     Promise.all(gallery.map(async item => [item.id, await loadCompileHistory(item.id)] as const))
@@ -143,11 +153,11 @@ export default function Home() {
   }, []);
 
   const commitSelection = (nextIndex: number) => {
+    discardEphemeralReverse();
     setSelectedIndex(nextIndex);
     setFace("obverse");
     setIsFlipping(false);
     setCompiledEdit(null);
-    setLiveDerivative(null);
     setProjectionState("gallery");
     setFailureMessage(null);
     setTraceMode("evidence");
@@ -169,15 +179,46 @@ export default function Home() {
     });
   };
 
-  const turnOver = () => {
-    if (isFlipping) return;
-    setIsFlipping(true);
-    setFace((current) => current === "obverse" ? "inverse" : "obverse");
+  const turnOver = async () => {
+    if (isFlipping || isRenderingReverse) return;
+    if (face === "inverse") {
+      discardReverseAfterFlip.current = true;
+      setIsFlipping(true);
+      setFace("obverse");
+      return;
+    }
+
+    setIsRenderingReverse(true);
+    setFailureMessage(null);
+    try {
+      const source = compiledEdit?.specimenId === selected.id ? compiledEdit.source : selected.script;
+      const ir = await compileWithRust(source);
+      const result = await requestEphemeralReverse(ir);
+      const url = URL.createObjectURL(result.blob);
+      if (reverseUrlRef.current) URL.revokeObjectURL(reverseUrlRef.current);
+      reverseUrlRef.current = url;
+      setEphemeralReverse({ specimenId: selected.id, url, result });
+      const compiledAt = new Date().toISOString();
+      const irHash = await hashValue(JSON.stringify(ir));
+      setCompiledEdit({ specimenId: selected.id, ir, source });
+      setProjectionState("live");
+      setRuntimeRecord(current => ({ compiledAt, irHash, toolchain: current?.toolchain ?? "RUST/WASM", transientReverse: { generatedAt: compiledAt, outputSha256: result.outputSha256, sourceSha256: result.sourceSha256, mode: result.reverseMode } }));
+      setIsFlipping(true);
+      setFace("inverse");
+    } catch (error) {
+      setFailureMessage(error instanceof Error ? error.message : "The live compiler could not generate this inverse.");
+    } finally {
+      setIsRenderingReverse(false);
+    }
   };
 
   const settleFlip = (event: React.TransitionEvent<HTMLDivElement>) => {
     if (event.target === event.currentTarget && event.propertyName === "transform") {
       setIsFlipping(false);
+      if (discardReverseAfterFlip.current) {
+        discardReverseAfterFlip.current = false;
+        discardEphemeralReverse();
+      }
     }
   };
 
@@ -252,9 +293,7 @@ export default function Home() {
     const snapshot: CompileSnapshot = { id: `${selected.id}-${irHash}`, specimenId: selected.id, source, ir, trace: traceFromIr(ir), compiledAt, irHash, origin: "editor" };
     compileHistory.current[selected.id] = await persistCompileSnapshot(snapshot);
     setHistoryRevision(current => current + 1);
-    const result = await requestLiveRender(ir);
     setCompiledEdit({ specimenId: selected.id, ir, source });
-    setLiveDerivative({ specimenId: selected.id, result });
     setProjectionState("live");
     setFace("obverse");
     setFailureMessage(null);
@@ -263,28 +302,28 @@ export default function Home() {
 
   const clearLiveProjection = () => {
     setCompiledEdit(null);
-    setLiveDerivative(null);
+    discardEphemeralReverse();
     setProjectionState("compiling");
     setFailureMessage(null);
   };
 
   const markProjectionUnavailable = (message: string) => {
     setCompiledEdit(null);
-    setLiveDerivative(null);
+    discardEphemeralReverse();
     setProjectionState("error");
     setFailureMessage(message);
   };
 
   const markDraftProjectionUnavailable = () => {
     setCompiledEdit(null);
-    setLiveDerivative(null);
+    discardEphemeralReverse();
     setProjectionState("draft");
     setFailureMessage(null);
   };
 
   const resetLiveProjection = () => {
     setCompiledEdit(null);
-    setLiveDerivative(null);
+    discardEphemeralReverse();
     setProjectionState("gallery");
     setFailureMessage(null);
   };
@@ -377,7 +416,7 @@ export default function Home() {
                             <img src={displayedObverse} alt="" className="object-image" />
                           </div>
                           <div className="object-face object-face-inverse" aria-hidden={face !== "inverse"}>
-                            <img src={displayedInverse} alt="" className="object-image" />
+                            {displayedInverse && <img src={displayedInverse} alt="" className="object-image" />}
                           </div>
                         </div>
                       </div>
@@ -441,8 +480,8 @@ export default function Home() {
                 </div>
               </div>
               <div className="caption-turn">
-                <button type="button" className="flip-control" onClick={turnOver} disabled={isFlipping} aria-label={face === "inverse" ? `Return ${selected.title} to its obverse` : `Flip ${selected.title} to its inverse`}>
-                  {face === "inverse" ? <RotateCcw size={18} /> : <FlipHorizontal2 size={18} />}<span>{isFlipping ? "Turning object" : face === "inverse" ? "Return to obverse" : "Turn to inverse"}</span><small>F</small>
+                <button type="button" className="flip-control" onClick={() => void turnOver()} disabled={isFlipping || isRenderingReverse} aria-label={face === "inverse" ? `Return ${selected.title} to its obverse` : `Compile and turn ${selected.title} to its inverse`}>
+                  {face === "inverse" ? <RotateCcw size={18} /> : <FlipHorizontal2 size={18} />}<span>{isRenderingReverse ? "Compiling inverse" : isFlipping ? "Turning object" : face === "inverse" ? "Return to obverse" : "Turn to inverse"}</span><small>F</small>
                 </button>
               </div>
               <div className="caption-navigation">

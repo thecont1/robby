@@ -311,3 +311,13 @@
 - [x] Add regression coverage so credential-bearing JPEGs cannot silently display C2PA ABSENT. (Validator summaries distinguish present, candidate/invalid, and absent outcomes.)
 - [x] Verify gallery badges, TypeScript, unit tests, Rust tests, and production build before deployment. (Ghana renders C2PA PRESENT with `lightroom_classic/15.1`; 33 Vitest tests and 11 Rust tests pass.)
 - [ ] Reconcile the freshly uploaded credential-bearing storage objects to the gallery when their authorized Manus storage keys or URLs are available. (The current mapped catalogue contains Ghana’s validated manifest; the other fresh uploads are not yet accessible from this project session.)
+
+## Ephemeral reverse compiler execution
+
+- [x] Inventory all current persistent reverse PNG artifacts and separate them from immutable JPEG originals and approved identity assets. (Eleven catalogue inverse PNGs and the `live-renders/` writer are generated artifacts; JPEG originals and `robby-registration-mark` remain protected identity/source assets.)
+- [x] Replace static reverse URLs and persisted live-render derivatives with one on-demand compiler execution when the user requests a turn to inverse.
+- [x] Keep generated reverse bytes transient: return them directly to the viewer without S3 upload, database persistence, or a durable derivative URL.
+- [x] Confirm repeated requests using the same authenticated source bytes and compiler IR yield byte-identical reverse output. (Two direct requests returned identical PNG SHA-256 `77572195…c59f070`.)
+- [x] Delete only verified generated reverse artifacts from managed storage; retain approved logo and non-reverse identity assets. (Removed local generated PNG staging; retired the static gallery-artifact builder and all active reverse storage references. The exposed managed-storage interface has no physical-delete method; unreferenced keys are unreachable.)
+- [x] Add regression coverage for on-demand execution, no-persistence behavior, deterministic output, and source immutability.
+- [x] Verify gallery flip behavior, C2PA evidence, TypeScript, tests, Rust tests, and production build after the migration.

@@ -3,7 +3,8 @@
  *
  * The gallery is data-led. To change its sequence, edit only `galleryOrder`
  * below: the first id is shown first, and removing an id retires it from the
- * active library without deleting its immutable original or derivatives.
+ * active library without deleting its immutable original. Reverse images are
+ * never catalogue assets: the compiler creates them only when requested.
  */
 
 export type TraceStep = {
@@ -60,11 +61,11 @@ const paletteTrace = (source: string, dimensions: string): readonly TraceStep[] 
   { stage: "04", label: "Write manifest", code: "output(…manifest.json)", detail: "process graph and output checksums recorded" },
 ];
 
-const sourceScript = (id: string, source: string) => `# Immutable source study. The original JPEG is read-only; outputs are derived artifacts.
+const sourceScript = (id: string, source: string) => `# Immutable source study. The original JPEG is read-only; reverse bytes exist only during an explicit turn request.
 base("${source}")
 palette(k: 8)
 reverse(mode: "palette-grid", k: 8)
-output(obverse: "${id}-obverse.png", reverse: "${id}-inverse.png", manifest: "${id}-manifest.json")
+output(obverse: "transient:${id}:obverse", reverse: "transient:${id}:reverse", manifest: "transient:${id}:manifest")
 `;
 
 const checkingCredential = (sourceSha256: string): CredentialSignature => ({
@@ -147,6 +148,9 @@ export const gallery: readonly GalleryItem[] = galleryOrder.map((id, index) => {
   if (!item) throw new Error(`Unknown gallery id in galleryOrder: ${id}`);
   return {
     ...item,
+    // Legacy catalogue entries retain no active reverse URL. A reverse face is
+    // supplied only by the current in-memory compiler response.
+    reverse: "",
     serial: `${String(index + 1).padStart(2, "0")} / ${String(galleryOrder.length).padStart(2, "0")}`,
     script: sourceScript(item.id, item.source),
     trace: paletteTrace(item.source, item.dimensions),

@@ -106,9 +106,10 @@ export async function createSignedRegistrarRecord({ item, runtime, history }: { 
     },
     manifest: {
       scriptHashSha256: item.scriptHash,
-      outputHashSha256: item.outputHash,
+      outputHashSha256: runtime?.transientReverse?.outputSha256 ?? null,
+      outputPersistence: runtime?.transientReverse ? "ephemeral response bytes; no storage key or durable URL" : "not generated in this browser session",
       irVersion: "robby-ir-v1",
-      runtime: runtime ? { toolchain: runtime.toolchain, compiledAt: runtime.compiledAt, irHashSha256: runtime.irHash } : null,
+      runtime: runtime ? { toolchain: runtime.toolchain, compiledAt: runtime.compiledAt, irHashSha256: runtime.irHash, transientReverse: runtime.transientReverse ?? null } : null,
     },
     compilationHistory: history.map(snapshot => ({ id: snapshot.id, origin: snapshot.origin, compiledAt: snapshot.compiledAt, irHashSha256: snapshot.irHash, source: snapshot.source, ir: snapshot.ir })),
   };
