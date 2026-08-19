@@ -29,8 +29,12 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_command(&mut self) -> CompileResult<Command> {
-        let (name, span) = self.expect_identifier("Expected a command name such as `base` or `cutout`.")?;
-        self.expect(|kind| matches!(kind, TokenKind::LeftParen), "Expected `(` after the command name.")?;
+        let (name, span) =
+            self.expect_identifier("Expected a command name such as `base` or `palette`.")?;
+        self.expect(
+            |kind| matches!(kind, TokenKind::LeftParen),
+            "Expected `(` after the command name.",
+        )?;
         let mut arguments = Vec::new();
         if !self.check(|kind| matches!(kind, TokenKind::RightParen)) {
             loop {
@@ -44,8 +48,15 @@ impl<'a> Parser<'a> {
                 break;
             }
         }
-        self.expect(|kind| matches!(kind, TokenKind::RightParen), "Expected `)` to close this command.")?;
-        Ok(Command { name, arguments, span })
+        self.expect(
+            |kind| matches!(kind, TokenKind::RightParen),
+            "Expected `)` to close this command.",
+        )?;
+        Ok(Command {
+            name,
+            arguments,
+            span,
+        })
     }
 
     fn parse_argument(&mut self) -> CompileResult<Argument> {
@@ -81,7 +92,10 @@ impl<'a> Parser<'a> {
                 self.advance();
                 Ok(Value::Identifier(value))
             }
-            _ => Err(CompilerError::at(token.span.line, "Expected a string, number, or identifier value.")),
+            _ => Err(CompilerError::at(
+                token.span.line,
+                "Expected a string, number, or identifier value.",
+            )),
         }
     }
 

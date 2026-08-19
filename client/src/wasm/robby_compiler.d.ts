@@ -14,6 +14,14 @@ export function compiler_version(): string;
 * @returns {string}
 */
 export function rust_toolchain(): string;
+/**
+* Render through the same Rust implementation used by the native binary.
+* The JSON result carries PNG bytes and the deterministic manifest.
+* @param {Uint8Array} source_bytes
+* @param {string} settings_json
+* @returns {string}
+*/
+export function render_reverse_json(source_bytes: Uint8Array, settings_json: string): string;
 
 export type InitInput = RequestInfo | URL | Response | BufferSource | WebAssembly.Module;
 
@@ -21,6 +29,7 @@ export interface InitOutput {
   readonly memory: WebAssembly.Memory;
   readonly compile_source_json: (a: number, b: number, c: number) => void;
   readonly compiler_version: (a: number) => void;
+  readonly render_reverse_json: (a: number, b: number, c: number, d: number, e: number) => void;
   readonly rust_toolchain: (a: number) => void;
   readonly __wbindgen_add_to_stack_pointer: (a: number) => number;
   readonly __wbindgen_malloc: (a: number, b: number) => number;

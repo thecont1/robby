@@ -1,4 +1,4 @@
-/** The versioned Robby v0.1 command reference mirrors `src/validator.rs`. */
+/** The versioned Robby v1 command reference mirrors `src/validator.rs`. */
 
 export type ReferenceParameter = {
   name: string;
@@ -18,78 +18,52 @@ export type ReferenceCommand = {
 
 export const minimalExample = `base("source.jpg")
 palette(k: 8)
-reverse(mode: "palette-grid", k: 8)
-output(obverse: "obverse.png", reverse: "reverse.png", manifest: "manifest.json")`;
+reverse(mode: "negative")
+output(obverse: "source.jpg", reverse: "transient", manifest: "transient")`;
 
 export const languageReference: readonly ReferenceCommand[] = [
   {
     name: "base",
     syntax: 'base(path: string, width?: integer, height?: integer)',
-    description: "Declares the one source image that anchors a composition. It must be the first command.",
+    description: "Declares the JPEG whose exact bytes and RGB matrix are the render inputs. It must be first.",
     parameters: [
-      { name: "path", type: "string", required: true, detail: "Positional image path." },
-      { name: "width", type: "positive integer", required: false, detail: "Optional canvas width; omit to retain the source dimensions." },
-      { name: "height", type: "positive integer", required: false, detail: "Optional canvas height; omit to retain the source dimensions." },
+      { name: "path", type: "string", required: true, detail: "JPEG basename in the watched gallery directory." },
+      { name: "width", type: "positive integer", required: false, detail: "Optional reverse width, 1–4096." },
+      { name: "height", type: "positive integer", required: false, detail: "Optional reverse height, 1–4096." },
     ],
-    example: 'base("night-street.jpg", width: 1440, height: 1080)',
-    notes: "Exactly one base command is allowed.",
-  },
-  {
-    name: "cutout",
-    syntax: 'cutout(source: string, mask: "person" | "sky", id: string)',
-    description: "Registers an auto-masked image layer that can later be placed over the base.",
-    parameters: [
-      { name: "source", type: "string", required: true, detail: "Image path for the extracted subject." },
-      { name: "mask", type: '"person" | "sky"', required: true, detail: "v0.1 supports only the two listed automatic mask kinds." },
-      { name: "id", type: "string", required: true, detail: "Unique handle referenced by place(...)." },
-    ],
-    example: 'cutout(source: "courier.png", mask: "person", id: "courier")',
-  },
-  {
-    name: "place",
-    syntax: 'place(cutout: string, x: float, y: float, scale?: float, rotation?: float, opacity?: float, blend?: string)',
-    description: "Places a previously declared cutout on normalized base-image coordinates.",
-    parameters: [
-      { name: "cutout", type: "string", required: true, detail: "A cutout id already declared above." },
-      { name: "x / y", type: "float", required: true, detail: "Normalized coordinates from 0.0 to 1.0." },
-      { name: "scale", type: "float", required: false, detail: "Greater than 0; default 1.0." },
-      { name: "rotation", type: "float", required: false, detail: "Degrees; default 0.0." },
-      { name: "opacity", type: "float", required: false, detail: "0.0 to 1.0; default 1.0." },
-      { name: "blend", type: '"normal" | "multiply" | "screen" | "overlay"', required: false, detail: 'Default "normal".' },
-    ],
-    example: 'place(cutout: "courier", x: 0.72, y: 0.64, scale: 0.92, rotation: -2, opacity: 0.96, blend: "normal")',
+    example: 'base("source.jpg", width: 1024, height: 768)',
+    notes: "The compiler never derives meaning from depicted content.",
   },
   {
     name: "palette",
     syntax: "palette(k?: integer)",
-    description: "Calculates the dominant colour palette used by the palette-grid reverse and signature record.",
+    description: "Selects the number of RGB clusters supplied to the deterministic render module.",
     parameters: [
-      { name: "k", type: "integer", required: false, detail: "3 to 16; default 6." },
+      { name: "k", type: "integer", required: false, detail: "3–16; default 8." },
     ],
     example: "palette(k: 8)",
-    notes: "Only one palette command is allowed.",
+    notes: "Exactly one palette declaration may appear; omission uses k=8.",
   },
   {
     name: "reverse",
-    syntax: 'reverse(mode: "provenance-map" | "palette-grid", k?: integer)',
-    description: "Declares an inspectable inverse image. Every Robby composition needs at least one.",
+    syntax: 'reverse(mode: "negative")',
+    description: "Selects the registered pure mathematical reverse module.",
     parameters: [
-      { name: "mode", type: '"provenance-map" | "palette-grid"', required: true, detail: "The provenance map traces placed layers; the palette grid compresses dominant colour evidence." },
-      { name: "k", type: "integer", required: false, detail: "Only for palette-grid; 3 to 16, inheriting palette(k) or defaulting to 6." },
+      { name: "mode", type: '"negative"', required: true, detail: "The v1 registry contains only the negative module." },
     ],
-    example: 'reverse(mode: "palette-grid", k: 8)',
-    notes: "v0.1 supports at most two reverse commands.",
+    example: 'reverse(mode: "negative")',
+    notes: "Exactly one reverse declaration is required.",
   },
   {
     name: "output",
     syntax: "output(obverse: string, reverse: string, manifest: string)",
-    description: "Declares the names of the rendered obverse, reverse, and process manifest files.",
+    description: "Names logical outputs. Reverse PNG bytes and the manifest remain transient response data.",
     parameters: [
-      { name: "obverse", type: "string", required: true, detail: "Output filename for the front image." },
-      { name: "reverse", type: "string", required: true, detail: "Output filename for the inverse image." },
-      { name: "manifest", type: "string", required: true, detail: "Output filename for the process graph manifest." },
+      { name: "obverse", type: "string", required: true, detail: "Logical source name; the JPEG is never rewritten." },
+      { name: "reverse", type: "string", required: true, detail: "Logical transient reverse name; never a storage path." },
+      { name: "manifest", type: "string", required: true, detail: "Logical transient manifest name; never a storage path." },
     ],
-    example: 'output(obverse: "night-obverse.png", reverse: "night-reverse.png", manifest: "night-manifest.json")',
-    notes: "Output must be the final command.",
+    example: 'output(obverse: "source.jpg", reverse: "transient", manifest: "transient")',
+    notes: "Output must be final.",
   },
 ] as const;
