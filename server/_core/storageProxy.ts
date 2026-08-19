@@ -1,11 +1,5 @@
 import type { Express } from "express";
 import { ENV } from "./env";
-import { existsSync } from "node:fs";
-import { dirname, join, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
-
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const LOCAL_STORAGE = resolve(__dirname, "..", "..", "manus-storage");
 
 export function registerStorageProxy(app: Express) {
   app.get("/manus-storage/*", async (req, res) => {
@@ -15,14 +9,8 @@ export function registerStorageProxy(app: Express) {
       return;
     }
 
-    // Local fallback: serve from manus-storage/ when Forge isn't configured
     if (!ENV.forgeApiUrl || !ENV.forgeApiKey) {
-      const filePath = join(LOCAL_STORAGE, key);
-      if (existsSync(filePath)) {
-        res.sendFile(resolve(filePath));
-        return;
-      }
-      res.status(404).send(`File not found in local manus-storage/: ${key}`);
+      res.status(500).send("Storage proxy not configured");
       return;
     }
 

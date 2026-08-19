@@ -19,7 +19,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useTheme } from "@/contexts/ThemeContext";
-import { gallery, type CredentialSignature, type TraceStep } from "@/lib/demoData";
+import { type CredentialSignature, type TraceStep, type GalleryItem } from "@/lib/demoData";
+import { useGallery } from "@/lib/useGallery";
 import { inspectC2paCredential } from "@/lib/c2paCredentials";
 import { footerSocialLinks } from "@/lib/footerLinks";
 import { compileWithRust, rustToolchainVersion, type RobbyIr } from "@/lib/robbyCompiler";
@@ -73,9 +74,10 @@ function traceFromIr(ir: RobbyIr): TraceStep[] {
 }
 
 type ProjectionState = "gallery" | "draft" | "compiling" | "error" | "live";
-type SlideTransition = { outgoingIndex: number; incomingIndex: number; direction: GallerySlideDirection };
+type SlideTransition = { outgoingId: string; incomingId: string; incomingIndex: number; direction: GallerySlideDirection };
 
 export default function Home() {
+  const { items: gallery, loading: galleryLoading } = useGallery();
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [face, setFace] = useState<"obverse" | "inverse">("obverse");
   const [isFlipping, setIsFlipping] = useState(false);
@@ -99,7 +101,24 @@ export default function Home() {
   const reverseUrlRef = useRef<string | null>(null);
   const discardReverseAfterFlip = useRef(false);
   const { theme, toggleTheme } = useTheme();
-  const selected = gallery[selectedIndex];
+
+  // Clamp selectedIndex when gallery changes (e.g. images added/removed)
+  useEffect(() => {
+    if (gallery.length === 0) return;
+    if (selectedIndex >= gallery.length) {
+      setSelectedIndex(gallery.length - 1);
+    }
+  }, [gallery.length, selectedIndex]);
+
+  const safeIndex = gallery.length > 0 ? Math.min(selectedIndex, gallery.length - 1) : 0;
+  const selected: GalleryItem = gallery[safeIndex] ?? {
+    id: "", serial: "", title: "", subtitle: "", date: "", source: "",
+    dimensions: "", ratio: "four-three", obverse: "", reverse: "",
+    reverseMode: "palette-grid", reverseKind: "", reverseDescription: "",
+    scriptHash: "", outputHash: "", palette: [], trace: [], script: "",
+    credentialSignature: { status: "absent", sourceSha256: "", verificationMethod: "", note: "" },
+    colourSignature: { pixelSha256: "", paletteSha256: "", algorithm: "" },
+  };
   const selectedWithCredential = credentialOverride ? { ...selected, credentialSignature: credentialOverride } : selected;
   const activeFace = face;
   const liveIr = projectionState === "live" && compiledEdit?.specimenId === selected.id ? compiledEdit.ir : null;
@@ -136,7 +155,9 @@ export default function Home() {
   useEffect(() => () => { if (reverseUrlRef.current) URL.revokeObjectURL(reverseUrlRef.current); }, []);
 
   useEffect(() => {
+    if (gallery.length === 0) return;
     let active = true;
+    setHistoryReady(false);
     Promise.all(gallery.map(async item => [item.id, await loadCompileHistory(item.id)] as const))
       .then(entries => {
         if (!active) return;
@@ -150,7 +171,7 @@ export default function Home() {
         setHistoryReady(true);
       });
     return () => { active = false; };
-  }, []);
+  }, [gallery.length > 0]);
 
   const commitSelection = (nextIndex: number) => {
     discardEphemeralReverse();
@@ -173,7 +194,8 @@ export default function Home() {
       return;
     }
     setSlideTransition({
-      outgoingIndex: selectedIndex,
+      outgoingId: selected.id,
+      incomingId: gallery[normalizedIndex].id,
       incomingIndex: normalizedIndex,
       direction: gallerySlideDirection(selectedIndex, normalizedIndex, gallery.length),
     });
@@ -356,11 +378,19 @@ export default function Home() {
     selectImage(selectedIndex + offset);
   };
 
+  if (galleryLoading || gallery.length === 0) {
+    return (
+      <main className="app-shell min-h-screen overflow-hidden bg-[#f4efe1] text-[#1c1a19] flex items-center justify-center">
+        <p className="mono text-sm tracking-wider text-[#5b564e]">{galleryLoading ? "Loading gallery…" : "No images in gallery/ folder"}</p>
+      </main>
+    );
+  }
+
   return (
     <main className={`app-shell min-h-screen overflow-hidden bg-[#f4efe1] text-[#1c1a19]${imageOnly ? " image-only" : ""}`}>
       <header className="site-header">
         <a className="brand-lockup" href="#gallery" aria-label="robby gallery">
-          <img src="/manus-storage/robby-registration-mark_658aceee.png" alt="robby split registration disc" />
+          <img src="/icons/robby-registration-mark_658aceee.png" alt="robby split registration disc" />
           <span className="brand-copy">
             <span className="brand-title">robby <span className="brand-slash">/</span> <span className="brand-suffix">v1</span></span>
             <span className={`compile-status ${compilerState}`}>{compilerLabel}</span>
@@ -369,10 +399,10 @@ export default function Home() {
         <span className="header-product-subtitle">The Reverse-Obverse Image Duality Compiler</span>
         <div className="header-actions header-toolset">
           <button type="button" className="feature-control icon-control" onClick={toggleTheme} aria-label={themeControlLabel(theme)} aria-pressed={theme === "dark"} title={themeControlLabel(theme)}>
-            <img src={theme === "light" ? "/manus-storage/thin-sunglasses_23303233.svg" : "/manus-storage/regular-sunglasses_28c9e1cf.svg"} alt="" />
+            <img src={theme === "light" ? "/icons/thin-sunglasses_23303233.svg" : "/icons/regular-sunglasses_28c9e1cf.svg"} alt="" />
           </button>
           <button type="button" className="feature-control icon-control image-only-toggle" onClick={() => setImageOnly((current) => !current)} aria-pressed={imageOnly} aria-label={imageOnly ? "Restore interface text" : "Enable image-only concentration mode"} title="Image-only concentration mode. Press Escape to return.">
-            <img src={imageOnly ? "/manus-storage/text-hidden_1b455537.svg" : "/manus-storage/text-visible_5e9d8f58.svg"} alt="" />
+            <img src={imageOnly ? "/icons/text-hidden_1b455537.svg" : "/icons/text-visible_5e9d8f58.svg"} alt="" />
           </button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -406,11 +436,15 @@ export default function Home() {
           <div className="artwork-stage-frame">
             <span className="stage-corner top-left" aria-hidden="true" /><span className="stage-corner top-right" aria-hidden="true" /><span className="stage-corner bottom-left" aria-hidden="true" /><span className="stage-corner bottom-right" aria-hidden="true" />
             <div className="artwork-stage-viewport">
-              {slideTransition ? (
+              {(slideTransition && (() => {
+                const outgoing = gallery.find(item => item.id === slideTransition.outgoingId);
+                const incoming = gallery.find(item => item.id === slideTransition.incomingId);
+                if (!outgoing || !incoming) return null;
+                return (
                 <div className={`slide-track slide-track-${slideTransition.direction}`} onAnimationEnd={settleStageSlide}>
                   {slideTransition.direction === "forward" ? (
                     <>
-                      <div className={`two-sided-object ${gallery[slideTransition.outgoingIndex].ratio} slide-track-item`} aria-hidden="true">
+                      <div className={`two-sided-object ${outgoing.ratio} slide-track-item`} aria-hidden="true">
                         <div className="object-turner" data-face={face}>
                           <div className="object-face object-face-obverse" aria-hidden={face !== "obverse"}>
                             <img src={displayedObverse} alt="" className="object-image" />
@@ -420,10 +454,10 @@ export default function Home() {
                           </div>
                         </div>
                       </div>
-                      <div className={`two-sided-object ${gallery[slideTransition.incomingIndex].ratio} slide-track-item`} aria-busy>
+                      <div className={`two-sided-object ${incoming.ratio} slide-track-item`} aria-busy>
                         <div className="object-turner" data-face="obverse">
                           <div className="object-face object-face-obverse" aria-hidden={false}>
-                            <img src={gallery[slideTransition.incomingIndex].obverse} alt={`${gallery[slideTransition.incomingIndex].title} obverse`} className="object-image" />
+                            <img src={incoming.obverse} alt={`${incoming.title} obverse`} className="object-image" />
                           </div>
                           <div className="object-face object-face-inverse" aria-hidden={true}>
                           </div>
@@ -432,16 +466,16 @@ export default function Home() {
                     </>
                   ) : (
                     <>
-                      <div className={`two-sided-object ${gallery[slideTransition.incomingIndex].ratio} slide-track-item`} aria-busy>
+                      <div className={`two-sided-object ${incoming.ratio} slide-track-item`} aria-busy>
                         <div className="object-turner" data-face="obverse">
                           <div className="object-face object-face-obverse" aria-hidden={false}>
-                            <img src={gallery[slideTransition.incomingIndex].obverse} alt={`${gallery[slideTransition.incomingIndex].title} obverse`} className="object-image" />
+                            <img src={incoming.obverse} alt={`${incoming.title} obverse`} className="object-image" />
                           </div>
                           <div className="object-face object-face-inverse" aria-hidden={true}>
                           </div>
                         </div>
                       </div>
-                      <div className={`two-sided-object ${gallery[slideTransition.outgoingIndex].ratio} slide-track-item`} aria-hidden="true">
+                      <div className={`two-sided-object ${outgoing.ratio} slide-track-item`} aria-hidden="true">
                         <div className="object-turner" data-face={face}>
                           <div className="object-face object-face-obverse" aria-hidden={face !== "obverse"}>
                             <img src={displayedObverse} alt="" className="object-image" />
@@ -454,7 +488,8 @@ export default function Home() {
                     </>
                   )}
                 </div>
-              ) : (
+                );
+              })()) ?? (
                 <div className={`two-sided-object ${selected.ratio}`} aria-busy={isFlipping} onAnimationEnd={settleStageSlide}>
                   <div className="object-turner" data-face={face} onTransitionEnd={settleFlip}>
                     <div className="object-face object-face-obverse" aria-hidden={face !== "obverse"}>

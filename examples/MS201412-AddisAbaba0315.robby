@@ -1,4 +1,0 @@
-base("MS201412-AddisAbaba0315.jpg")
-palette(k: 8)
-reverse(mode: "palette-grid", k: 8)
-output(obverse: "MS201412-AddisAbaba0315-obverse.png", reverse: "MS201412-AddisAbaba0315-reverse.png", manifest: "MS201412-AddisAbaba0315-manifest.json")
