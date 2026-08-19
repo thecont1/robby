@@ -1,7 +1,7 @@
 use robby_compiler::render::{render_reverse, RenderSettings};
 
 fn bmp(width: u32, height: u32, salt: u8) -> Vec<u8> {
-    let row_size = ((width * 3 + 3) / 4) * 4;
+    let row_size = (width * 3).div_ceil(4) * 4;
     let pixel_bytes = row_size * height;
     let file_size = 54 + pixel_bytes;
     let mut out = vec![0_u8; file_size as usize];
