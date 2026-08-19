@@ -9,6 +9,7 @@ import { appRouter } from "../routers";
 import { registerOriginalRoutes } from "../originals";
 import { registerLiveRenderRoutes } from "../liveRender";
 import { registerC2paRoutes } from "../c2pa";
+import { registerGalleryRoutes } from "../galleryWatcher";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
 
@@ -42,6 +43,7 @@ async function startServer() {
   registerOriginalRoutes(app);
   registerLiveRenderRoutes(app);
   registerC2paRoutes(app);
+  registerGalleryRoutes(app);
   // tRPC API
   app.use(
     "/api/trpc",
@@ -50,6 +52,10 @@ async function startServer() {
       createContext,
     })
   );
+  // Reject any unmatched /api/* path with 404 JSON before the SPA fallback
+  app.use("/api/*", (_req, res) => {
+    res.status(404).json({ error: "Not found" });
+  });
   // development mode uses Vite, production mode uses static files
   if (process.env.NODE_ENV === "development") {
     await setupVite(app, server);

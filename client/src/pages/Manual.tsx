@@ -13,7 +13,7 @@ export default function Manual() {
     <main className="manual-page">
       <header className="site-header manual-header">
         <Link className="brand-lockup" href="/">
-          <img src="/manus-storage/robby-registration-mark_658aceee.png" alt="robby split registration disc" />
+          <img src="/icons/robby-registration-mark_658aceee.png" alt="robby split registration disc" />
           <span>robby<span className="brand-suffix">/ v1</span></span>
         </Link>
         <div className="header-center"><BookOpen size={14} /><span className="header-kicker">Language reference · v0.1</span></div>
