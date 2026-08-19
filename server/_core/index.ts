@@ -2,15 +2,11 @@ import "dotenv/config";
 import express from "express";
 import { createServer } from "http";
 import net from "net";
-import { createExpressMiddleware } from "@trpc/server/adapters/express";
-import { registerOAuthRoutes } from "./oauth";
-import { registerStorageProxy } from "./storageProxy";
-import { appRouter } from "../routers";
-import { registerOriginalRoutes } from "../originals";
+import { pathToFileURL } from "node:url";
+import { resolve } from "node:path";
 import { registerLiveRenderRoutes } from "../liveRender";
 import { registerC2paRoutes } from "../c2pa";
 import { registerGalleryRoutes } from "../galleryWatcher";
-import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
 
 function isPortAvailable(port: number): Promise<boolean> {
@@ -32,35 +28,26 @@ async function findAvailablePort(startPort: number = 3000): Promise<number> {
   throw new Error(`No available port found starting from ${startPort}`);
 }
 
-async function startServer() {
+export function createApp({ serveFrontend = true } = {}) {
   const app = express();
-  const server = createServer(app);
-  // Configure body parser with larger size limit for file uploads
-  app.use(express.json({ limit: "50mb" }));
-  app.use(express.urlencoded({ limit: "50mb", extended: true }));
-  registerStorageProxy(app);
-  registerOAuthRoutes(app);
-  registerOriginalRoutes(app);
   registerLiveRenderRoutes(app);
   registerC2paRoutes(app);
   registerGalleryRoutes(app);
-  // tRPC API
-  app.use(
-    "/api/trpc",
-    createExpressMiddleware({
-      router: appRouter,
-      createContext,
-    })
-  );
   // Reject any unmatched /api/* path with 404 JSON before the SPA fallback
   app.use("/api/*", (_req, res) => {
     res.status(404).json({ error: "Not found" });
   });
-  // development mode uses Vite, production mode uses static files
+  if (serveFrontend && process.env.NODE_ENV !== "development") {
+    serveStatic(app);
+  }
+  return app;
+}
+
+async function startServer() {
+  const app = createApp();
+  const server = createServer(app);
   if (process.env.NODE_ENV === "development") {
     await setupVite(app, server);
-  } else {
-    serveStatic(app);
   }
 
   const preferredPort = parseInt(process.env.PORT || "3000");
@@ -75,4 +62,5 @@ async function startServer() {
   });
 }
 
-startServer().catch(console.error);
+const entryPoint = process.argv[1] ? import.meta.url === pathToFileURL(resolve(process.argv[1])).href : false;
+if (entryPoint) startServer().catch(console.error);

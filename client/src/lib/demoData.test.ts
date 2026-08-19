@@ -23,7 +23,7 @@ describe("authentic-source gallery records", () => {
   it("keeps only the immutable JPEG obverse in the catalogue; inverses are generated on demand", () => {
     for (const id of authenticIds) {
       const specimen = gallery.find(item => item.id === id);
-      expect(specimen?.obverse).toMatch(/^\/manus-storage\/.+\.jpg$/);
+      expect(specimen?.obverse).toBe(`/gallery/${specimen?.source}`);
       expect(specimen?.reverse).toBe("");
     }
   });

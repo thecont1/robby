@@ -101,7 +101,10 @@ pub fn lex(source: &str) -> CompileResult<Vec<Token>> {
                     }
                     if next == '\\' {
                         let Some(escaped) = characters.get(index + 1).copied() else {
-                            return Err(CompilerError::at(line, "Unterminated escape sequence in string literal."));
+                            return Err(CompilerError::at(
+                                line,
+                                "Unterminated escape sequence in string literal.",
+                            ));
                         };
                         if escaped == '\n' {
                             return Err(CompilerError::at(line, "Unterminated string literal."));
@@ -132,12 +135,11 @@ pub fn lex(source: &str) -> CompileResult<Vec<Token>> {
                     span,
                 });
             }
-            next
-                if next.is_ascii_digit()
-                    || (next == '-'
-                        && characters
-                            .get(index + 1)
-                            .is_some_and(|following| following.is_ascii_digit())) =>
+            next if next.is_ascii_digit()
+                || (next == '-'
+                    && characters
+                        .get(index + 1)
+                        .is_some_and(|following| following.is_ascii_digit())) =>
             {
                 let start = index;
                 if character == '-' {
@@ -159,9 +161,9 @@ pub fn lex(source: &str) -> CompileResult<Vec<Token>> {
                     }
                 }
                 let raw: String = characters[start..index].iter().collect();
-                let number = raw
-                    .parse::<f64>()
-                    .map_err(|_| CompilerError::at(span.line, format!("Could not parse `{raw}` as a number.")))?;
+                let number = raw.parse::<f64>().map_err(|_| {
+                    CompilerError::at(span.line, format!("Could not parse `{raw}` as a number."))
+                })?;
                 if !number.is_finite() {
                     return Err(CompilerError::at(span.line, "Numbers must be finite."));
                 }

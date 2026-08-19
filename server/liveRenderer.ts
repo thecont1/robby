@@ -1,15 +1,14 @@
-import crypto from "crypto";
+import crypto from "node:crypto";
 
 type UnknownRecord = Record<string, unknown>;
 
-export type LiveRenderableIr = UnknownRecord & {
+export type LiveRenderableIr = {
   version: "robby-ir-v1";
-  canvas: { base: string; width?: number; height?: number };
-  cutouts: unknown[];
-  layers: unknown[];
-  palette?: { k: number };
-  reverse: Array<{ mode: "palette-grid" | "provenance-map"; k?: number | null }>;
+  canvas: { base: string; width: number | null; height: number | null };
+  palette: { k: number };
+  reverse: { mode: "negative" };
   output: { obverse: string; reverse: string; manifest: string };
+  meta: { script_sha256: string };
 };
 
 export class LiveRenderValidationError extends Error {}
@@ -18,46 +17,70 @@ function isRecord(value: unknown): value is UnknownRecord {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }
 
-function validK(value: unknown) {
-  return Number.isInteger(value) && Number(value) >= 2 && Number(value) <= 16;
+function exactKeys(value: UnknownRecord, allowed: readonly string[], label: string) {
+  const unknown = Object.keys(value).filter(key => !allowed.includes(key));
+  if (unknown.length) throw new LiveRenderValidationError(`Unknown IR field ${label}.${unknown[0]}.`);
 }
 
-/**
- * The gallery exposes only authenticated base-image studies. Cutout assets are
- * deliberately rejected until they have their own immutable asset registry.
- */
+function dimension(value: unknown, label: string) {
+  if (value === undefined || value === null) return null;
+  if (!Number.isInteger(value) || Number(value) < 1 || Number(value) > 4096) {
+    throw new LiveRenderValidationError(`${label} must be an integer between 1 and 4096.`);
+  }
+  return Number(value);
+}
+
 export function normalizeLiveRenderableIr(value: unknown): LiveRenderableIr {
-  if (!isRecord(value) || value.version !== "robby-ir-v1") throw new LiveRenderValidationError("Expected a Rust-validated robby-ir-v1 document.");
-  if (!isRecord(value.canvas) || typeof value.canvas.base !== "string") throw new LiveRenderValidationError("The live executor requires one known base source.");
-  if (!Array.isArray(value.cutouts) || !Array.isArray(value.layers) || value.cutouts.length || value.layers.length) {
-    throw new LiveRenderValidationError("Live web rendering currently supports the gallery’s base-only programs; authenticated cutout assets are not yet registered.");
+  if (!isRecord(value) || value.version !== "robby-ir-v1") {
+    throw new LiveRenderValidationError("Expected a Rust-validated robby-ir-v1 document.");
   }
-  const width = value.canvas.width;
-  const height = value.canvas.height;
-  const hasWidth = width !== undefined && width !== null;
-  const hasHeight = height !== undefined && height !== null;
-  if ((hasWidth && (!Number.isInteger(width) || Number(width) < 1 || Number(width) > 4096)) || (hasHeight && (!Number.isInteger(height) || Number(height) < 1 || Number(height) > 4096)) || (Number(width ?? 1) * Number(height ?? 1) > 12_000_000)) {
-    throw new LiveRenderValidationError("Live canvas dimensions must be whole numbers within the 12-megapixel execution limit.");
+  exactKeys(value, ["version", "canvas", "palette", "reverse", "output", "meta"], "root");
+  if (!isRecord(value.canvas)) throw new LiveRenderValidationError("IR canvas must be an object.");
+  exactKeys(value.canvas, ["base", "width", "height"], "canvas");
+  if (typeof value.canvas.base !== "string" || value.canvas.base.length === 0) {
+    throw new LiveRenderValidationError("The live renderer requires one gallery base source.");
   }
-  if (value.palette !== undefined && (!isRecord(value.palette) || !validK(value.palette.k))) throw new LiveRenderValidationError("Palette k must be an integer from 2 through 16.");
-  if (!Array.isArray(value.reverse) || value.reverse.length !== 1 || !isRecord(value.reverse[0])) throw new LiveRenderValidationError("Live web rendering requires exactly one reverse mode.");
-  const reverse = value.reverse[0];
-  if (reverse.mode !== "palette-grid" && reverse.mode !== "provenance-map") throw new LiveRenderValidationError("Live reverse mode must be palette-grid or provenance-map.");
-  if (reverse.k !== undefined && reverse.k !== null && !validK(reverse.k)) throw new LiveRenderValidationError("Reverse palette k must be an integer from 2 through 16.");
+  const width = dimension(value.canvas.width, "Canvas width");
+  const height = dimension(value.canvas.height, "Canvas height");
+
+  if (!isRecord(value.palette) || !Number.isInteger(value.palette.k) || Number(value.palette.k) < 3 || Number(value.palette.k) > 16) {
+    throw new LiveRenderValidationError("Palette k must be an integer between 3 and 16.");
+  }
+  exactKeys(value.palette, ["k"], "palette");
+  if (!isRecord(value.reverse) || value.reverse.mode !== "negative") {
+    throw new LiveRenderValidationError("Live reverse mode must be negative.");
+  }
+  exactKeys(value.reverse, ["mode"], "reverse");
+  if (!isRecord(value.output)) throw new LiveRenderValidationError("IR output must be an object.");
+  exactKeys(value.output, ["obverse", "reverse", "manifest"], "output");
+  for (const key of ["obverse", "reverse", "manifest"] as const) {
+    if (typeof value.output[key] !== "string") throw new LiveRenderValidationError(`IR output.${key} must be a string.`);
+  }
+  if (!isRecord(value.meta) || typeof value.meta.script_sha256 !== "string") {
+    throw new LiveRenderValidationError("IR meta.script_sha256 must be present.");
+  }
+  exactKeys(value.meta, ["script_sha256"], "meta");
 
   return {
-    ...value,
     version: "robby-ir-v1",
-    canvas: { base: value.canvas.base, ...(hasWidth ? { width: Number(width) } : {}), ...(hasHeight ? { height: Number(height) } : {}) },
-    cutouts: [],
-    layers: [],
-    palette: value.palette ? { k: Number(value.palette.k) } : undefined,
-    reverse: [{ mode: reverse.mode, ...(reverse.k ? { k: Number(reverse.k) } : {}) }],
-    // Client-authored names never reach the file system.
-    output: { obverse: "obverse.png", reverse: "inverse.png", manifest: "manifest.json" },
+    canvas: { base: value.canvas.base, width, height },
+    palette: { k: Number(value.palette.k) },
+    reverse: { mode: "negative" },
+    output: {
+      obverse: value.output.obverse as string,
+      reverse: value.output.reverse as string,
+      manifest: value.output.manifest as string,
+    },
+    meta: { script_sha256: value.meta.script_sha256 },
   };
 }
 
 export function renderFingerprint(ir: LiveRenderableIr) {
-  return crypto.createHash("sha256").update(JSON.stringify({ canvas: ir.canvas, palette: ir.palette, reverse: ir.reverse })).digest("hex");
+  return crypto.createHash("sha256").update(JSON.stringify({
+    source: ir.canvas.base,
+    mode: ir.reverse.mode,
+    k: ir.palette.k,
+    width: ir.canvas.width,
+    height: ir.canvas.height,
+  })).digest("hex");
 }

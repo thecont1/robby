@@ -13,10 +13,8 @@ import initRobbyCompiler, {
 export type RobbyIr = {
   version: "robby-ir-v1";
   canvas: { base: string; width: number | null; height: number | null };
-  cutouts: Array<{ id: string; source: string; mask: string }>;
-  layers: Array<{ cutout: string; x: number; y: number; scale: number; rotation: number; opacity: number; blend: string }>;
-  palette: { k: number } | null;
-  reverse: Array<{ mode: "provenance-map" | "palette-grid"; k: number | null }>;
+  palette: { k: number };
+  reverse: { mode: "negative" };
   output: { obverse: string; reverse: string; manifest: string };
   meta: { script_sha256: string };
 };
