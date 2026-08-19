@@ -10,7 +10,8 @@ import { CompilationTraceModes, ProvenanceModule, type RuntimeRecord, type Trace
 import { loadCompileHistory, persistCompileSnapshot, type CompileSnapshot } from "@/lib/compileHistory";
 import { verifiedCompilerStatus } from "@/lib/compilerStatus";
 import { requestEphemeralReverse, type EphemeralReverseResult } from "@/lib/liveRender";
-import { createSignedRegistrarRecord, downloadSignedRegistrarJson, downloadSignedRegistrarPdf } from "@/lib/registrarExport";
+import { paletteKFromSource, replacePaletteK } from "@/lib/paletteSettings";
+
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -34,7 +35,7 @@ import {
   FileText,
   FlipHorizontal2,
   RotateCcw,
-  LockKeyhole,
+
   Menu,
   Lightbulb,
   Maximize2,
@@ -65,10 +66,8 @@ function shortHash(value: string) {
 
 function traceFromIr(ir: RobbyIr): TraceStep[] {
   const trace: TraceStep[] = [{ stage: "01", label: "Base canvas", code: `base("${ir.canvas.base}")`, detail: "live Rust IR · validated source" }];
-  ir.cutouts.forEach((cutout, index) => trace.push({ stage: String(index + 2).padStart(2, "0"), label: "Extract subject", code: `cutout(mask: "${cutout.mask}")`, detail: `${cutout.id} · ${cutout.source}` }));
-  ir.layers.forEach((layer, index) => trace.push({ stage: String(trace.length + 1).padStart(2, "0"), label: "Place layer", code: `place(x: ${layer.x}, y: ${layer.y})`, detail: `${layer.blend} · ${layer.scale} scale · ${layer.rotation}° rotation`, color: index === 0 ? "#E3442F" : undefined }));
-  if (ir.palette) trace.push({ stage: String(trace.length + 1).padStart(2, "0"), label: "Calculate palette", code: `palette(k: ${ir.palette.k})`, detail: "live IR palette declaration" });
-  ir.reverse.forEach((reverse) => trace.push({ stage: String(trace.length + 1).padStart(2, "0"), label: "Render inverse", code: `reverse("${reverse.mode}")`, detail: reverse.k ? `palette grid · k=${reverse.k}` : "provenance declaration" }));
+  trace.push({ stage: "02", label: "Calculate palette", code: `palette(k: ${ir.palette.k})`, detail: "deterministic RGB clusters" });
+  trace.push({ stage: "03", label: "Render reverse", code: `reverse(mode: "${ir.reverse.mode}")`, detail: "seed-driven registered module" });
   trace.push({ stage: String(trace.length + 1).padStart(2, "0"), label: "Prepare reverse record", code: `output(…${ir.output.manifest})`, detail: "ephemeral output · generated only when the inverse is requested" });
   return trace;
 }
@@ -96,6 +95,7 @@ export default function Home() {
   const [slideTransition, setSlideTransition] = useState<SlideTransition | null>(null);
   const [credentialOverride, setCredentialOverride] = useState<CredentialSignature | null>(null);
   const [isRenderingReverse, setIsRenderingReverse] = useState(false);
+  const [paletteK, setPaletteK] = useState(8);
   const artworkTouchStartX = useRef<number | null>(null);
   const compileHistory = useRef<Record<string, CompileSnapshot[]>>({});
   const reverseUrlRef = useRef<string | null>(null);
@@ -114,7 +114,7 @@ export default function Home() {
   const selected: GalleryItem = gallery[safeIndex] ?? {
     id: "", serial: "", title: "", subtitle: "", date: "", source: "",
     dimensions: "", ratio: "four-three", obverse: "", reverse: "",
-    reverseMode: "palette-grid", reverseKind: "", reverseDescription: "",
+    reverseMode: "negative", reverseKind: "", reverseDescription: "",
     scriptHash: "", outputHash: "", palette: [], trace: [], script: "",
     credentialSignature: { status: "absent", sourceSha256: "", verificationMethod: "", note: "" },
     colourSignature: { pixelSha256: "", paletteSha256: "", algorithm: "" },
@@ -127,9 +127,17 @@ export default function Home() {
   const projectionUnavailable = projectionState === "draft" || projectionState === "compiling" || projectionState === "error";
   const trace = projectionUnavailable ? [] : liveIr ? traceFromIr(liveIr) : selected.trace;
   const liveScriptHash = projectionUnavailable ? null : liveIr?.meta.script_sha256 ?? selected.scriptHash;
-  const liveReverseMode = projectionUnavailable ? null : liveIr?.reverse.map((item) => item.k ? `${item.mode} (k=${item.k})` : item.mode).join(" + ") ?? selected.reverseMode;
+  const liveReverseMode = projectionUnavailable ? null : liveIr?.reverse.mode ?? selected.reverseMode;
   const currentHistory = compileHistory.current[selected.id] ?? [];
   const isSlideTransitioning = Boolean(slideTransition);
+
+  useEffect(() => {
+    try {
+      setPaletteK(paletteKFromSource(selected.script));
+    } catch {
+      setPaletteK(8);
+    }
+  }, [selected.id, selected.script]);
 
   useEffect(() => {
     let active = true;
@@ -213,7 +221,8 @@ export default function Home() {
     setIsRenderingReverse(true);
     setFailureMessage(null);
     try {
-      const source = compiledEdit?.specimenId === selected.id ? compiledEdit.source : selected.script;
+      const activeSource = compiledEdit?.specimenId === selected.id ? compiledEdit.source : selected.script;
+      const source = replacePaletteK(activeSource, paletteK);
       const ir = await compileWithRust(source);
       const result = await requestEphemeralReverse(ir);
       const url = URL.createObjectURL(result.blob);
@@ -224,7 +233,7 @@ export default function Home() {
       const irHash = await hashValue(JSON.stringify(ir));
       setCompiledEdit({ specimenId: selected.id, ir, source });
       setProjectionState("live");
-      setRuntimeRecord(current => ({ compiledAt, irHash, toolchain: current?.toolchain ?? "RUST/WASM", transientReverse: { generatedAt: compiledAt, outputSha256: result.outputSha256, sourceSha256: result.sourceSha256, mode: result.reverseMode } }));
+      setRuntimeRecord(current => ({ compiledAt, irHash, toolchain: current?.toolchain ?? "RUST/WASM", transientReverse: { generatedAt: compiledAt, outputSha256: result.manifest.output_sha256, sourceSha256: result.manifest.source_obverse_sha256, mode: result.manifest.render_module, seed: result.manifest.derived_seed, settingsSha256: result.manifest.script_settings_sha256, swatches: result.manifest.colour_swatches } }));
       setIsFlipping(true);
       setFace("inverse");
     } catch (error) {
@@ -316,6 +325,7 @@ export default function Home() {
     compileHistory.current[selected.id] = await persistCompileSnapshot(snapshot);
     setHistoryRevision(current => current + 1);
     setCompiledEdit({ specimenId: selected.id, ir, source });
+    setPaletteK(ir.palette.k);
     setProjectionState("live");
     setFace("obverse");
     setFailureMessage(null);
@@ -357,12 +367,6 @@ export default function Home() {
     requestAnimationFrame(() => document.getElementById(`trace-step-${reverseStage}`)?.scrollIntoView({ behavior: "smooth", block: "center" }));
   };
 
-  const exportRegistrar = async (format: "json" | "pdf") => {
-    const record = await createSignedRegistrarRecord({ item: selected, runtime: runtimeRecord, history: compileHistory.current[selected.id] ?? [] });
-    const filename = `robby-${selected.id}-registrar-${record.issuedAt.replaceAll(":", "-")}`;
-    if (format === "json") downloadSignedRegistrarJson(record, filename);
-    else await downloadSignedRegistrarPdf(record, filename);
-  };
 
   const handleArtworkTouchStart = (event: React.TouchEvent<HTMLDivElement>) => {
     artworkTouchStartX.current = event.touches[0]?.clientX ?? null;
@@ -410,7 +414,7 @@ export default function Home() {
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="robby-menu-content">
               <DropdownMenuItem asChild><Link href="/manual"><BookOpen size={17} /> Language manual</Link></DropdownMenuItem>
-              <DropdownMenuItem asChild><Link href="/originals"><LockKeyhole size={17} /> Authentic originals</Link></DropdownMenuItem>
+
               <DropdownMenuItem asChild><Link href="/brief/hackathon"><FileText size={17} /> Hackathon brief</Link></DropdownMenuItem>
               <DropdownMenuItem asChild><Link href="/brief/image-object"><Lightbulb size={17} /> Image-object concept</Link></DropdownMenuItem>
               <DropdownMenuSeparator />
@@ -513,6 +517,22 @@ export default function Home() {
                 </div>
               </div>
               <div className="caption-turn">
+                <label className="palette-k-control">
+                  <span>k</span>
+                  <input
+                    aria-label="Palette clusters k"
+                    type="number"
+                    min={3}
+                    max={16}
+                    step={1}
+                    value={paletteK}
+                    disabled={isFlipping || isRenderingReverse}
+                    onChange={(event) => {
+                      const value = Number(event.target.value);
+                      if (Number.isInteger(value) && value >= 3 && value <= 16) setPaletteK(value);
+                    }}
+                  />
+                </label>
                 <button type="button" className="flip-control" onClick={() => void turnOver()} disabled={isFlipping || isRenderingReverse} aria-label={face === "inverse" ? `Return ${selected.title} to its obverse` : `Compile and turn ${selected.title} to its inverse`}>
                   {face === "inverse" ? <RotateCcw size={18} /> : <FlipHorizontal2 size={18} />}<span>{isRenderingReverse ? "Compiling inverse" : isFlipping ? "Turning object" : face === "inverse" ? "Return to obverse" : "Turn to inverse"}</span><small>F</small>
                 </button>
@@ -548,7 +568,7 @@ export default function Home() {
         <aside className="trace-panel" aria-label={`Compilation trace for ${selected.title}`} inert={imageOnly}>
           <div className="trace-heading"><div><CircleDotDashed size={15} /><MonoLabel>Compilation trace</MonoLabel></div><span>{projectionState === "draft" ? "DRAFT" : projectionState === "compiling" ? "VALIDATING" : projectionState === "error" ? "UNAVAILABLE" : `${trace.length} STEPS`}</span></div>
           <div className="trace-title"><p className="eyebrow">Evidence beside object</p><h3>{selected.source}<br /><em>/ {activeFace}</em></h3></div>
-          <CompilationTraceModes item={selectedWithCredential} trace={trace} activeMode={traceMode} onModeChange={setTraceMode} projectionState={projectionState} failureMessage={failureMessage} history={currentHistory} runtime={runtimeRecord} onExportRegistrar={exportRegistrar} />
+          <CompilationTraceModes item={selectedWithCredential} trace={trace} activeMode={traceMode} onModeChange={setTraceMode} projectionState={projectionState} failureMessage={failureMessage} history={currentHistory} runtime={runtimeRecord} />
         </aside>
         <div className="source-workbench-wrap" inert={imageOnly}>
           <SourceEditor
