@@ -1,10 +1,7 @@
-import crypto from "node:crypto";
 import express, { type Express } from "express";
 import { Reader } from "@contentauth/c2pa-node";
-import { existsSync, readFileSync, statSync } from "node:fs";
-import { basename, join, resolve } from "node:path";
-
-const GALLERY_DIR = resolve(process.cwd(), "gallery");
+import { basename } from "node:path";
+import { readLocalGallerySource } from "./gallerySource";
 
 const CACHE_TTL_MS = 5 * 60 * 1000;
 
@@ -25,7 +22,7 @@ export type C2paReaderSummary = {
   validationStatus?: ValidationNotice[] | null;
 };
 
-const cache = new Map<string, { expiresAt: number; mtimeMs: number; size: number; result: C2paCredentialInspection }>();
+const cache = new Map<string, { expiresAt: number; result: C2paCredentialInspection }>();
 const verificationMethod = "Official CAI C2PA Node SDK validation of exact local JPEG bytes";
 
 /** Validate that sourceName is a single flat JPEG filename — no path separators, no traversal, no non-JPEG names. */
@@ -83,27 +80,22 @@ export function credentialFromReaderSummary(
 
 export async function inspectGalleryCredential(sourceName: string): Promise<C2paCredentialInspection> {
   const safeName = validateSourceName(sourceName);
-  const filePath = join(GALLERY_DIR, safeName);
-  if (!existsSync(filePath)) throw new Error(`Gallery file not found: ${safeName}`);
-
-  const stat = statSync(filePath);
-  const cached = cache.get(safeName);
-  if (cached && cached.expiresAt > Date.now() && cached.mtimeMs === stat.mtimeMs && cached.size === stat.size) {
+  const source = await readLocalGallerySource(safeName);
+  const cacheKey = `${source.path}:${source.sha256}`;
+  const cached = cache.get(cacheKey);
+  if (cached && cached.expiresAt > Date.now()) {
     return cached.result;
   }
 
-  const bytes = readFileSync(filePath);
-  const sourceSha256 = crypto.createHash("sha256").update(bytes).digest("hex");
-
-  const reader = await Reader.fromAsset({ buffer: bytes, mimeType: "image/jpeg" });
+  const reader = await Reader.fromAsset({ buffer: source.bytes, mimeType: "image/jpeg" });
   const manifestStore = reader?.json();
-  const result = credentialFromReaderSummary(sourceSha256, {
+  const result = credentialFromReaderSummary(source.sha256, {
     embedded: Boolean(reader?.isEmbedded()),
     active: reader?.getActive(),
     validationState: manifestStore?.validation_state,
     validationStatus: manifestStore?.validation_status,
   });
-  cache.set(safeName, { expiresAt: Date.now() + CACHE_TTL_MS, mtimeMs: stat.mtimeMs, size: stat.size, result });
+  cache.set(cacheKey, { expiresAt: Date.now() + CACHE_TTL_MS, result });
   return result;
 }
 
@@ -123,17 +115,12 @@ export function createC2paInspectionHandler() {
       return;
     }
 
-    const filePath = join(GALLERY_DIR, safeName);
-    if (!existsSync(filePath)) {
-      res.status(404).json({ error: "Gallery file not found" });
-      return;
-    }
-
     try {
       res.json(await inspectGalleryCredential(safeName));
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unable to inspect C2PA credentials";
-      res.status(500).json({ error: message });
+      const status = message.includes("not found") ? 404 : message.includes("symlink") || message.includes("escapes") ? 400 : 500;
+      res.status(status).json({ error: message });
     }
   };
 }
