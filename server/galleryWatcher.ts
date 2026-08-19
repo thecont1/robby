@@ -11,7 +11,7 @@
  */
 
 import type { Express } from "express";
-import { execFileSync } from "node:child_process";
+import { execFile, execFileSync } from "node:child_process";
 import { EventEmitter } from "node:events";
 import { existsSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
 import { basename, extname, join, resolve } from "node:path";
@@ -61,6 +61,8 @@ function computeRatio(width: number, height: number): "four-three" | "three-two"
   return Math.abs(ratio - 4 / 3) < Math.abs(ratio - 3 / 2) ? "four-three" : "three-two";
 }
 
+const paletteCache = new Map<string, { mtimeMs: number; size: number; result: { palette: string[]; pixelSha256: string; paletteSha256: string } }>();
+
 const PALETTE_SCRIPT = `
 from PIL import Image
 import numpy as np, sys, json, hashlib
@@ -91,19 +93,34 @@ palette_sha = hashlib.sha256("|".join(palette).encode("ascii")).hexdigest()
 print(json.dumps({"palette": palette, "pixelSha256": pixel_sha, "paletteSha256": palette_sha}))
 `;
 
-function computePalette(filePath: string, k: number): { palette: string[]; pixelSha256: string; paletteSha256: string } {
+async function computePalette(filePath: string, k: number): Promise<{ palette: string[]; pixelSha256: string; paletteSha256: string }> {
+  const clampedK = Math.min(Math.max(k, 3), 16);
+  const stat = statSync(filePath);
+  const cached = paletteCache.get(filePath);
+  if (cached && cached.mtimeMs === stat.mtimeMs && cached.size === stat.size) {
+    return cached.result;
+  }
   // Use the project venv Python which has PIL/NumPy installed
   const venvPython = resolve(process.cwd(), ".venv", "bin", "python3");
   const pythonBin = existsSync(venvPython) ? venvPython : "python3";
-  try {
-    const output = execFileSync(pythonBin, ["-c", PALETTE_SCRIPT, filePath, String(k)], {
+  return new Promise(resolvePromise => {
+    execFile(pythonBin, ["-c", PALETTE_SCRIPT, filePath, String(clampedK)], {
       encoding: "utf-8",
       timeout: 15000,
+    }, (err, stdout) => {
+      if (err) {
+        resolvePromise({ palette: [], pixelSha256: "", paletteSha256: "" });
+        return;
+      }
+      try {
+        const result = JSON.parse(stdout.trim());
+        paletteCache.set(filePath, { mtimeMs: stat.mtimeMs, size: stat.size, result });
+        resolvePromise(result);
+      } catch {
+        resolvePromise({ palette: [], pixelSha256: "", paletteSha256: "" });
+      }
     });
-    return JSON.parse(output.trim());
-  } catch {
-    return { palette: [], pixelSha256: "", paletteSha256: "" };
-  }
+  });
 }
 
 function defaultScript(id: string, source: string): string {
@@ -169,7 +186,7 @@ function buildTrace(script: string, source: string, dimensions: string): { stage
   return trace;
 }
 
-function scanGallery(): DynamicGalleryItem[] {
+async function scanGallery(): Promise<DynamicGalleryItem[]> {
   let files: string[] = [];
   try {
     files = readdirSync(GALLERY_DIR)
@@ -186,7 +203,7 @@ function scanGallery(): DynamicGalleryItem[] {
     return [];
   }
 
-  return files.map((filename, index) => {
+  const items = await Promise.all(files.map(async (filename, index): Promise<DynamicGalleryItem> => {
     const filePath = join(GALLERY_DIR, filename);
     const id = basename(filename, extname(filename));
     const { width, height } = measureImage(filePath);
@@ -195,7 +212,7 @@ function scanGallery(): DynamicGalleryItem[] {
     const date = filename.match(/^MS(\d{4})/)?.[1] ?? "unknown";
     const script = getOrGenerateScript(id, filename);
     const { paletteK, reverseMode } = parseScriptMeta(script);
-    const { palette, pixelSha256, paletteSha256 } = computePalette(filePath, paletteK);
+    const { palette, pixelSha256, paletteSha256 } = await computePalette(filePath, paletteK);
 
     return {
       id,
@@ -219,7 +236,8 @@ function scanGallery(): DynamicGalleryItem[] {
       credentialSignature: { status: "absent", sourceSha256: "", verificationMethod: "none", note: "C2PA not yet inspected" },
       colourSignature: { pixelSha256, paletteSha256, algorithm: `kmeans-${paletteK}` },
     };
-  });
+  }));
+  return items;
 }
 
 class GalleryWatcher extends EventEmitter {
@@ -233,8 +251,8 @@ class GalleryWatcher extends EventEmitter {
     this.startWatching();
   }
 
-  private refresh() {
-    this.currentItems = scanGallery();
+  private async refresh() {
+    this.currentItems = await scanGallery();
     this.emit("update", this.currentItems);
   }
 
@@ -274,7 +292,11 @@ export function registerGalleryRoutes(app: Express) {
       res.status(400).send("Missing gallery file");
       return;
     }
-    const filePath = join(GALLERY_DIR, key);
+    const filePath = resolve(join(GALLERY_DIR, key));
+    if (!filePath.startsWith(GALLERY_DIR + "/") && filePath !== GALLERY_DIR) {
+      res.status(404).send("Not found");
+      return;
+    }
     try {
       const stat = statSync(filePath);
       if (!stat.isFile()) {
@@ -285,7 +307,7 @@ export function registerGalleryRoutes(app: Express) {
       res.status(404).send("Not found");
       return;
     }
-    res.sendFile(resolve(filePath));
+    res.sendFile(filePath);
   });
 
   // GET gallery data as JSON
