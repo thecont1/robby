@@ -74,7 +74,7 @@ function traceFromIr(ir: RobbyIr): TraceStep[] {
 }
 
 type ProjectionState = "gallery" | "draft" | "compiling" | "error" | "live";
-type SlideTransition = { outgoingIndex: number; incomingIndex: number; direction: GallerySlideDirection };
+type SlideTransition = { outgoingId: string; incomingId: string; incomingIndex: number; direction: GallerySlideDirection };
 
 export default function Home() {
   const { items: gallery, loading: galleryLoading } = useGallery();
@@ -155,7 +155,9 @@ export default function Home() {
   useEffect(() => () => { if (reverseUrlRef.current) URL.revokeObjectURL(reverseUrlRef.current); }, []);
 
   useEffect(() => {
+    if (gallery.length === 0) return;
     let active = true;
+    setHistoryReady(false);
     Promise.all(gallery.map(async item => [item.id, await loadCompileHistory(item.id)] as const))
       .then(entries => {
         if (!active) return;
@@ -169,7 +171,7 @@ export default function Home() {
         setHistoryReady(true);
       });
     return () => { active = false; };
-  }, []);
+  }, [gallery.length > 0]);
 
   const commitSelection = (nextIndex: number) => {
     discardEphemeralReverse();
@@ -192,7 +194,8 @@ export default function Home() {
       return;
     }
     setSlideTransition({
-      outgoingIndex: selectedIndex,
+      outgoingId: selected.id,
+      incomingId: gallery[normalizedIndex].id,
       incomingIndex: normalizedIndex,
       direction: gallerySlideDirection(selectedIndex, normalizedIndex, gallery.length),
     });
@@ -433,11 +436,15 @@ export default function Home() {
           <div className="artwork-stage-frame">
             <span className="stage-corner top-left" aria-hidden="true" /><span className="stage-corner top-right" aria-hidden="true" /><span className="stage-corner bottom-left" aria-hidden="true" /><span className="stage-corner bottom-right" aria-hidden="true" />
             <div className="artwork-stage-viewport">
-              {slideTransition ? (
+              {(slideTransition && (() => {
+                const outgoing = gallery.find(item => item.id === slideTransition.outgoingId);
+                const incoming = gallery.find(item => item.id === slideTransition.incomingId);
+                if (!outgoing || !incoming) return null;
+                return (
                 <div className={`slide-track slide-track-${slideTransition.direction}`} onAnimationEnd={settleStageSlide}>
                   {slideTransition.direction === "forward" ? (
                     <>
-                      <div className={`two-sided-object ${gallery[slideTransition.outgoingIndex].ratio} slide-track-item`} aria-hidden="true">
+                      <div className={`two-sided-object ${outgoing.ratio} slide-track-item`} aria-hidden="true">
                         <div className="object-turner" data-face={face}>
                           <div className="object-face object-face-obverse" aria-hidden={face !== "obverse"}>
                             <img src={displayedObverse} alt="" className="object-image" />
@@ -447,10 +454,10 @@ export default function Home() {
                           </div>
                         </div>
                       </div>
-                      <div className={`two-sided-object ${gallery[slideTransition.incomingIndex].ratio} slide-track-item`} aria-busy>
+                      <div className={`two-sided-object ${incoming.ratio} slide-track-item`} aria-busy>
                         <div className="object-turner" data-face="obverse">
                           <div className="object-face object-face-obverse" aria-hidden={false}>
-                            <img src={gallery[slideTransition.incomingIndex].obverse} alt={`${gallery[slideTransition.incomingIndex].title} obverse`} className="object-image" />
+                            <img src={incoming.obverse} alt={`${incoming.title} obverse`} className="object-image" />
                           </div>
                           <div className="object-face object-face-inverse" aria-hidden={true}>
                           </div>
@@ -459,16 +466,16 @@ export default function Home() {
                     </>
                   ) : (
                     <>
-                      <div className={`two-sided-object ${gallery[slideTransition.incomingIndex].ratio} slide-track-item`} aria-busy>
+                      <div className={`two-sided-object ${incoming.ratio} slide-track-item`} aria-busy>
                         <div className="object-turner" data-face="obverse">
                           <div className="object-face object-face-obverse" aria-hidden={false}>
-                            <img src={gallery[slideTransition.incomingIndex].obverse} alt={`${gallery[slideTransition.incomingIndex].title} obverse`} className="object-image" />
+                            <img src={incoming.obverse} alt={`${incoming.title} obverse`} className="object-image" />
                           </div>
                           <div className="object-face object-face-inverse" aria-hidden={true}>
                           </div>
                         </div>
                       </div>
-                      <div className={`two-sided-object ${gallery[slideTransition.outgoingIndex].ratio} slide-track-item`} aria-hidden="true">
+                      <div className={`two-sided-object ${outgoing.ratio} slide-track-item`} aria-hidden="true">
                         <div className="object-turner" data-face={face}>
                           <div className="object-face object-face-obverse" aria-hidden={face !== "obverse"}>
                             <img src={displayedObverse} alt="" className="object-image" />
@@ -481,7 +488,8 @@ export default function Home() {
                     </>
                   )}
                 </div>
-              ) : (
+                );
+              })()) ?? (
                 <div className={`two-sided-object ${selected.ratio}`} aria-busy={isFlipping} onAnimationEnd={settleStageSlide}>
                   <div className="object-turner" data-face={face} onTransitionEnd={settleFlip}>
                     <div className="object-face object-face-obverse" aria-hidden={face !== "obverse"}>
