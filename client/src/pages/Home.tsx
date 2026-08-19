@@ -19,7 +19,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useTheme } from "@/contexts/ThemeContext";
-import { gallery, type CredentialSignature, type TraceStep } from "@/lib/demoData";
+import { type CredentialSignature, type TraceStep, type GalleryItem } from "@/lib/demoData";
+import { useGallery } from "@/lib/useGallery";
 import { inspectC2paCredential } from "@/lib/c2paCredentials";
 import { footerSocialLinks } from "@/lib/footerLinks";
 import { compileWithRust, rustToolchainVersion, type RobbyIr } from "@/lib/robbyCompiler";
@@ -76,6 +77,7 @@ type ProjectionState = "gallery" | "draft" | "compiling" | "error" | "live";
 type SlideTransition = { outgoingIndex: number; incomingIndex: number; direction: GallerySlideDirection };
 
 export default function Home() {
+  const { items: gallery, loading: galleryLoading } = useGallery();
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [face, setFace] = useState<"obverse" | "inverse">("obverse");
   const [isFlipping, setIsFlipping] = useState(false);
@@ -99,7 +101,24 @@ export default function Home() {
   const reverseUrlRef = useRef<string | null>(null);
   const discardReverseAfterFlip = useRef(false);
   const { theme, toggleTheme } = useTheme();
-  const selected = gallery[selectedIndex];
+
+  // Clamp selectedIndex when gallery changes (e.g. images added/removed)
+  useEffect(() => {
+    if (gallery.length === 0) return;
+    if (selectedIndex >= gallery.length) {
+      setSelectedIndex(gallery.length - 1);
+    }
+  }, [gallery.length, selectedIndex]);
+
+  const safeIndex = gallery.length > 0 ? Math.min(selectedIndex, gallery.length - 1) : 0;
+  const selected: GalleryItem = gallery[safeIndex] ?? {
+    id: "", serial: "", title: "", subtitle: "", date: "", source: "",
+    dimensions: "", ratio: "four-three", obverse: "", reverse: "",
+    reverseMode: "palette-grid", reverseKind: "", reverseDescription: "",
+    scriptHash: "", outputHash: "", palette: [], trace: [], script: "",
+    credentialSignature: { status: "absent", sourceSha256: "", verificationMethod: "", note: "" },
+    colourSignature: { pixelSha256: "", paletteSha256: "", algorithm: "" },
+  };
   const selectedWithCredential = credentialOverride ? { ...selected, credentialSignature: credentialOverride } : selected;
   const activeFace = face;
   const liveIr = projectionState === "live" && compiledEdit?.specimenId === selected.id ? compiledEdit.ir : null;
@@ -356,11 +375,19 @@ export default function Home() {
     selectImage(selectedIndex + offset);
   };
 
+  if (galleryLoading || gallery.length === 0) {
+    return (
+      <main className="app-shell min-h-screen overflow-hidden bg-[#f4efe1] text-[#1c1a19] flex items-center justify-center">
+        <p className="mono text-sm tracking-wider text-[#5b564e]">{galleryLoading ? "Loading gallery…" : "No images in gallery/ folder"}</p>
+      </main>
+    );
+  }
+
   return (
     <main className={`app-shell min-h-screen overflow-hidden bg-[#f4efe1] text-[#1c1a19]${imageOnly ? " image-only" : ""}`}>
       <header className="site-header">
         <a className="brand-lockup" href="#gallery" aria-label="robby gallery">
-          <img src="/manus-storage/robby-registration-mark_658aceee.png" alt="robby split registration disc" />
+          <img src="/icons/robby-registration-mark_658aceee.png" alt="robby split registration disc" />
           <span className="brand-copy">
             <span className="brand-title">robby <span className="brand-slash">/</span> <span className="brand-suffix">v1</span></span>
             <span className={`compile-status ${compilerState}`}>{compilerLabel}</span>
@@ -369,10 +396,10 @@ export default function Home() {
         <span className="header-product-subtitle">The Reverse-Obverse Image Duality Compiler</span>
         <div className="header-actions header-toolset">
           <button type="button" className="feature-control icon-control" onClick={toggleTheme} aria-label={themeControlLabel(theme)} aria-pressed={theme === "dark"} title={themeControlLabel(theme)}>
-            <img src={theme === "light" ? "/manus-storage/thin-sunglasses_23303233.svg" : "/manus-storage/regular-sunglasses_28c9e1cf.svg"} alt="" />
+            <img src={theme === "light" ? "/icons/thin-sunglasses_23303233.svg" : "/icons/regular-sunglasses_28c9e1cf.svg"} alt="" />
           </button>
           <button type="button" className="feature-control icon-control image-only-toggle" onClick={() => setImageOnly((current) => !current)} aria-pressed={imageOnly} aria-label={imageOnly ? "Restore interface text" : "Enable image-only concentration mode"} title="Image-only concentration mode. Press Escape to return.">
-            <img src={imageOnly ? "/manus-storage/text-hidden_1b455537.svg" : "/manus-storage/text-visible_5e9d8f58.svg"} alt="" />
+            <img src={imageOnly ? "/icons/text-hidden_1b455537.svg" : "/icons/text-visible_5e9d8f58.svg"} alt="" />
           </button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
