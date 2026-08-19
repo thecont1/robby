@@ -1,6 +1,6 @@
 import { CheckCircle2, ClipboardList, FileDiff, Fingerprint, GraduationCap, History, ShieldCheck, TriangleAlert } from "lucide-react";
 import { useState } from "react";
-import type { GalleryItem, TraceStep } from "@/lib/demoData";
+import type { CredentialSignature, GalleryItem, TraceStep } from "@/lib/demoData";
 import type { CompileSnapshot } from "@/lib/compileHistory";
 
 export type ProvenanceTab = "provenance" | "runtime" | "reverse";
@@ -70,6 +70,16 @@ export function CompilationTraceModes({ trace, activeMode, onModeChange, project
   </>;
 }
 
+export function CredentialEvidence({ credential }: { credential: CredentialSignature }) {
+  const status = credential.status?.trim().toLowerCase() || "unknown";
+  const showBadge = status === "present" || status === "candidate";
+  return <dl aria-live="polite">
+    <div><dt>CREDENTIAL STATUS</dt><dd><strong>C2PA {status.toUpperCase()}</strong>{showBadge && <img src="/icons/content_credentials_logo.svg" alt="Content Credentials" className="c2pa-badge" />}</dd></div>
+    <div><dt>VERIFICATION</dt><dd>{credential.verificationMethod.trim() || "Not reported"}</dd></div>
+    <div><dt>VALIDATION NOTE</dt><dd>{credential.note.trim() || "No additional validation detail was returned."}</dd></div>
+  </dl>;
+}
+
 export function ProvenanceModule({ item, runtime, onFocusReverse }: { item: GalleryItem; runtime: RuntimeRecord | null; onFocusReverse: () => void }) {
   const [tab, setTab] = useState<ProvenanceTab>("runtime");
   const tabs: Array<{ id: ProvenanceTab; label: string; icon: typeof ShieldCheck }> = [
@@ -80,7 +90,7 @@ export function ProvenanceModule({ item, runtime, onFocusReverse }: { item: Gall
   return <section className="manifest-strip provenance-module" aria-label="Object provenance and runtime manifest">
     <div className="provenance-tablist" role="tablist">{tabs.map(next => { const Icon = next.icon; return <button key={next.id} type="button" role="tab" aria-selected={tab === next.id} className={tab === next.id ? "active" : ""} onClick={() => setTab(next.id)}><Icon size={16} /><span>{next.label}</span></button>; })}</div>
     <div className="provenance-content" role="tabpanel">
-      {tab === "provenance" && <dl><div><dt>SOURCE</dt><dd>{item.source}</dd></div><div><dt>SOURCE SHA-256</dt><dd>{runtime?.transientReverse?.sourceSha256 ?? item.credentialSignature.sourceSha256}</dd></div></dl>}
+      {tab === "provenance" && <div className="provenance-records"><dl><div><dt>SOURCE</dt><dd>{item.source}</dd></div><div><dt>SOURCE SHA-256</dt><dd>{runtime?.transientReverse?.sourceSha256 ?? item.credentialSignature.sourceSha256}</dd></div></dl><CredentialEvidence credential={item.credentialSignature} /></div>}
       {tab === "runtime" && <dl><div><dt>MODULE</dt><dd>{runtime?.transientReverse?.mode ?? "ON REQUEST"}</dd></div><div><dt>SEED</dt><dd>{runtime?.transientReverse?.seed ?? "generated on next turn"}</dd></div><div><dt>SETTINGS SHA-256</dt><dd>{runtime?.transientReverse?.settingsSha256 ?? "generated on next turn"}</dd></div><div><dt>OUTPUT SHA-256</dt><dd>{runtime?.transientReverse?.outputSha256 ?? "generated on next turn"}</dd></div><div><dt>CACHED INTERMEDIATE</dt><dd>none</dd></div></dl>}
       {tab === "reverse" && <dl><div><dt>COMMAND</dt><dd><button type="button" onClick={onFocusReverse}>reverse(mode: "negative")</button></dd></div><div><dt>PALETTE K</dt><dd>{item.script.match(/palette\(k:\s*(\d+)\)/)?.[1] ?? "8"}</dd></div><div><dt>SWATCHES</dt><dd>{runtime?.transientReverse?.swatches.join(" · ") ?? "compiled on next turn"}</dd></div></dl>}
     </div>
