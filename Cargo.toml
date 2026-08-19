@@ -18,7 +18,10 @@ default = []
 wasm = ["dep:wasm-bindgen"]
 
 [dependencies]
+image = { version = "=0.25.8", default-features = false, features = ["bmp", "jpeg", "png"] }
 serde = { version = "=1.0.197", features = ["derive"] }
 serde_json = "=1.0.115"
 sha2 = "=0.10.8"
 wasm-bindgen = { version = "=0.2.92", optional = true }
+zune-core = "=0.4.12"
+zune-jpeg = "=0.4.21"

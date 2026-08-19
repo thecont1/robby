@@ -183,6 +183,48 @@ export function rust_toolchain() {
     }
 }
 
+function passArray8ToWasm0(arg, malloc) {
+    const ptr = malloc(arg.length * 1, 1) >>> 0;
+    getUint8Memory0().set(arg, ptr / 1);
+    WASM_VECTOR_LEN = arg.length;
+    return ptr;
+}
+/**
+* Render through the same Rust implementation used by the native binary.
+* The JSON result carries PNG bytes and the deterministic manifest.
+* @param {Uint8Array} source_bytes
+* @param {string} settings_json
+* @returns {string}
+*/
+export function render_reverse_json(source_bytes, settings_json) {
+    let deferred4_0;
+    let deferred4_1;
+    try {
+        const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+        const ptr0 = passArray8ToWasm0(source_bytes, wasm.__wbindgen_malloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ptr1 = passStringToWasm0(settings_json, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len1 = WASM_VECTOR_LEN;
+        wasm.render_reverse_json(retptr, ptr0, len0, ptr1, len1);
+        var r0 = getInt32Memory0()[retptr / 4 + 0];
+        var r1 = getInt32Memory0()[retptr / 4 + 1];
+        var r2 = getInt32Memory0()[retptr / 4 + 2];
+        var r3 = getInt32Memory0()[retptr / 4 + 3];
+        var ptr3 = r0;
+        var len3 = r1;
+        if (r3) {
+            ptr3 = 0; len3 = 0;
+            throw takeObject(r2);
+        }
+        deferred4_0 = ptr3;
+        deferred4_1 = len3;
+        return getStringFromWasm0(ptr3, len3);
+    } finally {
+        wasm.__wbindgen_add_to_stack_pointer(16);
+        wasm.__wbindgen_free(deferred4_0, deferred4_1, 1);
+    }
+}
+
 async function __wbg_load(module, imports) {
     if (typeof Response === 'function' && module instanceof Response) {
         if (typeof WebAssembly.instantiateStreaming === 'function') {

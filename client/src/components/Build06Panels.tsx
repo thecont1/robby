@@ -1,47 +1,29 @@
-import { CheckCircle2, ClipboardList, Download, FileDiff, Fingerprint, GraduationCap, History, ShieldCheck, ShieldX, TriangleAlert } from "lucide-react";
+import { CheckCircle2, ClipboardList, FileDiff, Fingerprint, GraduationCap, History, ShieldCheck, TriangleAlert } from "lucide-react";
 import { useState } from "react";
-import type { GalleryItem, TraceStep } from "@/lib/demoData";
-import type { RobbyIr } from "@/lib/robbyCompiler";
+import type { CredentialSignature, GalleryItem, TraceStep } from "@/lib/demoData";
 import type { CompileSnapshot } from "@/lib/compileHistory";
 
 export type ProvenanceTab = "provenance" | "runtime" | "reverse";
-export type TraceMode = "diff" | "evidence" | "registrar" | "pedagogic" | "failure";
+export type TraceMode = "diff" | "evidence" | "pedagogic" | "failure";
 
 export type RuntimeRecord = Pick<CompileSnapshot, "compiledAt" | "irHash"> & {
   toolchain: string;
-  transientReverse?: { generatedAt: string; outputSha256: string; sourceSha256: string; mode: string };
+  transientReverse?: {
+    generatedAt: string;
+    outputSha256: string;
+    sourceSha256: string;
+    mode: string;
+    seed: string;
+    settingsSha256: string;
+    swatches: string[];
+  };
 };
-
-type FieldProps = {
-  id: string;
-  label: string;
-  value: React.ReactNode;
-  detail: string;
-  openId: string | null;
-  onToggle: (id: string) => void;
-  onAction?: () => void;
-  children?: React.ReactNode;
-};
-
-function DetailField({ id, label, value, detail, openId, onToggle, onAction, children }: FieldProps) {
-  const open = openId === id;
-  return <div className={`record-field ${open ? "is-open" : ""}`}>
-    <button type="button" onClick={() => onAction ? onAction() : onToggle(id)} aria-expanded={onAction ? undefined : open} title={detail}>
-      <span>{label}</span>
-      {children}
-      <b>{value}</b>
-    </button>
-    {open && <p className="record-disclosure" role="status">{detail}</p>}
-  </div>;
-}
 
 export function pedagogicDetail(step: TraceStep) {
-  if (step.code.startsWith("base(")) return "This chooses the original photograph that everything else in this image-object will be built upon.";
-  if (step.code.startsWith("cutout(")) return "This finds the chosen subject in the photo and separates it from its background, like tracing around a figure with scissors.";
-  if (step.code.startsWith("place(")) return "This positions the separated subject on the canvas and records the choices used to place it.";
-  if (step.code.startsWith("palette(")) return "This samples the image and groups its most persistent colours into a small, inspectable palette.";
-  if (step.code.startsWith("reverse(")) return "This creates the reverse face: an evidence image that reveals how the visible obverse was interpreted.";
-  return "This writes an inspectable record of the source, transformations, and checksums so the result can be traced later.";
+  if (step.code.startsWith("base(")) return "Reads the exact source bytes and decodes their RGB matrix without classifying image content.";
+  if (step.code.startsWith("palette(")) return "This groups RGB values into a deterministic, ordered set of colour clusters.";
+  if (step.code.startsWith("reverse(")) return "Runs the selected mathematical module from a seed derived from source bytes and settings.";
+  return "Returns the transient PNG and its reproducibility manifest without storing a reverse artifact.";
 }
 
 export function traceDiff(prior: readonly TraceStep[] | undefined, current: readonly TraceStep[]) {
@@ -50,31 +32,20 @@ export function traceDiff(prior: readonly TraceStep[] | undefined, current: read
   const priorByStage = new Map(prior.map(step => [step.stage, step]));
   const currentByStage = new Map(current.map(step => [step.stage, step]));
   const rows: Array<{ state: "added" | "removed" | "changed"; step: TraceStep }> = [];
-
   current.forEach(step => {
     const before = priorByStage.get(step.stage);
     if (!before) rows.push({ state: "added", step });
     else if (key(before) !== key(step)) rows.push({ state: "changed", step });
   });
-  prior.forEach(step => {
-    if (!currentByStage.has(step.stage)) rows.push({ state: "removed", step });
-  });
+  prior.forEach(step => { if (!currentByStage.has(step.stage)) rows.push({ state: "removed", step }); });
   return { kind: "records" as const, rows };
 }
 
 function TraceList({ trace, pedagogic = false }: { trace: readonly TraceStep[]; pedagogic?: boolean }) {
-  return <div className="trace-steps">
-    {trace.map(step => <article className="trace-step" key={step.stage} id={`trace-step-${step.stage}`}>
-      <span className="trace-number">{step.stage}</span>
-      <div><strong>{step.label}</strong><code>{step.code}</code><p>{pedagogic ? pedagogicDetail(step) : step.detail}</p></div>
-      {step.color && <i style={{ backgroundColor: step.color }} aria-label="Vermilion provenance colour" />}
-    </article>)}
-  </div>;
+  return <div className="trace-steps">{trace.map(step => <article className="trace-step" key={step.stage} id={`trace-step-${step.stage}`}><span className="trace-number">{step.stage}</span><div><strong>{step.label}</strong><code>{step.code}</code><p>{pedagogic ? pedagogicDetail(step) : step.detail}</p></div></article>)}</div>;
 }
 
-export function CompilationTraceModes({
-  item, trace, activeMode, onModeChange, projectionState, failureMessage, history, runtime, onExportRegistrar,
-}: {
+export function CompilationTraceModes({ trace, activeMode, onModeChange, projectionState, failureMessage, history }: {
   item: GalleryItem;
   trace: readonly TraceStep[];
   activeMode: TraceMode;
@@ -83,53 +54,45 @@ export function CompilationTraceModes({
   failureMessage: string | null;
   history: readonly CompileSnapshot[];
   runtime: RuntimeRecord | null;
-  onExportRegistrar: (format: "json" | "pdf") => Promise<void>;
 }) {
   const unavailable = projectionState === "draft" || projectionState === "compiling" || projectionState === "error";
-  const diffCurrent = projectionState === "live" ? trace : history.at(-1)?.trace ?? trace;
-  const prior = history.length > 1 ? history.at(-2)?.trace : undefined;
-  const diff = traceDiff(prior, diffCurrent);
-  const simulatedLine = item.script.split("\n").findIndex(line => line.startsWith("palette(")) + 1;
-  const modeTabs: Array<{ id: TraceMode; label: string }> = [
-    { id: "diff", label: "Diff" }, { id: "evidence", label: "Evidence" }, { id: "registrar", label: "Registrar" }, { id: "pedagogic", label: "Pedagogic" }, { id: "failure", label: "Failure" },
+  const current = projectionState === "live" ? trace : history.at(-1)?.trace ?? trace;
+  const diff = traceDiff(history.length > 1 ? history.at(-2)?.trace : undefined, current);
+  const tabs: Array<{ id: TraceMode; label: string }> = [
+    { id: "diff", label: "Diff" }, { id: "evidence", label: "Evidence" }, { id: "pedagogic", label: "Pedagogic" }, { id: "failure", label: "Failure" },
   ];
-
   return <>
-    <div className="trace-mode-tabs" role="tablist" aria-label="Compilation trace reading modes">
-      {modeTabs.map(tab => <button key={tab.id} type="button" role="tab" aria-selected={activeMode === tab.id} className={activeMode === tab.id ? "active" : ""} onClick={() => onModeChange(tab.id)}>{tab.label}</button>)}
-    </div>
-    {activeMode === "evidence" && <p className="trace-tab-intro">The Evidence tab shows the operational trace that produced this image. Each row is one stage of the active .robby source, with its code and a short note.</p>}
-    {activeMode === "evidence" && (unavailable ? <div className="projection-unavailable" role="status"><History size={18} aria-hidden="true" /><div><p className="mono-label">Live projection withheld</p><strong>{projectionState === "draft" ? "The source changed after its last successful compile." : projectionState === "compiling" ? "Validating the current Rust source." : "The current source did not compile."}</strong><p>{projectionState === "error" ? "The editor’s live diagnostic is retained below. Correct the source and compile again for a new evidence record." : "Previous trace, hash, and output targets stay hidden until the current source compiles."}</p></div></div> : <><TraceList trace={trace} /></>)}
-    {activeMode === "pedagogic" && <p className="trace-tab-intro">The Pedagogic tab translates the same trace into plain language, explaining what each operation does and why it matters.</p>}
-    {activeMode === "pedagogic" && (unavailable ? <div className="mode-notice"><GraduationCap size={17} /><p>Teaching annotations return after the current source has a valid Rust compilation.</p></div> : <TraceList trace={trace} pedagogic />)}
-    {activeMode === "diff" && <div className="trace-mode-body"><p className="trace-tab-intro">The Diff tab compares the last two successful compilations. Added, changed, or removed trace steps are highlighted below.</p>{history.length > 1 && <p className="diff-history-note">Comparing the latest two persisted Rust/WASM compilations for this specimen.</p>}{diff.kind === "none" ? <div className="mode-notice"><FileDiff size={17} /><p>No prior compilation to diff against. Successful recompilations are retained in this browser’s IndexedDB history; the next one will compare against this record.</p></div> : diff.rows.length === 0 ? <div className="mode-notice"><CheckCircle2 size={17} /><p>No trace-step changes between the last two successful compilations for this specimen.</p></div> : <div className="diff-list">{diff.rows.map(({ state, step }) => <article key={`${state}-${step.stage}-${step.code}`} className={`diff-row ${state}`}><span>{state.toUpperCase()}</span><div><strong>{step.stage} · {step.label}</strong><code>{step.code}</code><p>{step.detail}</p></div></article>)}</div>}</div>}
-    {activeMode === "registrar" && <div className="trace-mode-body registrar-record"><p className="mode-intro"><ClipboardList size={16} /> The Registrar tab is a registry-style reading of the active specimen. It lists identifiers, hashes, and compile history, with exports that use a browser-local ECDSA attestation.</p><div className="registrar-exports"><button type="button" onClick={() => void onExportRegistrar("json")}><Download size={12} /> Signed JSON</button><button type="button" onClick={() => void onExportRegistrar("pdf")}><Download size={12} /> Signed PDF</button></div><dl><div><dt>SPECIMEN ID</dt><dd>{item.id}</dd></div><div><dt>SCRIPT HASH</dt><dd title={item.scriptHash}>{item.scriptHash}</dd></div><div><dt>IR HASH</dt><dd title={runtime?.irHash}>{runtime?.irHash ?? "Rust/WASM validation in progress"}</dd></div><div><dt>TRANSIENT OUTPUT</dt><dd title={runtime?.transientReverse?.outputSha256}>{runtime?.transientReverse?.outputSha256 ?? "generated only when inverse is requested"}</dd></div><div><dt>COMPILED AT</dt><dd>{runtime ? new Date(runtime.compiledAt).toLocaleString() : "not yet recorded"}</dd></div><div><dt>IR VERSION</dt><dd>{runtime ? "robby-ir-v1" : "loading"}</dd></div><div><dt>HISTORY</dt><dd>{history.length} stored compile record{history.length === 1 ? "" : "s"} in this browser</dd></div></dl></div>}
-    {activeMode === "failure" && <div className="trace-mode-body failure-record">{projectionState === "error" && failureMessage ? <><p className="mode-intro"><TriangleAlert size={16} /> The Failure tab shows a live compiler diagnostic from the current editor source. It highlights the command or parameter that caused the error and suggests a fix.</p><dl><div><dt>SPECIMEN</dt><dd>{item.id}</dd></div><div><dt>RUST DIAGNOSTIC</dt><dd>{failureMessage}</dd></div><div><dt>SUGGESTED FIX</dt><dd>Correct the highlighted command or parameter, then compile again to restore the evidence projection.</dd></div></dl></> : <><p className="mode-intro"><TriangleAlert size={16} /> <strong>Simulated failure example</strong> — the active specimen currently compiles cleanly. This is a deliberately induced teaching record that shows what a Rust diagnostic looks like.</p><dl><div><dt>PLAUSIBLE MISTAKE</dt><dd>Line {simulatedLine}: <code>cutout(source: "subject.jpg", mask: "architecture")</code></dd></div><div><dt>RUST DIAGNOSTIC</dt><dd>Unknown mask type `architecture`. Supported masks are `person` and `sky`.</dd></div><div><dt>SUGGESTED FIX</dt><dd>Choose a supported mask type, or remove the cutout command for a base-only composition.</dd></div><div><dt>CONTEXT</dt><dd>The current script is valid; this record is deliberately induced for teaching and review.</dd></div></dl></>}</div>}
+    <div className="trace-mode-tabs" role="tablist" aria-label="Compilation trace reading modes">{tabs.map(tab => <button key={tab.id} type="button" role="tab" aria-selected={activeMode === tab.id} className={activeMode === tab.id ? "active" : ""} onClick={() => onModeChange(tab.id)}>{tab.label}</button>)}</div>
+    {activeMode === "evidence" && (unavailable ? <div className="projection-unavailable" role="status"><History size={18} /><strong>Live projection unavailable until this source compiles.</strong></div> : <TraceList trace={trace} />)}
+    {activeMode === "pedagogic" && (unavailable ? <div className="mode-notice"><GraduationCap size={17} /><p>Annotations return after compilation.</p></div> : <TraceList trace={trace} pedagogic />)}
+    {activeMode === "diff" && <div className="trace-mode-body">{diff.kind === "none" ? <div className="mode-notice"><FileDiff size={17} /><p>No prior compilation to compare.</p></div> : diff.rows.length === 0 ? <div className="mode-notice"><CheckCircle2 size={17} /><p>No trace changes.</p></div> : <div className="diff-list">{diff.rows.map(({ state, step }) => <article key={`${state}-${step.stage}`} className={`diff-row ${state}`}><span>{state.toUpperCase()}</span><code>{step.code}</code></article>)}</div>}</div>}
+    {activeMode === "failure" && <div className="trace-mode-body failure-record"><TriangleAlert size={16} /><p>{failureMessage ?? "No compiler failure in the current source."}</p></div>}
   </>;
 }
 
+export function CredentialEvidence({ credential }: { credential: CredentialSignature }) {
+  const status = credential.status?.trim().toLowerCase() || "unknown";
+  const showBadge = status === "present" || status === "candidate";
+  return <dl aria-live="polite">
+    <div><dt>CREDENTIAL STATUS</dt><dd><strong>C2PA {status.toUpperCase()}</strong>{showBadge && <img src="/icons/content_credentials_logo.svg" alt="Content Credentials" className="c2pa-badge" />}</dd></div>
+    <div><dt>VERIFICATION</dt><dd>{credential.verificationMethod.trim() || "Not reported"}</dd></div>
+    <div><dt>VALIDATION NOTE</dt><dd>{credential.note.trim() || "No additional validation detail was returned."}</dd></div>
+  </dl>;
+}
+
 export function ProvenanceModule({ item, runtime, onFocusReverse }: { item: GalleryItem; runtime: RuntimeRecord | null; onFocusReverse: () => void }) {
-  const [tab, setTab] = useState<ProvenanceTab>("provenance");
-  const [openId, setOpenId] = useState<string | null>(null);
-  const toggle = (id: string) => setOpenId(current => current === id ? null : id);
-  const sourceBytes = new TextEncoder().encode(item.script).byteLength;
-  const paletteValues = item.palette.join(" · ");
-  const reverseK = item.script.match(/reverse\(mode:\s*"palette-grid",\s*k:\s*(\d+)\)/)?.[1];
-  const credentialLabel = item.credentialSignature.status === "present" ? "C2PA PRESENT" : item.credentialSignature.status === "candidate" ? "C2PA CANDIDATE" : item.credentialSignature.status === "checking" ? "C2PA CHECKING" : "C2PA ABSENT";
+  const [tab, setTab] = useState<ProvenanceTab>("runtime");
   const tabs: Array<{ id: ProvenanceTab; label: string; icon: typeof ShieldCheck }> = [
     { id: "provenance", label: "Object provenance", icon: ShieldCheck },
     { id: "runtime", label: "Runtime manifest", icon: ClipboardList },
     { id: "reverse", label: "Reverse record", icon: Fingerprint },
   ];
-
-  return <section className="manifest-strip provenance-module" aria-label="Object provenance, runtime manifest, and reverse record" id="provenance-module">
-    <div className="provenance-tablist" role="tablist" aria-label="Pre-footer records">
-      {tabs.map(next => { const Icon = next.icon; return <button key={next.id} type="button" role="tab" aria-selected={tab === next.id} className={tab === next.id ? "active" : ""} onClick={() => { setTab(next.id); setOpenId(null); }}><Icon size={16} aria-hidden="true" /><span>{next.label}</span></button>; })}
-    </div>
+  return <section className="manifest-strip provenance-module" aria-label="Object provenance and runtime manifest">
+    <div className="provenance-tablist" role="tablist">{tabs.map(next => { const Icon = next.icon; return <button key={next.id} type="button" role="tab" aria-selected={tab === next.id} className={tab === next.id ? "active" : ""} onClick={() => setTab(next.id)}><Icon size={16} /><span>{next.label}</span></button>; })}</div>
     <div className="provenance-content" role="tabpanel">
-      {tab === "provenance" && <div className="record-grid"><DetailField id="source" label="SOURCE IMAGE" value={item.source} detail={`Original filename retained as supplied. Image dimensions: ${item.dimensions}.`} openId={openId} onToggle={toggle} /><DetailField id="capture" label="IMAGE RECORD" value={`${item.date} · ${item.subtitle}`} detail="Capture metadata available to the gallery is limited to this source record; the original JPEG bytes remain untouched in authenticated storage." openId={openId} onToggle={toggle} /><DetailField id="credential" label="CREDENTIAL SIGNATURE" value={<span className="credential-status">{item.credentialSignature.status === "present" ? "present" : item.credentialSignature.status === "candidate" ? "candidate" : item.credentialSignature.status === "checking" ? "checking" : "absent"}</span>} detail={`${item.credentialSignature.note} Verification: ${item.credentialSignature.verificationMethod}. Generator: ${item.credentialSignature.claimGenerator ?? "none recorded"}. Raw source SHA-256: ${item.credentialSignature.sourceSha256}.`} openId={openId} onToggle={toggle}>{(item.credentialSignature.status === "present" || item.credentialSignature.status === "candidate") && <img src="/icons/content_credentials_logo.svg" alt="Content Credentials" className="c2pa-badge" />}</DetailField><DetailField id="colour" label="COLOUR SIGNATURE" value={<span className="mini-swatches">{item.palette.map(color => <i key={color} style={{ backgroundColor: color }} />)}</span>} detail={`Exact RGB palette: ${paletteValues}. Fingerprint: ${item.colourSignature.pixelSha256}. Method: ${item.colourSignature.algorithm}.`} openId={openId} onToggle={toggle} /></div>}
-      {tab === "runtime" && <div className="record-grid"><DetailField id="script" label="SCRIPT HASH" value={`${item.scriptHash.slice(0, 18)}…`} detail={`SHA-256 of the canonical active .robby source, ${sourceBytes.toLocaleString()} UTF-8 bytes. Raw value: ${item.scriptHash}`} openId={openId} onToggle={toggle} /><DetailField id="output" label="TRANSIENT OUTPUT" value={runtime?.transientReverse ? `${runtime.transientReverse.outputSha256.slice(0, 18)}…` : "ON REQUEST"} detail={runtime?.transientReverse ? `SHA-256 of the in-memory reverse generated at ${new Date(runtime.transientReverse.generatedAt).toLocaleString()}. It has no persistent storage key or durable URL. Raw value: ${runtime.transientReverse.outputSha256}` : "A reverse is compiled and generated only when you turn the image-object. No reverse artifact is pre-rendered or stored."} openId={openId} onToggle={toggle} /><DetailField id="core" label="CORE" value={runtime?.toolchain ?? "RUST/WASM LOADING"} detail="Toolchain metadata is captured from the exact rustc invoked by Cargo when this WASM compiler was built; it is not a hardcoded browser value." openId={openId} onToggle={toggle} /><DetailField id="ir" label="IR / COMPILED AT" value={runtime ? "robby-ir-v1" : "VALIDATING"} detail={runtime ? `IR SHA-256: ${runtime.irHash}. Current Rust/WASM compilation: ${new Date(runtime.compiledAt).toLocaleString()}. Executor: CPU · Pillow / OpenCV.` : "The active script is being compiled through the Rust/WASM bridge."} openId={openId} onToggle={toggle} /></div>}
-      {tab === "reverse" && <div className="record-grid"><DetailField id="mode" label="REVERSE MODE" value={<span className="reverse-mode-link">reverse(mode: "{item.reverseMode}")</span>} detail="Exact active reverse command. Select it to jump to the corresponding evidence step in the trace." openId={openId} onToggle={toggle} onAction={onFocusReverse} /><DetailField id="parameters" label="PARAMETERS" value={reverseK ? `k: ${reverseK}` : "none"} detail={reverseK ? `palette-grid samples ${reverseK} dominant colour clusters from the obverse.` : "This reverse mode has no additional named parameters in the active source."} openId={openId} onToggle={toggle} /><DetailField id="reading" label="WHAT IT REVEALS" value={item.reverseKind} detail={item.reverseDescription} openId={openId} onToggle={toggle} /><div className="record-field reverse-jump"><button type="button" onClick={onFocusReverse}><span>TRACE LINK</span><b>Find reverse step ↑</b></button><p>Opens Evidence mode and scrolls to the reverse operation in the compilation trace.</p></div></div>}
+      {tab === "provenance" && <div className="provenance-records"><dl><div><dt>SOURCE</dt><dd>{item.source}</dd></div><div><dt>SOURCE SHA-256</dt><dd>{runtime?.transientReverse?.sourceSha256 ?? item.credentialSignature.sourceSha256}</dd></div></dl><CredentialEvidence credential={item.credentialSignature} /></div>}
+      {tab === "runtime" && <dl><div><dt>MODULE</dt><dd>{runtime?.transientReverse?.mode ?? "ON REQUEST"}</dd></div><div><dt>SEED</dt><dd>{runtime?.transientReverse?.seed ?? "generated on next turn"}</dd></div><div><dt>SETTINGS SHA-256</dt><dd>{runtime?.transientReverse?.settingsSha256 ?? "generated on next turn"}</dd></div><div><dt>OUTPUT SHA-256</dt><dd>{runtime?.transientReverse?.outputSha256 ?? "generated on next turn"}</dd></div><div><dt>CACHED INTERMEDIATE</dt><dd>none</dd></div></dl>}
+      {tab === "reverse" && <dl><div><dt>COMMAND</dt><dd><button type="button" onClick={onFocusReverse}>reverse(mode: "negative")</button></dd></div><div><dt>PALETTE K</dt><dd>{item.script.match(/palette\(k:\s*(\d+)\)/)?.[1] ?? "8"}</dd></div><div><dt>SWATCHES</dt><dd>{runtime?.transientReverse?.swatches.join(" · ") ?? "compiled on next turn"}</dd></div></dl>}
     </div>
   </section>;
 }

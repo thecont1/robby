@@ -11,10 +11,8 @@ use crate::ast::{Command, Script, Value};
 pub struct Ir {
     pub version: String,
     pub canvas: Canvas,
-    pub cutouts: Vec<Cutout>,
-    pub layers: Vec<Layer>,
-    pub palette: Option<Palette>,
-    pub reverse: Vec<Reverse>,
+    pub palette: Palette,
+    pub reverse: Reverse,
     pub output: Output,
     pub meta: Meta,
 }
@@ -27,24 +25,6 @@ pub struct Canvas {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-pub struct Cutout {
-    pub id: String,
-    pub source: String,
-    pub mask: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-pub struct Layer {
-    pub cutout: String,
-    pub x: f64,
-    pub y: f64,
-    pub scale: f64,
-    pub rotation: f64,
-    pub opacity: f64,
-    pub blend: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Palette {
     pub k: u8,
 }
@@ -52,7 +32,6 @@ pub struct Palette {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Reverse {
     pub mode: String,
-    pub k: Option<u8>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -82,86 +61,31 @@ pub(crate) fn lower(script: &Script, source: &str) -> Ir {
         width: number(&base_values, "width").map(|value| value as u32),
         height: number(&base_values, "height").map(|value| value as u32),
     };
-
-    let cutouts = script
+    let palette = script
         .commands
         .iter()
-        .filter(|command| command.name == "cutout")
-        .map(|command| {
-            let values = named(command);
-            Cutout {
-                id: string(&values, "id").to_string(),
-                source: string(&values, "source").to_string(),
-                mask: string(&values, "mask").to_string(),
-            }
+        .find(|command| command.name == "palette")
+        .map(|command| Palette {
+            k: number(&named(command), "k").unwrap_or(8.0) as u8,
         })
-        .collect();
-
-    let layers = script
-        .commands
-        .iter()
-        .filter(|command| command.name == "place")
-        .map(|command| {
-            let values = named(command);
-            Layer {
-                cutout: string(&values, "cutout").to_string(),
-                x: number(&values, "x").expect("validated x"),
-                y: number(&values, "y").expect("validated y"),
-                scale: number(&values, "scale").unwrap_or(1.0),
-                rotation: number(&values, "rotation").unwrap_or(0.0),
-                opacity: number(&values, "opacity").unwrap_or(1.0),
-                blend: values
-                    .get("blend")
-                    .and_then(|value| value.as_string())
-                    .unwrap_or("normal")
-                    .to_string(),
-            }
-        })
-        .collect();
-
-    let palette = script.commands.iter().find(|command| command.name == "palette").map(|command| {
-        let values = named(command);
-        Palette {
-            k: number(&values, "k").unwrap_or(6.0) as u8,
-        }
-    });
-
-    let reverse = script
-        .commands
-        .iter()
-        .filter(|command| command.name == "reverse")
-        .map(|command| {
-            let values = named(command);
-            let mode = string(&values, "mode").to_string();
-            let k = if mode == "palette-grid" {
-                Some(number(&values, "k").unwrap_or_else(|| palette.as_ref().map_or(6, |item| item.k) as f64) as u8)
-            } else {
-                None
-            };
-            Reverse { mode, k }
-        })
-        .collect();
-
+        .unwrap_or(Palette { k: 8 });
+    let reverse = Reverse {
+        mode: string(&named(command(script, "reverse")), "mode").to_string(),
+    };
     let output_values = named(command(script, "output"));
     let output = Output {
         obverse: string(&output_values, "obverse").to_string(),
         reverse: string(&output_values, "reverse").to_string(),
         manifest: string(&output_values, "manifest").to_string(),
     };
-
-    let mut hasher = Sha256::new();
-    hasher.update(source.as_bytes());
+    let script_sha256 = format!("{:x}", Sha256::digest(source.as_bytes()));
     Ir {
         version: "robby-ir-v1".to_string(),
         canvas,
-        cutouts,
-        layers,
         palette,
         reverse,
         output,
-        meta: Meta {
-            script_sha256: format!("{:x}", hasher.finalize()),
-        },
+        meta: Meta { script_sha256 },
     }
 }
 
