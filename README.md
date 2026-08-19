@@ -32,7 +32,7 @@ This is a deliberate, load-bearing rule, not an implementation detail. See [`TEC
    base("night-street.jpg", width: 1440, height: 1080)
    palette(k: 8)
    reverse(mode: "negative")
-   output(obverse: "night.png", reverse: "night-reverse.png", manifest: "night.json")
+   output(obverse: "night-street.jpg", reverse: "transient", manifest: "transient")
    ```
 
 2. `robby`'s Rust compiler parses this into an intermediate representation (IR), validates it, and holds it ready.
@@ -49,7 +49,7 @@ This is a deliberate, load-bearing rule, not an implementation detail. See [`TEC
 
 ## Why the reverse is not just "the negative of the image"
 
-Early prototypes computed reverses like dominant-colour grids or spatial maps of "what's where" in the photo. Those approaches required the compiler to *understand* the photograph — detecting people, skies, objects — which quietly turned an image compiler into a small computer vision pipeline. That direction has been deliberately abandoned.
+Early prototypes derived spatial structure from depicted content. That direction was removed because it required the compiler to *understand* the photograph rather than compile from explicit, inspectable inputs.
 
 The current design insists that generating the reverse must never require the compiler to know what is in the picture. It only needs to know what colours are in it, and what its exact bytes are.
 
@@ -57,13 +57,12 @@ The current design insists that generating the reverse must never require the co
 
 ## What you can inspect
 
-The live site (linked from this repo) doesn't just show you the obverse and reverse — it shows you the compiler's own reasoning, in five modes:
+The live site doesn't just show you the obverse and reverse — it shows the compiler's work in four modes:
 
 | Mode | What it shows |
 |---|---|
 | **Evidence** | The literal step-by-step compilation trace. |
 | **Pedagogic** | The same trace, rewritten in plain language for people with no compiler background. |
-| **Registrar** | A formal ledger view: hashes, timestamps, script IDs — the record-keeping face of the same data. |
 | **Diff** | What changed between two compiled versions of the same script. |
 | **Failure** | What a compile error looks like, and why it happened. |
 
@@ -73,7 +72,7 @@ There's also a live, in-browser source editor: you can edit the script for any s
 
 ## Project status
 
-This is an active hackathon build, developed in public. Current focus: removing all content-understanding logic from the reverse-generation path and rebuilding it on a purely mathematical, deterministic foundation (see `TECH-SPEC.md` for the exact rule and its rationale). Expect the specimen gallery and DSL surface to keep evolving through the submission window.
+This is an active hackathon build, developed in public. The constitutional purge is complete: the compiler core, native renderer, WASM bridge, server, gallery catalogue, and UI now use the same opaque-input, deterministic model. See `TECH-SPEC.md` for the exact contract and verification surface.
 
 ---
 
