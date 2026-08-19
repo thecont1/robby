@@ -32,7 +32,7 @@ export function useGallery(): { items: GalleryItem[]; loading: boolean } {
     es.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data) as GalleryItem[];
-        if (active) setItems(data);
+        if (active) { setItems(data); setLoading(false); }
       } catch {
         // ignore malformed events
       }
