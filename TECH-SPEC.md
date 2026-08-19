@@ -50,11 +50,11 @@ reverse(mode: "negative")
 output(obverse: "source.jpg", reverse: "transient", manifest: "transient")
 ```
 
-| Command | Contract |
-|---|---|
-| `base(path, width?, height?)` | Declares exactly one gallery JPEG and optional output dimensions. |
-| `palette(k)` | Optional; selects 3–16 deterministic RGB clusters. Omission means `k = 8`. |
-| `reverse(mode: "negative")` | Required exactly once; selects the only v1 render module. |
+| Command                              | Contract                                                                    |
+| ------------------------------------ | --------------------------------------------------------------------------- |
+| `base(path, width?, height?)`        | Declares exactly one gallery JPEG and optional output dimensions.           |
+| `palette(k)`                         | Optional; selects 3–16 deterministic RGB clusters. Omission means `k = 8`.  |
+| `reverse(mode: "negative")`          | Required exactly once; selects the only v1 render module.                   |
 | `output(obverse, reverse, manifest)` | Required final command; reverse and manifest targets must be `"transient"`. |
 
 Unknown commands, fields, output targets, duplicate declarations, non-integer `k`, out-of-range `k`, and modes other than `negative` are compile errors. Removed syntax is not accepted through compatibility translation.
