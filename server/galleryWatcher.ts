@@ -16,7 +16,7 @@ import { existsSync, lstatSync, readFileSync, readdirSync, realpathSync, statSyn
 import { basename, extname, join, resolve } from "node:path";
 import { watch, type FSWatcher } from "node:fs";
 import { buildDefaultGalleryScript, parseGalleryScriptSettings, readJpegDimensions } from "./galleryMetadata";
-import { galleryDirectory } from "./gallerySource";
+import { galleryDirectory, validateGalleryFilename } from "./gallerySource";
 
 export function configuredGalleryDirectory() {
   return galleryDirectory();
@@ -211,11 +211,17 @@ class GalleryWatcher extends EventEmitter {
 const watcher = new GalleryWatcher();
 
 export function registerGalleryRoutes(app: Express) {
-  // Serve gallery images and .robby scripts statically
+  // Serve only gallery JPEGs; sidecars and unrelated files remain private.
   app.get("/gallery/*", (req, res) => {
     const key = (req.params as Record<string, string>)[0];
     if (!key) {
       res.status(400).send("Missing gallery file");
+      return;
+    }
+    try {
+      validateGalleryFilename(key);
+    } catch {
+      res.status(404).send("Not found");
       return;
     }
     const root = configuredGalleryDirectory();

@@ -13,7 +13,7 @@ export type LocalGallerySource = {
   sha256: string;
 };
 
-function validateGalleryFilename(filename: string): string {
+export function validateGalleryFilename(filename: string): string {
   if (
     !filename ||
     filename !== basename(filename) ||
