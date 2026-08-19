@@ -302,3 +302,11 @@
 - [x] Increase provenance-tab icon size and move the fullscreen expansion control to the right of the face/dimensions metadata.
 - [x] Create and validate a reusable agent skill that forbids gallery image crops, conversions, WebP derivatives, or other transformed source substitutes.
 - [x] Verify authenticated gallery rendering, tab/control placement, source integrity constraints, and build health.
+
+## C2PA credential detection repair
+
+- [x] Trace the currently rendered managed-storage JPEG bytes through the C2PA badge data flow. (The UI is hardcoded to historical marker-scan records; the current catalogue keys match the served and allowlisted source SHA-256 values.)
+- [x] Run an actual C2PA validator against the exact gallery JPEG bytes and preserve its evidence without altering originals. (Official `c2patool` validates a Lightroom Classic 15.1 manifest for Ghana; the other ten currently mapped objects return “No claim found,” indicating the fresh storage uploads have not yet been linked.)
+- [ ] Replace stale marker-only credential states with measured validation outcomes and claim metadata where available.
+- [ ] Add regression coverage so credential-bearing JPEGs cannot silently display C2PA ABSENT.
+- [ ] Verify gallery badges, TypeScript, unit tests, Rust tests, and production build before deployment.
