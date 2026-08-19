@@ -119,10 +119,6 @@ temp/
 # Playwright MCP browser inspection artifacts (console logs, page snapshots)
 .playwright-mcp/
 
-# Manus version file (auto-generated, not part of source)
-client/public/__manus__/version.json
-.project-config.json
-
-# User-owned authentic originals are immutable object-storage data, never source files.
-gallery/
-manus-storage/
+# Local gallery originals are runtime inputs; keep only explicit fixtures.
+gallery/*
+!gallery/.gitkeep
