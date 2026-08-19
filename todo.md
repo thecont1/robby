@@ -294,3 +294,11 @@
 - [x] Move the provenance icon into the widened tab rail and remove the duplicate black-panel header.
 - [x] Use recovered panel height to increase provenance cell label and value font sizes.
 - [x] Verify desktop and mobile tab spacing, centering, and enlarged cell readability.
+
+## Synced gallery repair and permanent authenticity safeguard
+
+- [x] Diagnose and restore active gallery image delivery after the repository sync without changing any authentic source bytes.
+- [x] Make provenance-tab outlines slightly thicker and visually attach the tab rail to the black panel below.
+- [x] Increase provenance-tab icon size and move the fullscreen expansion control to the right of the face/dimensions metadata.
+- [x] Create and validate a reusable agent skill that forbids gallery image crops, conversions, WebP derivatives, or other transformed source substitutes.
+- [x] Verify authenticated gallery rendering, tab/control placement, source integrity constraints, and build health.
