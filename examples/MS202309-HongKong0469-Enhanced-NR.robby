@@ -1,4 +1,0 @@
-base("MS202309-HongKong0469-Enhanced-NR.jpg")
-palette(k: 8)
-reverse(mode: "palette-grid", k: 8)
-output(obverse: "MS202309-HongKong0469-Enhanced-NR-obverse.png", reverse: "MS202309-HongKong0469-Enhanced-NR-reverse.png", manifest: "MS202309-HongKong0469-Enhanced-NR-manifest.json")
