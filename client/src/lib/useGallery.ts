@@ -13,12 +13,13 @@ export function useGallery(): { items: GalleryItem[]; loading: boolean } {
 
   useEffect(() => {
     let active = true;
+    let sseSnapshotReceived = false;
 
     // Initial fetch
     fetch("/api/gallery")
       .then(res => res.json())
       .then((data: GalleryItem[]) => {
-        if (!active) return;
+        if (!active || sseSnapshotReceived) return;
         setItems(data);
         setLoading(false);
       })
@@ -32,7 +33,7 @@ export function useGallery(): { items: GalleryItem[]; loading: boolean } {
     es.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data) as GalleryItem[];
-        if (active) { setItems(data); setLoading(false); }
+        if (active) { sseSnapshotReceived = true; setItems(data); setLoading(false); }
       } catch {
         // ignore malformed events
       }
