@@ -28,9 +28,36 @@ describe("constitutional gallery metadata", () => {
     expect(script).not.toMatch(/palette-grid|provenance-map|cutout|mask/i);
   });
 
+  it("escapes quotes when generating a default script", () => {
+    const script = buildDefaultGalleryScript('quote"name.jpg');
+    expect(script).toContain('base("quote\\"name.jpg")');
+    expect(script).not.toContain('base("quote"name.jpg")');
+  });
+
   it("parses the bounded palette setting and canonical module", () => {
     expect(parseGalleryScriptSettings('base("x.jpg")\npalette(k: 16)\nreverse(mode: "negative")')).toEqual({ paletteK: 16, reverseMode: "negative" });
     expect(() => parseGalleryScriptSettings('base("x.jpg")\npalette(k: 17)\nreverse(mode: "negative")')).toThrow("between 3 and 16");
     expect(() => parseGalleryScriptSettings('base("x.jpg")\npalette(k: 8)\nreverse(mode: "retired")')).toThrow("negative");
+  });
+
+  // Bug reproduction: the lexer treats `#` as a comment, but the regex
+  // scanner matches `palette(k: ...)` inside comments and poisons the item.
+  it("ignores palette declarations inside # comments", () => {
+    const script = `# retired setting: palette(k: 99)
+base("x.jpg")
+palette(k: 8)
+reverse(mode: "negative")
+output(obverse: "x.jpg", reverse: "transient", manifest: "transient")`;
+    expect(parseGalleryScriptSettings(script)).toEqual({ paletteK: 8, reverseMode: "negative" });
+  });
+
+  // Bug reproduction: `palette( k: 12 )` is valid per the Rust lexer but the
+  // regex requires `k:` immediately after `(` and silently reports k = 8.
+  it("reads k with interior whitespace around the argument list", () => {
+    const script = `base("x.jpg")
+palette( k: 12 )
+reverse(mode: "negative")
+output(obverse: "x.jpg", reverse: "transient", manifest: "transient")`;
+    expect(parseGalleryScriptSettings(script).paletteK).toBe(12);
   });
 });

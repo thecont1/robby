@@ -36,13 +36,37 @@ output(obverse: ${quotedSource}, reverse: "transient", manifest: "transient")
 `;
 }
 
+/** Drop `#` comments without touching `#` characters inside string literals. */
+export function scriptCodeOnly(source: string): string {
+  return source
+    .split("\n")
+    .map(line => {
+      let quote: string | null = null;
+      for (let index = 0; index < line.length; index += 1) {
+        const character = line[index];
+        if (quote) {
+          if (character === "\\") index += 1;
+          else if (character === quote) quote = null;
+        } else if (character === '"' || character === "'") quote = character;
+        else if (character === "#") return line.slice(0, index);
+      }
+      return line;
+    })
+    .join("\n");
+}
+
 export function parseGalleryScriptSettings(script: string): { paletteK: number; reverseMode: "negative" } {
-  const paletteMatch = script.match(/palette\(k:\s*([^)\s]+)\s*\)/);
-  const paletteK = Number(paletteMatch?.[1] ?? 8);
-  if (!Number.isInteger(paletteK) || paletteK < 3 || paletteK > 16) {
-    throw new Error("palette k must be an integer between 3 and 16");
+  const code = scriptCodeOnly(script);
+  const paletteDeclaration = code.match(/palette\s*\(([^)]*)\)/)?.[1]?.trim() ?? null;
+  let paletteK = 8;
+  if (paletteDeclaration) {
+    const kArgument = paletteDeclaration.match(/k\s*:\s*([^,\s)]+)/)?.[1];
+    paletteK = Number(kArgument);
+    if (!kArgument || !Number.isInteger(paletteK) || paletteK < 3 || paletteK > 16) {
+      throw new Error("palette k must be an integer between 3 and 16");
+    }
   }
-  const reverseMode = script.match(/reverse\(mode:\s*"([^"]+)"\s*\)/)?.[1] ?? "negative";
+  const reverseMode = code.match(/reverse\s*\(\s*mode\s*:\s*"([^"]+)"\s*\)/)?.[1] ?? "negative";
   if (reverseMode !== "negative") throw new Error("v1 supports only the negative render module");
   return { paletteK, reverseMode };
 }

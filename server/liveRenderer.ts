@@ -56,6 +56,11 @@ export function normalizeLiveRenderableIr(value: unknown): LiveRenderableIr {
   for (const key of ["obverse", "reverse", "manifest"] as const) {
     if (typeof value.output[key] !== "string") throw new LiveRenderValidationError(`IR output.${key} must be a string.`);
   }
+  for (const key of ["reverse", "manifest"] as const) {
+    if (value.output[key] !== "transient") {
+      throw new LiveRenderValidationError(`IR output.${key} must be "transient" — durable reverse artifacts are forbidden.`);
+    }
+  }
   if (!isRecord(value.meta) || typeof value.meta.script_sha256 !== "string") {
     throw new LiveRenderValidationError("IR meta.script_sha256 must be present.");
   }

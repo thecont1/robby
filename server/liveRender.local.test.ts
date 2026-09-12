@@ -9,7 +9,7 @@ const validIr = (source: string) => ({
   canvas: { base: source, width: null, height: null },
   palette: { k: 8 },
   reverse: { mode: "negative" },
-  output: { obverse: "front.png", reverse: "back.png", manifest: "manifest.json" },
+  output: { obverse: "front.png", reverse: "transient", manifest: "transient" },
   meta: { script_sha256: "a".repeat(64) },
 });
 

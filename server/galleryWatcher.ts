@@ -15,7 +15,7 @@ import { EventEmitter } from "node:events";
 import { existsSync, lstatSync, readFileSync, readdirSync, realpathSync, statSync, writeFileSync } from "node:fs";
 import { basename, extname, join, resolve } from "node:path";
 import { watch, type FSWatcher } from "node:fs";
-import { buildDefaultGalleryScript, parseGalleryScriptSettings, readJpegDimensions } from "./galleryMetadata";
+import { buildDefaultGalleryScript, parseGalleryScriptSettings, readJpegDimensions, scriptCodeOnly } from "./galleryMetadata";
 import { galleryDirectory, validateGalleryFilename } from "./gallerySource";
 
 export function configuredGalleryDirectory() {
@@ -88,14 +88,15 @@ function getOrGenerateScript(id: string, source: string, galleryDir: string): st
  */
 function buildTrace(script: string, source: string, dimensions: string): { stage: string; label: string; code: string; detail: string }[] {
   const { paletteK, reverseMode } = parseGalleryScriptSettings(script);
+  const code = scriptCodeOnly(script);
   const trace: { stage: string; label: string; code: string; detail: string }[] = [
     { stage: "01", label: "Base canvas", code: `base(${JSON.stringify(source)})`, detail: `${dimensions} · source checksum recorded` },
   ];
-  const paletteCode = script.match(/palette\([^)]+\)/)?.[0] ?? `palette(k: ${paletteK})`;
+  const paletteCode = code.match(/palette\s*\([^)]*\)/)?.[0] ?? `palette(k: ${paletteK})`;
   trace.push({ stage: "02", label: "Calculate palette", code: paletteCode, detail: `${paletteK} dominant clusters sampled from obverse` });
-  const reverseCode = script.match(/reverse\([^)]+\)/)?.[0] ?? `reverse(mode: "${reverseMode}")`;
+  const reverseCode = code.match(/reverse\s*\([^)]*\)/)?.[0] ?? `reverse(mode: "${reverseMode}")`;
   trace.push({ stage: "03", label: "Render inverse", code: reverseCode, detail: "seed-driven negative module · generated only on flip" });
-  const outputCode = script.match(/output\([^)]+\)/)?.[0] ?? "output(…)";
+  const outputCode = code.match(/output\s*\([^)]*\)/)?.[0] ?? "output(…)";
   trace.push({ stage: "04", label: "Return manifest", code: outputCode, detail: "transient PNG + reproducibility record · no persisted reverse" });
   return trace;
 }
@@ -109,6 +110,8 @@ export async function scanGallery(galleryDir = configuredGalleryDirectory()): Pr
       .filter(f => /\.(jpg|jpeg)$/i.test(extname(f)))
       .filter(f => {
         try {
+          // Only catalogue specimens the /gallery boundary can actually serve.
+          validateGalleryFilename(f);
           const filePath = join(root, f);
           return !lstatSync(filePath).isSymbolicLink()
             && realpathSync(filePath).startsWith(`${realRoot}/`)

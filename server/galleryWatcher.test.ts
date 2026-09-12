@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import { basename, join, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { scanGallery } from "./galleryWatcher";
+import { validateGalleryFilename } from "./gallerySource";
 
 const fixture = resolve(process.cwd(), "tests", "fixtures", "render-source.jpg");
 
@@ -46,15 +47,29 @@ describe("gallery snapshot", () => {
     }
   });
 
-  it("generates valid Robby source for a legal JPEG filename containing a quote", async () => {
+  it("does not catalogue JPEG filenames the serving boundary rejects", async () => {
     const root = tempGallery();
-    const filename = `quote"name.jpg`;
     try {
-      copyFileSync(fixture, join(root, filename));
-      const [item] = await scanGallery(root);
-      expect(item.source).toBe(filename);
-      expect(item.script).toContain(`base(${JSON.stringify(filename)})`);
-      expect(item.script).not.toContain(`base("quote"name.jpg")`);
+      copyFileSync(fixture, join(root, `quote"name.jpg`));
+      expect(await scanGallery(root)).toEqual([]);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  // Bug reproduction: scanGallery admits any *.jpg name, but the /gallery/*
+  // route and readLocalGallerySource enforce validateGalleryFilename, which
+  // rejects names like `quote"name.jpg`. Catalogued specimens must be servable.
+  it("only catalogues specimens the serving boundary will serve", async () => {
+    const root = tempGallery();
+    try {
+      copyFileSync(fixture, join(root, `quote"name.jpg`));
+      copyFileSync(fixture, join(root, "regular.jpg"));
+      const items = await scanGallery(root);
+      for (const item of items) {
+        expect(() => validateGalleryFilename(item.source)).not.toThrow();
+      }
+      expect(items.map(item => item.source)).toEqual(["regular.jpg"]);
     } finally {
       rmSync(root, { recursive: true, force: true });
     }
