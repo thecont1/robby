@@ -35,6 +35,12 @@ pub fn validate(script: &Script) -> CompileResult<()> {
                         "Only one `palette(...)` command is allowed.",
                     ));
                 }
+                if reverse_seen {
+                    return Err(error(
+                        command,
+                        "`palette(...)` must appear before `reverse(...)`.",
+                    ));
+                }
                 palette_seen = true;
                 let values = named(command, &["k"])?;
                 validate_palette_k(&values, command)?;
@@ -59,8 +65,20 @@ pub fn validate(script: &Script) -> CompileResult<()> {
                 output_seen = true;
                 let values = named(command, &["obverse", "reverse", "manifest"])?;
                 required_string(&values, "obverse", command)?;
-                required_string(&values, "reverse", command)?;
-                required_string(&values, "manifest", command)?;
+                let reverse_target = required_string(&values, "reverse", command)?;
+                if reverse_target != "transient" {
+                    return Err(error(
+                        command,
+                        "The `reverse` output target must be \"transient\" — durable reverse paths are forbidden.",
+                    ));
+                }
+                let manifest_target = required_string(&values, "manifest", command)?;
+                if manifest_target != "transient" {
+                    return Err(error(
+                        command,
+                        "The `manifest` output target must be \"transient\" — durable manifest paths are forbidden.",
+                    ));
+                }
             }
             other => {
                 return Err(error(

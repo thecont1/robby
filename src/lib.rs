@@ -78,7 +78,7 @@ mod tests {
 base("base.jpg", width: 1280, height: 720)
 palette(k: 8)
 reverse(mode: "negative")
-output(obverse: "front.png", reverse: "back.png", manifest: "manifest.json")
+output(obverse: "front.png", reverse: "transient", manifest: "transient")
 "#;
 
     #[test]
@@ -133,7 +133,7 @@ output(obverse: "front.png", reverse: "back.png", manifest: "manifest.json")
         let source = r#"base("image.jpg")
 palette(k: 6)
 reverse(mode: "negative")
-output(obverse: "front.png", reverse: "back.png", manifest: "manifest.json")"#;
+output(obverse: "front.png", reverse: "transient", manifest: "transient")"#;
         let tokens = lexer::lex(source).expect("tokens");
         let ast = parser::parse(&tokens).expect("AST");
         validator::validate(&ast).expect("valid gallery script");

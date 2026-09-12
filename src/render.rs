@@ -77,8 +77,10 @@ impl RenderModule for NegativeModule {
         settings: &RenderSettings,
         rng: &mut SplitMix64,
     ) -> RgbImage {
-        let width = settings.width.unwrap_or(OUTPUT_WIDTH).clamp(64, 4096);
-        let height = settings.height.unwrap_or(OUTPUT_HEIGHT).clamp(64, 4096);
+        // render_reverse already bounds declared dimensions to 1..=4096;
+        // honoring them exactly keeps accepted settings honest.
+        let width = settings.width.unwrap_or(OUTPUT_WIDTH);
+        let height = settings.height.unwrap_or(OUTPUT_HEIGHT);
         let inverted: Vec<[u8; 3]> = swatches
             .iter()
             .map(|color| [255 - color[0], 255 - color[1], 255 - color[2]])
