@@ -58,10 +58,10 @@ output(obverse: "source.jpg", reverse: "transient", manifest: "transient")
 | ------------------------------------ | --------------------------------------------------------------------------- |
 | `base(path, width?, height?)`        | Declares exactly one gallery JPEG and optional output dimensions.           |
 | `palette(k)`                         | Optional; selects 3–16 deterministic RGB clusters. Omission means `k = 8`.  |
-| `reverse(mode)`                      | Required once. v1 `negative` remains; Phase 4 adds `quantised_obverse` and `palette_grid`. |
+| `reverse(mode)`                      | Required once. v1 accepts `negative`, `observability_sheet`, `quantised_obverse`, and `palette_grid`. |
 | `output(obverse, reverse, manifest)` | Required final command; reverse and manifest targets must be `"transient"`. |
 
-Unknown commands, fields, output targets, duplicate declarations, non-integer `k`, and out-of-range `k` are compile errors. v1 scripts still require `negative`; Phase 3 recipes accept `quantised_obverse` and `palette_grid`. Removed syntax is not accepted through compatibility translation.
+Unknown commands, fields, output targets, duplicate declarations, non-integer `k`, and out-of-range `k` are compile errors. v1 scripts accept `negative`, `observability_sheet`, `quantised_obverse`, and `palette_grid`; Phase 3 recipes accept `quantised_obverse`, `palette_grid`, and `observability_sheet`. Removed syntax is not accepted through compatibility translation.
 
 ## 4. Constitutional rule
 

@@ -19,7 +19,7 @@ reverse(mode: "negative")
 output(obverse: "source.jpg", reverse: "transient", manifest: "transient")
 ```
 
-There is exactly one supported reverse module (`negative`). Reverse PNG bytes and the render manifest are response data, not durable gallery assets.
+There are four supported reverse modules (`negative`, `observability_sheet`, `quantised_obverse`, and `palette_grid`). Reverse PNG bytes and the render manifest are response data, not durable gallery assets.
 
 ## Architecture that is verified in code
 
@@ -38,7 +38,7 @@ React gallery and source editor
 - `src/lexer.rs`, `src/parser.rs`, `src/ast.rs`: lex, parse, and build the source AST.
 - `src/validator.rs`: enforce command order, one `base`, bounded `palette(k)`, one `reverse`, supported mode, and transient output targets.
 - `src/ir.rs`: lower validated source to `robby-ir-v1`.
-- `src/render.rs`: deterministic RGB clustering and the registered `negative` renderer; final PNG encoding is delegated to the pinned Rust `image` crate.
+- `src/render.rs`: deterministic RGB clustering and the registered `negative`, `observability_sheet`, `quantised_obverse`, and `palette_grid` renderers; final PNG encoding is delegated to the pinned Rust `image` crate.
 - `src/main.rs`: native CLI boundary.
 - `src/lib.rs`: library and WASM-facing compile/render exports.
 
@@ -109,7 +109,7 @@ The following are not active implementation paths and must not be reintroduced t
 - the retired Python image executor and remote platform/auth/storage/database stack;
 - durable reverse PNGs, durable reverse URLs, persisted runtime manifests, or final-output caches;
 - local signing/export as an authority or ownership system;
-- arbitrary reverse modules beyond `negative`;
+- arbitrary reverse modules beyond the four registered modes (`negative`, `observability_sheet`, `quantised_obverse`, `palette_grid`);
 - generalized arbitrary-JPEG upload/viewer workflows.
 
 Old syntax and removed concepts remain in rejection fixtures where needed to prove that retired contracts stay rejected. Those fixtures are historical test inputs, not supported product capabilities.
