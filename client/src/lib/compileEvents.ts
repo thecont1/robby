@@ -1,4 +1,5 @@
 import type { EpistemicClass } from "@/lib/evidence";
+import type { C2paEvidence } from "@/lib/c2paEvidence";
 
 export const COMPILE_STAGES = [
   "intake",
@@ -47,6 +48,7 @@ export type SessionOrio = {
   renderModule: string;
   derivedSeed: string;
   colourSwatches: string[];
+  c2paEvidence: C2paEvidence;
   compilerVersion: string;
   rendererVersion: string;
   events: CompileEvent[];

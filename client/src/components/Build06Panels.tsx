@@ -2,12 +2,15 @@ import { CheckCircle2, ClipboardList, FileDiff, Fingerprint, GraduationCap, Hist
 import { useState } from "react";
 import type { CredentialSignature, GalleryItem, TraceStep } from "@/lib/demoData";
 import type { CompileSnapshot } from "@/lib/compileHistory";
+import type { C2paEvidence } from "@/lib/c2paEvidence";
+import { c2paEvidenceLabel } from "@/lib/c2paEvidence";
 
 export type ProvenanceTab = "provenance" | "runtime" | "reverse";
 export type TraceMode = "diff" | "evidence" | "pedagogic" | "failure";
 
 export type RuntimeRecord = Pick<CompileSnapshot, "compiledAt" | "irHash"> & {
   toolchain: string;
+  c2paEvidence?: C2paEvidence;
   transientReverse?: {
     generatedAt: string;
     outputSha256: string;
@@ -82,6 +85,7 @@ export function CredentialEvidence({ credential }: { credential: CredentialSigna
 
 export function ProvenanceModule({ item, runtime, onFocusReverse }: { item: GalleryItem; runtime: RuntimeRecord | null; onFocusReverse: () => void }) {
   const [tab, setTab] = useState<ProvenanceTab>("runtime");
+  const c2paEvidence = runtime?.c2paEvidence;
   const tabs: Array<{ id: ProvenanceTab; label: string; icon: typeof ShieldCheck }> = [
     { id: "provenance", label: "Object provenance", icon: ShieldCheck },
     { id: "runtime", label: "Runtime manifest", icon: ClipboardList },
@@ -90,7 +94,7 @@ export function ProvenanceModule({ item, runtime, onFocusReverse }: { item: Gall
   return <section className="manifest-strip provenance-module" aria-label="Object provenance and runtime manifest">
     <div className="provenance-tablist" role="tablist">{tabs.map(next => { const Icon = next.icon; return <button key={next.id} type="button" role="tab" aria-selected={tab === next.id} className={tab === next.id ? "active" : ""} onClick={() => setTab(next.id)}><Icon size={16} /><span>{next.label}</span></button>; })}</div>
     <div className="provenance-content" role="tabpanel">
-      {tab === "provenance" && <div className="provenance-records"><dl><div><dt>SOURCE</dt><dd>{item.source}</dd></div><div><dt>SOURCE SHA-256</dt><dd>{runtime?.transientReverse?.sourceSha256 ?? item.credentialSignature.sourceSha256}</dd></div></dl><CredentialEvidence credential={item.credentialSignature} /></div>}
+      {tab === "provenance" && <div className="provenance-records"><dl><div><dt>SOURCE</dt><dd>{item.source}</dd></div><div><dt>SOURCE SHA-256</dt><dd>{runtime?.transientReverse?.sourceSha256 ?? item.credentialSignature.sourceSha256}</dd></div></dl>{c2paEvidence ? <dl aria-live="polite"><div><dt>C2PA RECORD</dt><dd><strong>{c2paEvidenceLabel(c2paEvidence)}</strong></dd></div><div><dt>AVAILABILITY</dt><dd>{c2paEvidence.availability.toUpperCase()}</dd></div><div><dt>INSPECTED AT</dt><dd>{c2paEvidence.inspectedAt}</dd></div><div><dt>VERIFICATION</dt><dd>{c2paEvidence.verificationMethod}</dd></div><div><dt>WARNINGS</dt><dd>{c2paEvidence.warnings.length ? c2paEvidence.warnings.join(" · ") : "none"}</dd></div></dl> : <CredentialEvidence credential={item.credentialSignature} />}</div>}
       {tab === "runtime" && <dl><div><dt>MODULE</dt><dd>{runtime?.transientReverse?.mode ?? "ON REQUEST"}</dd></div><div><dt>SEED</dt><dd>{runtime?.transientReverse?.seed ?? "generated on next turn"}</dd></div><div><dt>SETTINGS SHA-256</dt><dd>{runtime?.transientReverse?.settingsSha256 ?? "generated on next turn"}</dd></div><div><dt>OUTPUT SHA-256</dt><dd>{runtime?.transientReverse?.outputSha256 ?? "generated on next turn"}</dd></div><div><dt>CACHED INTERMEDIATE</dt><dd>none</dd></div></dl>}
       {tab === "reverse" && <dl><div><dt>COMMAND</dt><dd><button type="button" onClick={onFocusReverse}>reverse(mode: "negative")</button></dd></div><div><dt>PALETTE K</dt><dd>{item.script.match(/palette\(k:\s*(\d+)\)/)?.[1] ?? "8"}</dd></div><div><dt>SWATCHES</dt><dd>{runtime?.transientReverse?.swatches.join(" · ") ?? "compiled on next turn"}</dd></div></dl>}
     </div>

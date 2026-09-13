@@ -13,6 +13,7 @@ import {
 } from "@/lib/compileEvents";
 import type { EpistemicClass } from "@/lib/evidence";
 import { auditPublicSafeProjection, publicSafeCandidateFromRun } from "@/lib/disclosureAudit";
+import { c2paEvidenceFromCredential } from "@/lib/c2paEvidence";
 
 export type CompileDeps = {
   fetchSourceBytes: (sourceUrl: string, signal: AbortSignal) => Promise<Uint8Array>;
@@ -138,9 +139,11 @@ export function createCompileController(deps: CompileDeps) {
         });
 
         const inspected = await deps.inspectC2pa(request.sourceName, signal);
+        const c2paEvidence = c2paEvidenceFromCredential(inspected, deps.now());
         const readClass = inspected.status === "present" ? "verified" : "unavailable";
         const credential = await station(run, "read", readClass, async () => ({
           c2paStatus: inspected.status,
+          c2paEvidence,
           verificationMethod: inspected.verificationMethod,
           note: inspected.note,
           gps: "private",
@@ -204,6 +207,7 @@ export function createCompileController(deps: CompileDeps) {
               compileRunId: run.id,
               events: run.events,
               colourSwatches: cached.orio.colourSwatches ?? [],
+              c2paEvidence: cached.orio.c2paEvidence,
             };
             await station(run, "marry", "derived", async () => ({
               objectId: orio.objectId,
@@ -259,6 +263,7 @@ export function createCompileController(deps: CompileDeps) {
           renderModule: String(rendered.renderModule),
           derivedSeed: String(rendered.derivedSeed),
           colourSwatches,
+          c2paEvidence,
           compilerVersion: deps.compilerVersion,
           rendererVersion: deps.rendererVersion,
           events: run.events,

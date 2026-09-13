@@ -245,6 +245,7 @@ export default function Home() {
       compiledAt: orio.createdAt,
       irHash: orio.canonicalRecipeHash,
       toolchain: current?.toolchain ?? "RUST/WASM",
+      c2paEvidence: orio.c2paEvidence,
       transientReverse: {
         generatedAt: orio.createdAt,
         outputSha256: orio.reverseOutputSha256,

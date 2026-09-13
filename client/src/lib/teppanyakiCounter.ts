@@ -35,12 +35,17 @@ export function stationSummary(stage: CompileStage, payload: Record<string, unkn
       return hash ? `SOURCE ${hash}${size}` : STATION_LABELS.intake;
     }
     case "read": {
+      const evidence = payload.c2paEvidence as { presence?: string; validation?: string; signerTrust?: string; availability?: string } | undefined;
+      if (evidence) {
+        const presence = String(evidence.presence ?? "absent").toUpperCase();
+        const validation = String(evidence.validation ?? "unavailable").replace("_", " ").toUpperCase();
+        const trust = evidence.signerTrust === "untrusted" ? "UNTRUSTED SIGNER" : evidence.signerTrust === "trusted" ? "TRUSTED SIGNER" : "SIGNER NOT ASSESSED";
+        const availability = evidence.availability === "not_inspected" ? "NOT INSPECTED" : `${presence} · ${validation} · ${trust}`;
+        const gps = payload.gps ? `GPS ${String(payload.gps).toUpperCase()}` : "";
+        return [`C2PA ${availability}`, gps].filter(Boolean).join(" · ");
+      }
       const status = String(payload.c2paStatus ?? "");
-      const c2pa =
-        status === "present" ? "C2PA VERIFIED" :
-        status === "candidate" ? "C2PA CANDIDATE" :
-        status === "checking" ? "C2PA CHECKING" :
-        "C2PA UNAVAILABLE";
+      const c2pa = status === "present" ? "C2PA VERIFIED" : status === "candidate" ? "C2PA CANDIDATE" : status === "checking" ? "C2PA CHECKING" : "C2PA UNAVAILABLE";
       const gps = payload.gps ? `GPS ${String(payload.gps).toUpperCase()}` : "";
       return [c2pa, gps].filter(Boolean).join(" · ");
     }
