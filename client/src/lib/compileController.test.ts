@@ -116,7 +116,10 @@ function deps(overrides: Partial<CompileDeps> = {}): CompileDeps & { calls: stri
     },
     now: () => `2026-09-13T00:00:0${clock++}Z`,
     createId: () => `run-${++ids}`,
-    createObjectUrl: blob => `blob:${blob.size}`,
+    createObjectUrl: blob => {
+      calls.push("createObjectUrl");
+      return `blob:${blob.size}`;
+    },
     revokeObjectUrl: () => {
       calls.push("revokeObjectUrl");
     },
@@ -288,6 +291,137 @@ describe("CompileController", () => {
     const forced = await controller.compile(request(), { force: true });
     expect(forced.id).not.toBe(first.id);
     expect(environment.calls.filter(call => call === "renderReverse")).toHaveLength(2);
+  });
+
+  it("never reuses the session cache when any identity-domain input changes", async () => {
+    const first = deps();
+    const controllerA = createCompileController(first);
+    const firstRun = await controllerA.compile(request());
+    expect(firstRun.status).toBe("completed");
+
+    // Same binding inputs → reuse (one render only).
+    const reusedRun = await controllerA.compile(request());
+    expect(reusedRun.result?.reverseObjectUrl).toBe(firstRun.result?.reverseObjectUrl);
+    expect(first.calls.filter(call => call === "renderReverse")).toHaveLength(1);
+
+    // Any identity-domain change must NOT reuse: different pixel hash.
+    const second = deps({
+      measureSourceBytes: async () => ({
+        pixelSha256: "different-pixels".padEnd(64, "e"),
+        width: 2,
+        height: 1,
+        mimeType: "image/jpeg",
+        intakeManifestJson: JSON.stringify({
+          schema_version: "0.2",
+          obverse: { byte_sha256: "sourcebytes".padEnd(64, "a"), pixel_sha256: "different-pixels".padEnd(64, "e") },
+        }),
+      }),
+      buildBinding: async () => ({
+        bindingSha256: "changed-binding".padEnd(64, "f"),
+        shortId: "RB-CHAN-GED1",
+        recipeIrSchema: "robby-ir-v1",
+        sourceByteSha256: "sourcebytes".padEnd(64, "a"),
+        canonicalPixelSha256: "different-pixels".padEnd(64, "e"),
+        authoredRecipeSha256: "authored".padEnd(64, "0"),
+        canonicalRecipeSha256: "canon".padEnd(64, "0"),
+        disclosurePolicySha256: "policy".padEnd(64, "0"),
+        selectedEvidenceSha256: "evidence".padEnd(64, "0"),
+        compilerVersion: "robby-compiler-v0.1.0",
+        rendererVersion: "robby-render-manifest-v1",
+        statement: "A reproducibility binding, not an ownership certificate.",
+      }),
+    });
+    const controllerB = createCompileController(second);
+    const changedRun = await controllerB.compile(request());
+    expect(changedRun.status).toBe("completed");
+    expect(second.calls.filter(call => call === "renderReverse")).toHaveLength(1);
+  });
+
+  it("revokes the reverse Blob URL when a cancelled run created one mid-flight", async () => {
+    let releaseRender: (() => void) | null = null;
+    const environment = deps({
+      renderReverse: async () => {
+        environment.calls.push("renderReverse");
+        await new Promise<void>(resolve => {
+          releaseRender = resolve;
+        });
+        // Deliberately ignores the abort signal, like a non-cancellable native
+        // renderer: the run discovers the cancel only after this resolves.
+        return {
+          blob: new Blob(["png"], { type: "image/png" }),
+          manifest: {
+            version: "robby-render-manifest-v1",
+            source_obverse_sha256: "sourcebytes".padEnd(64, "a"),
+            script_settings_sha256: "settings".padEnd(64, "b"),
+            derived_seed: "seed".padEnd(64, "c"),
+            output_sha256: "output".padEnd(64, "d"),
+            render_module: "negative",
+            colour_swatches: ["#112233"],
+            cached_intermediate: null,
+          },
+        };
+      },
+    });
+    const controller = createCompileController(environment);
+    const pending = controller.compile(request());
+    await waitFor(() => environment.calls.includes("renderReverse"));
+    controller.cancelActive();
+    await Promise.resolve();
+    releaseRender?.();
+    const cancelled = await pending;
+    expect(cancelled.status).toBe("cancelled");
+    expect(cancelled.result).toBeUndefined();
+    // Strongest form of "cancel does not unlock partial reverse output":
+    // the non-cooperative renderer resolved after cancel, but no Blob URL
+    // was ever created for it — there is nothing to unlock or leak.
+    expect(environment.calls).not.toContain("createObjectUrl");
+    expect(environment.calls.filter(call => call === "renderReverse")).toHaveLength(1);
+  });
+
+  it("dispose() cancels the active run, revokes every cached Blob URL, and clears the cache", async () => {
+    const environment = deps();
+    const controller = createCompileController(environment);
+    const first = await controller.compile(request({ galleryItemId: "item-a", recipeSource: 'base("source.jpg")\npalette(k: 3)\nreverse(mode: "negative")\noutput(obverse: "front.jpg", reverse: "transient", manifest: "transient")' }));
+    const second = await controller.compile(request({ galleryItemId: "item-b", sourceName: "other.jpg", sourceUrl: "/gallery/other.jpg", recipeSource: 'base("source.jpg")\npalette(k: 5)\nreverse(mode: "negative")\noutput(obverse: "front.jpg", reverse: "transient", manifest: "transient")' }));
+    expect(first.status).toBe("completed");
+    expect(second.status).toBe("completed");
+    const urlsAtPeak = environment.calls.filter(call => call === "createObjectUrl").length;
+    controller.dispose();
+    // Both session URLs revoked exactly once each.
+    const revoked = environment.calls.filter(call => call === "revokeObjectUrl").length;
+    expect(revoked).toBeGreaterThanOrEqual(2);
+    expect(urlsAtPeak).toBeGreaterThanOrEqual(2);
+    // Cache is cleared: a new compile on a fresh controller renders again.
+    const after = deps();
+    const controllerAfter = createCompileController(after);
+    const run = await controllerAfter.compile(request());
+    expect(run.status).toBe("completed");
+    expect(after.calls.filter(call => call === "renderReverse")).toHaveLength(1);
+  });
+
+  it("treats cancelled as distinct from failed and never marks cancelled runs completed", async () => {
+    const gate = deferred<void>();
+    const environment = deps({
+      fetchSourceBytes: async () => {
+        environment.calls.push("fetchSourceBytes");
+        await gate.promise;
+        throw new Error("should not matter");
+      },
+    });
+    const controller = createCompileController(environment);
+    const pending = controller.compile(request());
+    await waitFor(() => environment.calls.includes("fetchSourceBytes"));
+    controller.cancelActive();
+    gate.resolve();
+    const cancelled = await pending;
+    expect(cancelled.status).toBe("cancelled");
+    expect(cancelled.diagnostic).toBe("Run cancelled");
+    // A genuine failure stays failed.
+    const failing = deps({ fetchSourceBytes: async () => { throw new Error("network down"); } });
+    const controllerFail = createCompileController(failing);
+    const failedRun = await controllerFail.compile(request());
+    expect(failedRun.status).toBe("failed");
+    expect(failedRun.diagnostic).toBe("network down");
   });
 });
 

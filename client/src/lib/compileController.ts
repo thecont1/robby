@@ -4,6 +4,7 @@ import type { EphemeralReverseResult } from "@/lib/liveRender";
 import {
   COMPILE_STAGES,
   STATION_LABELS,
+  identityTupleMatches,
   sessionCacheKey,
   type CompileEvent,
   type CompileRequest,
@@ -68,6 +69,17 @@ export type CompileOptions = {
 type CachedOrio = {
   key: string;
   orio: SessionOrio;
+  tuple: {
+    galleryItemId: string;
+    sourceByteSha256: string;
+    pixelSha256: string;
+    canonicalRecipeHash: string;
+    visibilityPolicyHash: string;
+    evidenceSelectionHash: string;
+    compilerVersion: string;
+    rendererVersion: string;
+    bindingSha256: string;
+  };
 };
 
 export function createCompileController(deps: CompileDeps) {
@@ -75,6 +87,7 @@ export function createCompileController(deps: CompileDeps) {
   let inflight: Promise<CompileRun> | null = null;
   let abort: AbortController | null = null;
   const cache = new Map<string, CachedOrio>();
+  const runReverseUrls = new Map<string, string>();
   const listeners = new Set<(run: CompileRun) => void>();
 
   const snapshot = (run: CompileRun): CompileRun => ({
@@ -125,9 +138,26 @@ export function createCompileController(deps: CompileDeps) {
     abort?.abort();
     if (active?.status === "running") {
       active.status = "cancelled";
+      // Plan 9B: a cancelled run must not leak the Blob URL it created
+      // mid-flight; partial output is discarded, not unlocked.
+      const leakedUrl = runReverseUrls.get(active.id);
+      if (leakedUrl) {
+        runReverseUrls.delete(active.id);
+        deps.revokeObjectUrl(leakedUrl);
+      }
       emit(active, active.events.at(-1)?.stage ?? "intake", "failed", "Run cancelled");
       notify(active);
     }
+  };
+
+  const dispose = () => {
+    cancelActive();
+    // Revoke every session-cached reverse URL, then drop the cache so
+    // nothing can retrieve a revoked URL.
+    cache.forEach(entry => {
+      deps.revokeObjectUrl(entry.orio.reverseObjectUrl);
+    });
+    cache.clear();
   };
 
   const compile = async (request: CompileRequest, options: CompileOptions = {}): Promise<CompileRun> => {
@@ -227,14 +257,7 @@ export function createCompileController(deps: CompileDeps) {
             deps.rendererVersion,
           );
           const key = sessionCacheKey({
-            galleryItemId: request.galleryItemId,
-            sourceByteSha256: record.sourceByteSha256,
-            pixelSha256: record.canonicalPixelSha256,
-            canonicalRecipeHash: record.canonicalRecipeSha256,
-            visibilityPolicyHash: record.disclosurePolicySha256,
-            evidenceSelectionHash: record.selectedEvidenceSha256,
-            compilerVersion: record.compilerVersion,
-            rendererVersion: record.rendererVersion,
+            bindingSha256: record.bindingSha256,
           });
           return {
             key,
@@ -255,7 +278,22 @@ export function createCompileController(deps: CompileDeps) {
 
         if (!options.force) {
           const cached = cache.get(String(binding.key));
-          if (cached) {
+          if (cached && identityTupleMatches(
+            {
+              galleryItemId: request.galleryItemId,
+              sourceByteSha256: String(binding.sourceByteSha256),
+              pixelSha256: String(binding.pixelSha256),
+              canonicalRecipeHash: String(binding.canonicalRecipeHash),
+              visibilityPolicyHash: String(binding.visibilityPolicyHash),
+              evidenceSelectionHash: String(binding.evidenceSelectionHash),
+              compilerVersion: String(binding.compilerVersion),
+              rendererVersion: String(binding.rendererVersion),
+              bindingSha256: String(binding.objectBinding),
+            },
+            {
+              ...cached.tuple,
+            },
+          )) {
             await station(run, "resolve", "derived", async () => ({
               reused: true,
               outputSha256: cached.orio.reverseOutputSha256,
@@ -282,7 +320,14 @@ export function createCompileController(deps: CompileDeps) {
 
         const rendered = await station(run, "resolve", "derived", async () => {
           const result = await deps.renderReverse(compiledIr, signal);
+          // Plan 9B: if this run was cancelled while the renderer worked, the
+          // freshly created URL must be revoked immediately — partial output
+          // is never unlocked.
+          if (run.status === "cancelled" || signal.aborted) {
+            throw new DOMException("Aborted", "AbortError");
+          }
           const reverseObjectUrl = deps.createObjectUrl(result.blob);
+          runReverseUrls.set(run.id, reverseObjectUrl);
           return {
             reused: false,
             reverseObjectUrl,
@@ -362,7 +407,21 @@ export function createCompileController(deps: CompileDeps) {
         if (previous && previous.orio.reverseObjectUrl !== orio.reverseObjectUrl) {
           deps.revokeObjectUrl(previous.orio.reverseObjectUrl);
         }
-        cache.set(String(binding.key), { key: String(binding.key), orio });
+        cache.set(String(binding.key), {
+          key: String(binding.key),
+          orio,
+          tuple: {
+            galleryItemId: request.galleryItemId,
+            sourceByteSha256: String(binding.sourceByteSha256),
+            pixelSha256: String(binding.pixelSha256),
+            canonicalRecipeHash: String(binding.canonicalRecipeHash),
+            visibilityPolicyHash: String(binding.visibilityPolicyHash),
+            evidenceSelectionHash: String(binding.evidenceSelectionHash),
+            compilerVersion: String(binding.compilerVersion),
+            rendererVersion: String(binding.rendererVersion),
+            bindingSha256: String(binding.objectBinding),
+          },
+        });
         run.result = orio;
         run.status = "completed";
         notify(run);
@@ -371,6 +430,13 @@ export function createCompileController(deps: CompileDeps) {
         if (signal.aborted || (error instanceof DOMException && error.name === "AbortError")) {
           run.status = "cancelled";
           run.diagnostic = "Run cancelled";
+          // A URL may have been created between cancel and the abort landing;
+          // it must never leak.
+          const lateUrl = runReverseUrls.get(run.id);
+          if (lateUrl) {
+            runReverseUrls.delete(run.id);
+            deps.revokeObjectUrl(lateUrl);
+          }
           notify(run);
           return run;
         }
@@ -394,6 +460,7 @@ export function createCompileController(deps: CompileDeps) {
   return {
     compile,
     cancelActive,
+    dispose,
     getActive: () => active,
     subscribe: (listener: (run: CompileRun) => void) => {
       listeners.add(listener);

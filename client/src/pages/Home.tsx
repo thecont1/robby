@@ -178,6 +178,10 @@ export default function Home() {
     if (run.status !== "running") setIsRenderingReverse(false);
   }), []);
 
+  // Plan 9B: on unmount, cancel any running compile and revoke every session
+  // Blob URL so nothing leaks across navigation.
+  useEffect(() => () => browserCompileController.dispose(), []);
+
   useEffect(() => {
     if (gallery.length === 0) return;
     let active = true;

@@ -86,6 +86,14 @@ export const STATION_LABELS: Record<CompileStage, string> = {
 };
 
 export function sessionCacheKey(parts: {
+  bindingSha256: string;
+}) {
+  // Plan 9B: the session cache is keyed by the authoritative binding digest
+  // alone; the full identity tuple is re-verified on retrieval.
+  return `robby-session-orio-v1:${parts.bindingSha256}`;
+}
+
+export function identityTupleMatches(cached: {
   galleryItemId: string;
   sourceByteSha256: string;
   pixelSha256: string;
@@ -94,15 +102,27 @@ export function sessionCacheKey(parts: {
   evidenceSelectionHash: string;
   compilerVersion: string;
   rendererVersion: string;
+  bindingSha256: string;
+}, candidate: {
+  galleryItemId: string;
+  sourceByteSha256: string;
+  pixelSha256: string;
+  canonicalRecipeHash: string;
+  visibilityPolicyHash: string;
+  evidenceSelectionHash: string;
+  compilerVersion: string;
+  rendererVersion: string;
+  bindingSha256: string;
 }) {
-  return [
-    parts.galleryItemId,
-    parts.sourceByteSha256,
-    parts.pixelSha256,
-    parts.canonicalRecipeHash,
-    parts.visibilityPolicyHash,
-    parts.evidenceSelectionHash,
-    parts.compilerVersion,
-    parts.rendererVersion,
-  ].join("|");
+  return (
+    cached.galleryItemId === candidate.galleryItemId &&
+    cached.sourceByteSha256 === candidate.sourceByteSha256 &&
+    cached.pixelSha256 === candidate.pixelSha256 &&
+    cached.canonicalRecipeHash === candidate.canonicalRecipeHash &&
+    cached.visibilityPolicyHash === candidate.visibilityPolicyHash &&
+    cached.evidenceSelectionHash === candidate.evidenceSelectionHash &&
+    cached.compilerVersion === candidate.compilerVersion &&
+    cached.rendererVersion === candidate.rendererVersion &&
+    cached.bindingSha256 === candidate.bindingSha256
+  );
 }
