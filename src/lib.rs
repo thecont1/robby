@@ -13,7 +13,15 @@ pub mod render;
 pub mod validator;
 
 pub use error::{CompileResult, CompilerError};
-pub use ir::Ir;
+pub use ir::{Ir, RecipeIr};
+
+/// Compile a Phase 3 recipe through lexing, parsing, validation, and canonical lowering.
+pub fn compile_recipe_source(source: &str) -> CompileResult<RecipeIr> {
+    let tokens = lexer::lex(source)?;
+    let recipe = parser::parse_recipe(&tokens)?;
+    validator::validate_recipe(&recipe)?;
+    Ok(ir::lower_recipe(&recipe))
+}
 
 /// Compile source text through every explicit compiler pass.
 pub fn compile_source(source: &str) -> CompileResult<Ir> {

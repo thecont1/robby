@@ -12,6 +12,8 @@ pub enum TokenKind {
     RightParen,
     Comma,
     Colon,
+    LeftBrace,
+    RightBrace,
     Newline,
     Eof,
 }
@@ -80,6 +82,22 @@ pub fn lex(source: &str) -> CompileResult<Vec<Token>> {
             ':' => {
                 tokens.push(Token {
                     kind: TokenKind::Colon,
+                    span,
+                });
+                index += 1;
+                column += 1;
+            }
+            '{' => {
+                tokens.push(Token {
+                    kind: TokenKind::LeftBrace,
+                    span,
+                });
+                index += 1;
+                column += 1;
+            }
+            '}' => {
+                tokens.push(Token {
+                    kind: TokenKind::RightBrace,
                     span,
                 });
                 index += 1;
