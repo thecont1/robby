@@ -93,8 +93,9 @@ fn manifest_contains_typed_robby_object_foundation() {
 fn malformed_and_unsupported_metadata_are_localized_states() {
     let mut corrupt = tiny_png();
     corrupt.extend_from_slice(b"Exif\\0\\0not-a-tiff");
+    let corrupt_path = "corrupt.jpg";
     let corrupt_manifest =
-        inspect_image("corrupt.png", &corrupt).expect("corrupt metadata is non-fatal");
+        inspect_image(corrupt_path, &corrupt).expect("corrupt metadata is non-fatal");
     assert_eq!(
         corrupt_manifest.evidence.exif.state,
         robby_compiler::intake::ExtractionState::Corrupt
@@ -103,7 +104,7 @@ fn malformed_and_unsupported_metadata_are_localized_states() {
 
     let mut unsupported = tiny_png();
     unsupported.extend_from_slice(b"Exif\\0\\0II*\\0\\x08\\0\\0\\0\\x01\\0\\x12\\x01\\x03\\0\\x01\\0\\0\\0\\x06\\0\\0\\0\\0\\0\\0\\0");
-    let unsupported_manifest = inspect_image("png-with-exif.png", &unsupported)
+    let unsupported_manifest = inspect_image("png-with-exif.jpg", &unsupported)
         .expect("unsupported metadata is non-fatal");
     assert_eq!(
         unsupported_manifest.evidence.exif.state,
