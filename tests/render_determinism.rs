@@ -30,6 +30,7 @@ fn settings(k: u8) -> RenderSettings {
         k,
         width: None,
         height: None,
+        ..RenderSettings::default()
     }
 }
 
@@ -126,8 +127,8 @@ fn rejects_unknown_modules_invalid_k_and_invalid_images() {
 }
 
 #[test]
-fn registry_exposes_negative_as_the_only_v1_backend() {
-    assert_eq!(robby_compiler::render::render_module_names(), &["negative"]);
+fn registry_exposes_negative_as_the_v1_backend() {
+    assert!(robby_compiler::render::render_module_names().contains(&"negative"));
 }
 
 #[test]

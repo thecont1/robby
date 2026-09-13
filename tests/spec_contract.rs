@@ -84,6 +84,7 @@ fn honors_or_rejects_declared_dimensions_below_sixty_four() {
         k: 3,
         width: Some(32),
         height: Some(48),
+        ..RenderSettings::default()
     };
     match render_reverse(&bmp(64, 64, 9), &settings) {
         Err(_) => {}

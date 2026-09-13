@@ -40,4 +40,16 @@ describe("native/WASM render parity", () => {
     expect(wasmManifest).toEqual(native.manifest);
     expect(Buffer.from(wasmPng)).toEqual(native.png);
   });
+
+  it.each(["quantised_obverse", "palette_grid"] as const)("is byte-identical for Phase 4 mode %s", async mode => {
+    await initWasm(wasmBytes);
+    const settings = JSON.stringify({ mode, k: 8, width: 96, height: 64, cell: 8, seed: "object_binding" });
+    const native = renderNative(settings);
+    const [wasmPng, wasmManifest] = JSON.parse(renderWasm(sourceBytes, settings));
+
+    expect(wasmManifest.palette_method).toBe("median_cut");
+    expect(wasmManifest.render_module).toBe(mode);
+    expect(wasmManifest).toEqual(native.manifest);
+    expect(Buffer.from(wasmPng)).toEqual(native.png);
+  });
 });

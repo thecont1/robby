@@ -45,3 +45,44 @@ The current implementation and tests establish the v1 subset: one `base`, determ
 - Date: 2026-09-13
 
 Robby's current v1 renderer must produce byte-identical output for identical source bytes and canonical settings, while returning reverse PNG bytes and the render manifest as transient response data. No final reverse PNG, durable reverse URL, or persisted runtime manifest is a source of truth. Binding, richer evidence selection, and expanded event stages belong to later phases and must preserve this determinism boundary.
+
+## ADR-003: deterministic median-cut palette and reverse modes
+
+- Status: accepted
+- Date: 2026-09-13
+- Scope: Phase 4 visual split, reverse renderers, and artifact descriptors
+
+### Decision
+
+Robby extracts a palette with a portable, fully specified median-cut algorithm. No k-means, no SIMD colour conversion, and no unseeded randomness.
+
+Median-cut contract:
+
+1. Decode source bytes to 8-bit RGB with the existing scalar JPEG path and the `image` crate for other accepted formats.
+2. Start with one box containing every RGB sample in raster order.
+3. Repeatedly split the box with the largest channel range, then pixel count, then oldest ordinal, until `k` boxes exist or no box has more than one pixel.
+4. Split on the widest channel; ties prefer R, then G, then B. Sort that box by `(channel, r, g, b)` and cut at `len / 2`.
+5. Each box becomes a palette entry whose RGB is the integer mean of its pixels and whose weight is the pixel count.
+6. Order entries by descending weight, then ascending RGB. Rank is that order, starting at zero.
+
+This palette, the nearest-colour index map (ties prefer the lower rank), and the recipe settings are the only visual materials for reverse generation.
+
+Supported reverse modules:
+
+- `quantised_obverse`: map each output pixel to its source sample's nearest palette colour. Default size is the decoded source size. Dither is none.
+- `palette_grid`: fill a cell grid with tiles allocated by palette weights, then Fisher–Yates shuffle using only the derived render seed. Default size is the decoded source size; default cell is 10.
+- `negative`: retained v1 backend for existing scripts.
+
+Apparent randomness in `palette_grid` comes only from `RenderSettings.seed` (and the rest of the hashed settings) plus source bytes. Changing seed rearranges tiles; it does not recompute the palette.
+
+Each reverse PNG is described by an artifact descriptor (`media_type`, `width`, `height`, `sha256`). The palette index map is recorded by SHA-256 of the packed nearest-colour indices. Repeating a render is byte-identical.
+
+### Why
+
+A single documented algorithm is required for native/WASM parity. Median-cut is stable, integer-only, and independent of iteration order tricks that make naive k-means platform-sensitive.
+
+### Consequences
+
+- Palette method is always `median_cut` with `ordering: frequency_desc_then_rgb_asc`.
+- Semantic vision, masks, multi-image composition, and reserved future reverse modes remain unimplemented.
+- Manifests keep `robby-render-manifest-v1` identity fields and add explicit palette, parameters, index-map hash, and artifact descriptors.
