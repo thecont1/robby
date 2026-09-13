@@ -30,6 +30,7 @@ import { createRecipeDraftStore } from "@/lib/recipeDrafts";
 import { footerSocialLinks } from "@/lib/footerLinks";
 import { rustToolchainVersion, type RobbyIr } from "@/lib/robbyCompiler";
 import { gallerySlideDirection, isImageOnlyExitKey, swipeGalleryOffset, themeControlLabel, type GallerySlideDirection } from "@/lib/visualModes";
+import { artworkModalKeyAction, focusableArtworkSelector } from "@/lib/artworkModal";
 import {
   BookOpen,
   ChevronLeft,
@@ -103,6 +104,9 @@ export default function Home() {
   const [recipeDraft, setRecipeDraft] = useState("");
   const draftStore = useRef(createRecipeDraftStore());
   const artworkTouchStartX = useRef<number | null>(null);
+  const artworkViewRef = useRef<HTMLDivElement>(null);
+  const appShellRef = useRef<HTMLElement>(null);
+  const artworkOpenerRef = useRef<HTMLButtonElement>(null);
   const compileHistory = useRef<Record<string, CompileSnapshot[]>>({});
   const selectedIdRef = useRef("");
   const discardReverseAfterFlip = useRef(false);
@@ -289,13 +293,40 @@ export default function Home() {
   };
 
   useEffect(() => {
+    if (!artworkView) return;
+    const shell = appShellRef.current;
+    const background = shell ? Array.from(shell.children).filter((child) => !child.classList.contains("artwork-view")) : [];
+    background.forEach((child) => child.setAttribute("inert", ""));
+    requestAnimationFrame(() => {
+      const first = artworkViewRef.current?.querySelector<HTMLElement>(focusableArtworkSelector());
+      first?.focus();
+    });
+    return () => background.forEach((child) => child.removeAttribute("inert"));
+  }, [artworkView]);
+
+  useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
-      const target = event.target as HTMLElement | null;
-      if (target?.isContentEditable || target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || target instanceof HTMLSelectElement) return;
-      if (artworkView && event.key === "Escape") {
-        setArtworkView(false);
+      if (artworkView) {
+        const focusables = artworkViewRef.current ? Array.from(artworkViewRef.current.querySelectorAll<HTMLElement>(focusableArtworkSelector())) : [];
+        const index = focusables.indexOf(document.activeElement as HTMLElement);
+        const action = artworkModalKeyAction(event.key, event.shiftKey, index, focusables.length);
+        if (action === "close") {
+          event.preventDefault();
+          event.stopPropagation();
+          setArtworkView(false);
+          requestAnimationFrame(() => artworkOpenerRef.current?.focus());
+          return;
+        }
+        if (event.key === "Tab" && focusables.length > 0 && (action === "previous" || action === "next")) {
+          event.preventDefault();
+          focusables[action === "previous" ? focusables.length - 1 : 0]?.focus();
+          return;
+        }
         return;
       }
+
+      const target = event.target as HTMLElement | null;
+      if (target?.isContentEditable || target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || target instanceof HTMLSelectElement) return;
       if (imageOnly && isImageOnlyExitKey(event.key)) {
         setImageOnly(false);
         return;
@@ -304,8 +335,8 @@ export default function Home() {
       if (event.key === "ArrowRight") selectImage(selectedIndex + 1);
       if (event.key.toLowerCase() === "f") turnOver();
     };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
+    document.addEventListener("keydown", onKeyDown, true);
+    return () => document.removeEventListener("keydown", onKeyDown, true);
   }, [selectedIndex, isFlipping, slideTransition, imageOnly, artworkView]);
 
   useEffect(() => {
@@ -407,7 +438,7 @@ export default function Home() {
   }
 
   return (
-    <main className={`app-shell min-h-screen overflow-hidden bg-[#f4efe1] text-[#1c1a19]${imageOnly ? " image-only" : ""}`}>
+    <main ref={appShellRef} className={`app-shell min-h-screen overflow-hidden bg-[#f4efe1] text-[#1c1a19]${imageOnly ? " image-only" : ""}`}>
       <header className="site-header">
         <a className="brand-lockup" href="#gallery" aria-label="robby gallery">
           <img src="/icons/robby-registration-mark_658aceee.png" alt="robby split registration disc" />
@@ -529,7 +560,7 @@ export default function Home() {
               <div className="stage-metadata" inert={imageOnly}>
                 <div className="stage-display-tools">
                   <span className="stage-face-record"><MonoLabel>{activeFace}</MonoLabel><span aria-hidden="true">·</span><span className="mono stage-dimensions">{selected.dimensions}</span></span>
-                  <button type="button" className="artwork-view-control" onClick={() => setArtworkView(true)} aria-label={`Open ${selected.title} in full-bleed artwork view`} title="Open full-bleed artwork view"><Maximize2 size={15} /></button>
+                  <button ref={artworkOpenerRef} type="button" className="artwork-view-control" onClick={() => setArtworkView(true)} aria-label={`Open ${selected.title} in full-bleed artwork view`} title="Open full-bleed artwork view"><Maximize2 size={15} /></button>
                 </div>
               </div>
               <div className="caption-turn">
@@ -632,7 +663,7 @@ export default function Home() {
         </div>
         <p className="footer-copyright">© 2026 <a href="https://thecontrarian.in/" target="_blank" rel="noreferrer">Mahesh Shantaram / thecontrarian.in</a></p>
       </footer>
-      {artworkView && <div className="artwork-view" role="dialog" aria-modal="true" aria-label={`${selected.title} full-bleed artwork view`} onClick={() => setArtworkView(false)}>
+      {artworkView && <div ref={artworkViewRef} className="artwork-view" role="dialog" aria-modal="true" aria-label={`${selected.title} full-bleed artwork view`} tabIndex={-1} onClick={() => { setArtworkView(false); requestAnimationFrame(() => artworkOpenerRef.current?.focus()); }}>
         <div className="artwork-view-frame" onClick={event => event.stopPropagation()} onTouchStart={handleArtworkTouchStart} onTouchEnd={handleArtworkTouchEnd}>
           <div className="artwork-view-image-viewport">
             {face === "obverse"
