@@ -6,10 +6,12 @@
  */
 
 import SourceEditor from "@/components/SourceEditor";
-import { CompilationTraceModes, ProvenanceModule, type RuntimeRecord, type TraceMode } from "@/components/Build06Panels";
+import TeppanyakiCounter from "@/components/TeppanyakiCounter";
+import { ProvenanceModule, type RuntimeRecord, type TraceMode } from "@/components/Build06Panels";
 import { loadCompileHistory, persistCompileSnapshot, type CompileSnapshot } from "@/lib/compileHistory";
+import { browserCompileController } from "@/lib/compileBrowser";
+import type { CompileRun } from "@/lib/compileEvents";
 import { verifiedCompilerStatus } from "@/lib/compilerStatus";
-import { requestEphemeralReverse, type EphemeralReverseResult } from "@/lib/liveRender";
 import { paletteKFromSource, replacePaletteK } from "@/lib/paletteSettings";
 
 import {
@@ -22,9 +24,8 @@ import {
 import { useTheme } from "@/contexts/ThemeContext";
 import { type CredentialSignature, type TraceStep, type GalleryItem } from "@/lib/demoData";
 import { useGallery } from "@/lib/useGallery";
-import { inspectC2paCredential } from "@/lib/c2paCredentials";
 import { footerSocialLinks } from "@/lib/footerLinks";
-import { compileWithRust, rustToolchainVersion, type RobbyIr } from "@/lib/robbyCompiler";
+import { rustToolchainVersion, type RobbyIr } from "@/lib/robbyCompiler";
 import { gallerySlideDirection, isImageOnlyExitKey, swipeGalleryOffset, themeControlLabel, type GallerySlideDirection } from "@/lib/visualModes";
 import {
   BookOpen,
@@ -83,7 +84,6 @@ export default function Home() {
   const [compilerState, setCompilerState] = useState<"checking" | "verified" | "error">("checking");
   const [compilerLabel, setCompilerLabel] = useState("RUST CORE · LOADING");
   const [compiledEdit, setCompiledEdit] = useState<{ specimenId: string; ir: RobbyIr; source: string } | null>(null);
-  const [ephemeralReverse, setEphemeralReverse] = useState<{ specimenId: string; url: string; result: EphemeralReverseResult } | null>(null);
   const [projectionState, setProjectionState] = useState<ProjectionState>("gallery");
   const [traceMode, setTraceMode] = useState<TraceMode>("evidence");
   const [failureMessage, setFailureMessage] = useState<string | null>(null);
@@ -96,9 +96,11 @@ export default function Home() {
   const [credentialOverride, setCredentialOverride] = useState<CredentialSignature | null>(null);
   const [isRenderingReverse, setIsRenderingReverse] = useState(false);
   const [paletteK, setPaletteK] = useState(8);
+  const [compileRun, setCompileRun] = useState<CompileRun | null>(null);
+  const [recipeDraft, setRecipeDraft] = useState("");
   const artworkTouchStartX = useRef<number | null>(null);
   const compileHistory = useRef<Record<string, CompileSnapshot[]>>({});
-  const reverseUrlRef = useRef<string | null>(null);
+  const selectedIdRef = useRef("");
   const discardReverseAfterFlip = useRef(false);
   const { theme, toggleTheme } = useTheme();
 
@@ -123,13 +125,12 @@ export default function Home() {
   const activeFace = face;
   const liveIr = projectionState === "live" && compiledEdit?.specimenId === selected.id ? compiledEdit.ir : null;
   const displayedObverse = selected.obverse;
-  const displayedInverse = ephemeralReverse?.specimenId === selected.id ? ephemeralReverse.url : undefined;
+  const displayedInverse = compileRun?.galleryItemId === selected.id ? compileRun.result?.reverseObjectUrl : undefined;
+  const activeRecipe = compiledEdit?.specimenId === selected.id ? compiledEdit.source : (recipeDraft || selected.script);
+  const recipeChanged = Boolean(compileRun?.result && compileRun.recipeSource !== replacePaletteK(activeRecipe, paletteK));
+  selectedIdRef.current = selected.id;
   const projectionUnavailable = projectionState === "draft" || projectionState === "compiling" || projectionState === "error";
   const trace = projectionUnavailable ? [] : liveIr ? traceFromIr(liveIr) : selected.trace;
-  const liveScriptHash = projectionUnavailable ? null : liveIr?.meta.script_sha256 ?? selected.scriptHash;
-  const liveReverseMode = projectionUnavailable ? null : liveIr?.reverse.mode ?? selected.reverseMode;
-  const currentHistory = compileHistory.current[selected.id] ?? [];
-  const isSlideTransitioning = Boolean(slideTransition);
 
   useEffect(() => {
     try {
@@ -137,16 +138,10 @@ export default function Home() {
     } catch {
       setPaletteK(8);
     }
-  }, [selected.id, selected.script]);
-
-  useEffect(() => {
-    let active = true;
+    setRecipeDraft(selected.script);
+    setCompileRun(current => current?.galleryItemId === selected.id ? current : null);
     setCredentialOverride(null);
-    void inspectC2paCredential(selected.source)
-      .then(result => { if (active) setCredentialOverride(result); })
-      .catch(() => { /* Retain C2PA CHECKING when the validator cannot complete. */ });
-    return () => { active = false; };
-  }, [selected.source]);
+  }, [selected.id, selected.script]);
 
   const hashValue = async (value: string) => {
     const bytes = new TextEncoder().encode(value);
@@ -154,13 +149,18 @@ export default function Home() {
     return Array.from(new Uint8Array(digest)).map(byte => byte.toString(16).padStart(2, "0")).join("");
   };
 
-  const discardEphemeralReverse = () => {
-    if (reverseUrlRef.current) URL.revokeObjectURL(reverseUrlRef.current);
-    reverseUrlRef.current = null;
-    setEphemeralReverse(null);
+  const discardSessionReverse = () => {
+    browserCompileController.cancelActive();
+    setCompileRun(null);
+    setIsRenderingReverse(false);
   };
 
-  useEffect(() => () => { if (reverseUrlRef.current) URL.revokeObjectURL(reverseUrlRef.current); }, []);
+  useEffect(() => browserCompileController.subscribe(run => {
+    if (run.galleryItemId !== selectedIdRef.current) return;
+    setCompileRun(run);
+    if (run.status === "running") setIsRenderingReverse(true);
+    if (run.status !== "running") setIsRenderingReverse(false);
+  }), []);
 
   useEffect(() => {
     if (gallery.length === 0) return;
@@ -182,7 +182,7 @@ export default function Home() {
   }, [gallery.length > 0]);
 
   const commitSelection = (nextIndex: number) => {
-    discardEphemeralReverse();
+    discardSessionReverse();
     setSelectedIndex(nextIndex);
     setFace("obverse");
     setIsFlipping(false);
@@ -190,7 +190,7 @@ export default function Home() {
     setProjectionState("gallery");
     setFailureMessage(null);
     setTraceMode("evidence");
-    setRuntimeRecord(null);
+    setRuntimeRecord(current => current ? { compiledAt: current.compiledAt, irHash: current.irHash, toolchain: current.toolchain } : null);
   };
 
   const selectImage = (nextIndex: number) => {
@@ -209,47 +209,67 @@ export default function Home() {
     });
   };
 
+  const compileOrio = async (force = false) => {
+    if (isFlipping || isRenderingReverse) return;
+    const source = replacePaletteK(activeRecipe, paletteK);
+    setFailureMessage(null);
+    setIsRenderingReverse(true);
+    setProjectionState("compiling");
+    const run = await browserCompileController.compile({
+      galleryItemId: selected.id,
+      sourceName: selected.source,
+      sourceUrl: selected.obverse,
+      recipeSource: source,
+    }, { force });
+    if (run.galleryItemId !== selectedIdRef.current) return;
+    setCompileRun(run);
+    if (run.status !== "completed" || !run.result) {
+      setProjectionState("error");
+      setFailureMessage(run.diagnostic ?? "The live compiler could not generate this inverse.");
+      return;
+    }
+    const orio = run.result;
+    setProjectionState("live");
+    setRuntimeRecord(current => ({
+      compiledAt: orio.createdAt,
+      irHash: orio.canonicalRecipeHash,
+      toolchain: current?.toolchain ?? "RUST/WASM",
+      transientReverse: {
+        generatedAt: orio.createdAt,
+        outputSha256: orio.reverseOutputSha256,
+        sourceSha256: orio.sourceByteSha256,
+        mode: orio.renderModule,
+        seed: orio.derivedSeed,
+        settingsSha256: orio.canonicalRecipeHash,
+        swatches: [],
+      },
+    }));
+  };
+
   const turnOver = async () => {
     if (isFlipping || isRenderingReverse) return;
     if (face === "inverse") {
-      discardReverseAfterFlip.current = true;
+      discardReverseAfterFlip.current = false;
       setIsFlipping(true);
       setFace("obverse");
       return;
     }
-
-    setIsRenderingReverse(true);
-    setFailureMessage(null);
-    try {
-      const activeSource = compiledEdit?.specimenId === selected.id ? compiledEdit.source : selected.script;
-      const source = replacePaletteK(activeSource, paletteK);
-      const ir = await compileWithRust(source);
-      const result = await requestEphemeralReverse(ir);
-      const url = URL.createObjectURL(result.blob);
-      if (reverseUrlRef.current) URL.revokeObjectURL(reverseUrlRef.current);
-      reverseUrlRef.current = url;
-      setEphemeralReverse({ specimenId: selected.id, url, result });
-      const compiledAt = new Date().toISOString();
-      const irHash = await hashValue(JSON.stringify(ir));
-      setCompiledEdit({ specimenId: selected.id, ir, source });
-      setProjectionState("live");
-      setRuntimeRecord(current => ({ compiledAt, irHash, toolchain: current?.toolchain ?? "RUST/WASM", transientReverse: { generatedAt: compiledAt, outputSha256: result.manifest.output_sha256, sourceSha256: result.manifest.source_obverse_sha256, mode: result.manifest.render_module, seed: result.manifest.derived_seed, settingsSha256: result.manifest.script_settings_sha256, swatches: result.manifest.colour_swatches } }));
+    if (compileRun?.status === "completed" && compileRun.result && !recipeChanged) {
       setIsFlipping(true);
       setFace("inverse");
-    } catch (error) {
-      setFailureMessage(error instanceof Error ? error.message : "The live compiler could not generate this inverse.");
-    } finally {
-      setIsRenderingReverse(false);
+      return;
+    }
+    await compileOrio();
+    if (selectedIdRef.current === selected.id && browserCompileController.getActive()?.status === "completed") {
+      setIsFlipping(true);
+      setFace("inverse");
     }
   };
 
   const settleFlip = (event: React.TransitionEvent<HTMLDivElement>) => {
     if (event.target === event.currentTarget && event.propertyName === "transform") {
       setIsFlipping(false);
-      if (discardReverseAfterFlip.current) {
-        discardReverseAfterFlip.current = false;
-        discardEphemeralReverse();
-      }
+      discardReverseAfterFlip.current = false;
     }
   };
 
@@ -284,39 +304,25 @@ export default function Home() {
   }, [selectedIndex, isFlipping, slideTransition, imageOnly, artworkView]);
 
   useEffect(() => {
-    if (!historyReady) return;
     let active = true;
     setCompilerState("checking");
-    setCompilerLabel("RUST CORE · VERIFYING");
-    setRuntimeRecord(null);
-
-    Promise.all([compileWithRust(selected.script), rustToolchainVersion()])
-      .then(async ([ir, toolchain]) => {
+    setCompilerLabel("RUST CORE · READY");
+    rustToolchainVersion()
+      .then(toolchain => {
         if (!active) return;
-        const compiledAt = new Date().toISOString();
-        const irHash = await hashValue(JSON.stringify(ir));
-        if (!active) return;
-        const baseline: CompileSnapshot = { id: `${selected.id}-${irHash}`, specimenId: selected.id, source: selected.script, ir, trace: traceFromIr(ir), compiledAt, irHash, origin: "baseline" };
-        if (!compileHistory.current[selected.id]?.length) {
-          const persistedHistory = await persistCompileSnapshot(baseline);
-          if (!active) return;
-          compileHistory.current[selected.id] = persistedHistory;
-          setHistoryRevision(current => current + 1);
-        }
         setCompilerState("verified");
         setCompilerLabel(verifiedCompilerStatus(toolchain));
-        setRuntimeRecord({ compiledAt, irHash, toolchain });
+        setRuntimeRecord(current => current ? { ...current, toolchain } : { compiledAt: "", irHash: "", toolchain });
       })
       .catch(() => {
         if (!active) return;
         setCompilerState("error");
         setCompilerLabel("RUST CORE · CHECK FAILED");
       });
-
     return () => {
       active = false;
     };
-  }, [selected.id, selected.script, historyReady]);
+  }, []);
 
   const applyCompiledSource = async (ir: RobbyIr, source: string) => {
     const compiledAt = new Date().toISOString();
@@ -334,28 +340,26 @@ export default function Home() {
 
   const clearLiveProjection = () => {
     setCompiledEdit(null);
-    discardEphemeralReverse();
     setProjectionState("compiling");
     setFailureMessage(null);
   };
 
   const markProjectionUnavailable = (message: string) => {
     setCompiledEdit(null);
-    discardEphemeralReverse();
     setProjectionState("error");
     setFailureMessage(message);
   };
 
-  const markDraftProjectionUnavailable = () => {
+  const markDraftProjectionUnavailable = (draft: string) => {
+    setRecipeDraft(draft);
     setCompiledEdit(null);
-    discardEphemeralReverse();
     setProjectionState("draft");
     setFailureMessage(null);
   };
 
   const resetLiveProjection = () => {
+    setRecipeDraft(selected.script);
     setCompiledEdit(null);
-    discardEphemeralReverse();
     setProjectionState("gallery");
     setFailureMessage(null);
   };
@@ -533,8 +537,11 @@ export default function Home() {
                     }}
                   />
                 </label>
+                <button type="button" className="compile-orio-control" onClick={() => void compileOrio(recipeChanged)} disabled={isFlipping || isRenderingReverse} aria-label={compileRun?.status === "completed" && recipeChanged ? `Recompile orio for ${selected.title}` : `Compile orio for ${selected.title}`}>
+                  <CircleDotDashed size={16} /><span>{isRenderingReverse ? "Compiling orio…" : compileRun?.status === "completed" && recipeChanged ? "Recompile Orio" : compileRun?.status === "completed" ? "Orio ready" : "Compile Orio"}</span>
+                </button>
                 <button type="button" className="flip-control" onClick={() => void turnOver()} disabled={isFlipping || isRenderingReverse} aria-label={face === "inverse" ? `Return ${selected.title} to its obverse` : `Compile and turn ${selected.title} to its inverse`}>
-                  {face === "inverse" ? <RotateCcw size={18} /> : <FlipHorizontal2 size={18} />}<span>{isRenderingReverse ? "Compiling inverse" : isFlipping ? "Turning object" : face === "inverse" ? "Return to obverse" : "Turn to inverse"}</span><small>F</small>
+                  {face === "inverse" ? <RotateCcw size={18} /> : <FlipHorizontal2 size={18} />}<span>{isRenderingReverse ? "Compiling orio…" : isFlipping ? "Turning object" : face === "inverse" ? "Return to obverse" : "Turn to inverse"}</span><small>F</small>
                 </button>
               </div>
               <div className="caption-navigation">
@@ -565,11 +572,9 @@ export default function Home() {
 
         </section>
 
-        <aside className="trace-panel" aria-label={`Compilation trace for ${selected.title}`} inert={imageOnly}>
-          <div className="trace-heading"><div><CircleDotDashed size={15} /><MonoLabel>Compilation trace</MonoLabel></div><span>{projectionState === "draft" ? "DRAFT" : projectionState === "compiling" ? "VALIDATING" : projectionState === "error" ? "UNAVAILABLE" : `${trace.length} STEPS`}</span></div>
-          <div className="trace-title"><p className="eyebrow">Evidence beside object</p><h3>{selected.source}<br /><em>/ {activeFace}</em></h3></div>
-          <CompilationTraceModes item={selectedWithCredential} trace={trace} activeMode={traceMode} onModeChange={setTraceMode} projectionState={projectionState} failureMessage={failureMessage} history={currentHistory} runtime={runtimeRecord} />
-        </aside>
+        <div inert={imageOnly}>
+          <TeppanyakiCounter run={compileRun?.galleryItemId === selected.id ? compileRun : null} recipeChanged={recipeChanged} />
+        </div>
         <div className="source-workbench-wrap" inert={imageOnly}>
           <SourceEditor
             specimenId={selected.id}

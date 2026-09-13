@@ -21,7 +21,7 @@ type SourceEditorProps = {
   onCompiled: (ir: RobbyIr, source: string) => Promise<void>;
   onCompileStart: () => void;
   onCompileError: (message: string) => void;
-  onDraftChange: () => void;
+  onDraftChange: (draft: string) => void;
   onReset: () => void;
 };
 
@@ -65,7 +65,7 @@ export default function SourceEditor({ specimenId, title, source, onCompiled, on
     if (nextDraft === draft) return;
     compileGeneration.current += 1;
     setDraft(nextDraft);
-    onDraftChange();
+    onDraftChange(nextDraft);
   };
 
   const lineCount = Math.max(1, draft.split("\n").length);

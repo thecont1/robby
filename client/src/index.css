@@ -287,4 +287,25 @@
 .failure-record code { color: #d7cdbc; font-size: 11px; }
 .mode-notice, .mode-intro { font-size: 11px; line-height: 1.45; }
 
+.teppanyaki-counter { background:#1c1a19; color:#f4efe1; display:flex; flex-direction:column; min-height:100%; opacity:.42; padding:19px 19px 17px; transition:opacity .22s cubic-bezier(.23,1,.32,1); }
+.teppanyaki-counter.state-primed { opacity:.72; }
+.teppanyaki-counter.state-running,
+.teppanyaki-counter.state-resolved,
+.teppanyaki-counter.state-stale,
+.teppanyaki-counter.state-failed { opacity:1; }
+.teppanyaki-counter .trace-title h3 { white-space:normal; }
+.teppanyaki-stations { list-style:none; margin:0; padding:0; }
+.teppanyaki-station { border-bottom:1px solid rgba(244,239,225,.15); display:grid; gap:10px; grid-template-columns:28px minmax(0,1fr); min-height:62px; opacity:.38; padding:11px 0; }
+.teppanyaki-station.status-started,
+.teppanyaki-station.status-artifact { opacity:.92; }
+.teppanyaki-station.status-completed { opacity:1; }
+.teppanyaki-station.status-failed { opacity:1; }
+.teppanyaki-station strong { display:block; font-size:12px; }
+.teppanyaki-station p { color:#958d80; font-family:"DM Mono",monospace; font-size:8px; line-height:1.3; margin:4px 0 0; }
+.teppanyaki-station em { color:#e3442f; display:block; font-family:"DM Mono",monospace; font-size:8px; font-style:normal; letter-spacing:.08em; margin-top:4px; text-transform:uppercase; }
+.compile-orio-control { align-items:center; background:#1c1a19; border:0; color:#f4efe1; display:inline-flex; font-family:"DM Mono",monospace; font-size:9px; font-weight:700; gap:7px; letter-spacing:.1em; min-height:38px; padding:0 12px; text-transform:uppercase; }
+.compile-orio-control:disabled { cursor:wait; opacity:.54; }
+.caption-turn { align-items:center; display:flex; gap:8px; }
+.image-only .teppanyaki-counter { pointer-events:none; visibility:hidden; }
+
 /* Colour signature swatch strip — horizontally scrollable for large palettes */
