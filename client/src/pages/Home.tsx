@@ -25,6 +25,7 @@ import {
 import { useTheme } from "@/contexts/ThemeContext";
 import { type CredentialSignature, type TraceStep, type GalleryItem } from "@/lib/demoData";
 import { useGallery } from "@/lib/useGallery";
+import { createRecipeDraftStore } from "@/lib/recipeDrafts";
 import { footerSocialLinks } from "@/lib/footerLinks";
 import { rustToolchainVersion, type RobbyIr } from "@/lib/robbyCompiler";
 import { gallerySlideDirection, isImageOnlyExitKey, swipeGalleryOffset, themeControlLabel, type GallerySlideDirection } from "@/lib/visualModes";
@@ -99,6 +100,7 @@ export default function Home() {
   const [paletteK, setPaletteK] = useState(8);
   const [compileRun, setCompileRun] = useState<CompileRun | null>(null);
   const [recipeDraft, setRecipeDraft] = useState("");
+  const draftStore = useRef(createRecipeDraftStore());
   const artworkTouchStartX = useRef<number | null>(null);
   const compileHistory = useRef<Record<string, CompileSnapshot[]>>({});
   const selectedIdRef = useRef("");
@@ -145,7 +147,7 @@ export default function Home() {
     } catch {
       setPaletteK(8);
     }
-    setRecipeDraft(selected.script);
+    setRecipeDraft(draftStore.current.get(selected.id, selected.script));
     setCompileRun(current => current?.galleryItemId === selected.id ? current : null);
     setCredentialOverride(null);
   }, [selected.id, selected.script]);
@@ -351,6 +353,7 @@ export default function Home() {
   };
 
   const markDraftProjectionUnavailable = (draft: string) => {
+    draftStore.current.set(selected.id, draft);
     setRecipeDraft(draft);
     setCompiledEdit(null);
     setProjectionState("draft");
@@ -358,6 +361,7 @@ export default function Home() {
   };
 
   const resetLiveProjection = () => {
+    draftStore.current.clear(selected.id);
     setRecipeDraft(selected.script);
     setCompiledEdit(null);
     setProjectionState("gallery");
