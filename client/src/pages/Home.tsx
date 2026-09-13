@@ -9,6 +9,7 @@ import SourceEditor from "@/components/SourceEditor";
 import TeppanyakiCounter from "@/components/TeppanyakiCounter";
 import { ProvenanceModule, type RuntimeRecord, type TraceMode } from "@/components/Build06Panels";
 import { loadCompileHistory, persistCompileSnapshot, type CompileSnapshot } from "@/lib/compileHistory";
+import { compileActions } from "@/lib/compileActions";
 import { browserCompileController } from "@/lib/compileBrowser";
 import type { CompileRun } from "@/lib/compileEvents";
 import { verifiedCompilerStatus } from "@/lib/compilerStatus";
@@ -128,6 +129,12 @@ export default function Home() {
   const displayedInverse = compileRun?.galleryItemId === selected.id ? compileRun.result?.reverseObjectUrl : undefined;
   const activeRecipe = compiledEdit?.specimenId === selected.id ? compiledEdit.source : (recipeDraft || selected.script);
   const recipeChanged = Boolean(compileRun?.result && compileRun.recipeSource !== replacePaletteK(activeRecipe, paletteK));
+  const actions = compileActions({
+    run: compileRun?.galleryItemId === selected.id ? compileRun : null,
+    recipeChanged,
+    face,
+    isRendering: isRenderingReverse,
+  });
   selectedIdRef.current = selected.id;
   const projectionUnavailable = projectionState === "draft" || projectionState === "compiling" || projectionState === "error";
   const trace = projectionUnavailable ? [] : liveIr ? traceFromIr(liveIr) : selected.trace;
@@ -247,23 +254,16 @@ export default function Home() {
   };
 
   const turnOver = async () => {
-    if (isFlipping || isRenderingReverse) return;
+    if (isFlipping || !actions.turnEnabled) return;
     if (face === "inverse") {
       discardReverseAfterFlip.current = false;
       setIsFlipping(true);
       setFace("obverse");
       return;
     }
-    if (compileRun?.status === "completed" && compileRun.result && !recipeChanged) {
-      setIsFlipping(true);
-      setFace("inverse");
-      return;
-    }
-    await compileOrio();
-    if (selectedIdRef.current === selected.id && browserCompileController.getActive()?.status === "completed") {
-      setIsFlipping(true);
-      setFace("inverse");
-    }
+    if (!compileRun?.result) return;
+    setIsFlipping(true);
+    setFace("inverse");
   };
 
   const settleFlip = (event: React.TransitionEvent<HTMLDivElement>) => {
@@ -537,11 +537,16 @@ export default function Home() {
                     }}
                   />
                 </label>
-                <button type="button" className="compile-orio-control" onClick={() => void compileOrio(recipeChanged)} disabled={isFlipping || isRenderingReverse} aria-label={compileRun?.status === "completed" && recipeChanged ? `Recompile orio for ${selected.title}` : `Compile orio for ${selected.title}`}>
-                  <CircleDotDashed size={16} /><span>{isRenderingReverse ? "Compiling orio…" : compileRun?.status === "completed" && recipeChanged ? "Recompile Orio" : compileRun?.status === "completed" ? "Orio ready" : "Compile Orio"}</span>
+                <button type="button" className="compile-orio-control" onClick={() => void compileOrio(actions.compileForce)} disabled={!actions.compileEnabled || isFlipping} aria-label={`${actions.compileLabel} for ${selected.title}`}>
+                  <CircleDotDashed size={16} /><span>{actions.compileLabel}</span>
                 </button>
-                <button type="button" className="flip-control" onClick={() => void turnOver()} disabled={isFlipping || isRenderingReverse} aria-label={face === "inverse" ? `Return ${selected.title} to its obverse` : `Compile and turn ${selected.title} to its inverse`}>
-                  {face === "inverse" ? <RotateCcw size={18} /> : <FlipHorizontal2 size={18} />}<span>{isRenderingReverse ? "Compiling orio…" : isFlipping ? "Turning object" : face === "inverse" ? "Return to obverse" : "Turn to inverse"}</span><small>F</small>
+                {actions.showCancel && (
+                  <button type="button" className="compile-orio-control" onClick={() => browserCompileController.cancelActive()} aria-label={`Cancel compile for ${selected.title}`}>
+                    <span>Cancel</span>
+                  </button>
+                )}
+                <button type="button" className="flip-control" onClick={() => void turnOver()} disabled={!actions.turnEnabled || isFlipping} aria-label={face === "inverse" ? `Return ${selected.title} to its obverse` : `Turn ${selected.title} to its inverse`}>
+                  {face === "inverse" ? <RotateCcw size={18} /> : <FlipHorizontal2 size={18} />}<span>{isFlipping ? "Turning object" : actions.turnLabel}</span><small>F</small>
                 </button>
               </div>
               <div className="caption-navigation">
