@@ -25,6 +25,12 @@ describe("editable palette k", () => {
     expect(() => replacePaletteK('reverse(mode: "negative")', 8)).toThrow("base(...)");
   });
 
+  it("rejects duplicate real palette declarations", () => {
+    const duplicate = `${source}palette(k: 12)\n`;
+    expect(() => paletteKFromSource(duplicate)).toThrow("duplicate palette");
+    expect(() => replacePaletteK(duplicate, 5)).toThrow("duplicate palette");
+  });
+
   // Bug reproduction: `#` is a comment in the Robby lexer, but the regex
   // matches `palette(k: ...)` inside comments first.
   it("ignores palette declarations inside # comments", () => {
@@ -39,6 +45,16 @@ describe("editable palette k", () => {
   // pattern requires `k:` immediately after `(`.
   it("reads k with interior whitespace around the argument list", () => {
     expect(paletteKFromSource(source.replace("palette(k: 8)", "palette( k: 12 )"))).toBe(12);
+  });
+
+  it("ignores palette-like arguments inside quoted declaration values", () => {
+    const tricky = `base("source.jpg")
+palette(note: "retired, k: 16", k: 8)
+reverse(mode: "negative")`;
+    expect(paletteKFromSource(tricky)).toBe(8);
+    const changed = replacePaletteK(tricky, 12);
+    expect(changed).toContain('note: "retired, k: 16"');
+    expect(paletteKFromSource(changed)).toBe(12);
   });
 
   // Bug reproduction: `palette` is optional per TECH-SPEC (omission means k=8),

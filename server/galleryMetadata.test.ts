@@ -44,6 +44,45 @@ describe("constitutional gallery metadata", () => {
     });
   });
 
+  it("keeps the legacy negative fallback for single-quoted palette_grid metadata", () => {
+    // The metadata reader understands single-quoted spans so declaration-like
+    // text inside them is ignored, but gallery metadata historically resolves
+    // this single-quoted mode form to the negative fallback.
+    expect(parseGalleryScriptSettings("base('x.jpg')\npalette(k: 8)\nreverse(mode: 'palette_grid')")).toEqual({
+      paletteK: 8,
+      reverseMode: "negative",
+    });
+  });
+
+  it("ignores declarations embedded in either quote style", () => {
+    const script = `base('reverse(mode: "palette_grid").jpg')
+# "palette(k: 16)"
+palette(k: 8)
+reverse(mode: "negative")`;
+    expect(parseGalleryScriptSettings(script)).toEqual({ paletteK: 8, reverseMode: "negative" });
+  });
+
+  it("does not read declaration arguments out of quoted values", () => {
+    const palette = `base("x.jpg")
+palette(note: "old, k: 16", k: 8)
+reverse(mode: "negative")`;
+    expect(parseGalleryScriptSettings(palette).paletteK).toBe(8);
+
+    const reverse = `base("x.jpg")
+palette(k: 8)
+reverse(note: "old, mode: 'retired'")`;
+    expect(parseGalleryScriptSettings(reverse).reverseMode).toBe("negative");
+  });
+
+  it("rejects duplicate real declarations instead of reading only the first", () => {
+    expect(() => parseGalleryScriptSettings(`palette(k: 8)
+palette(k: 12)
+reverse(mode: "negative")`)).toThrow("duplicate palette");
+    expect(() => parseGalleryScriptSettings(`palette(k: 8)
+reverse(mode: "negative")
+reverse(mode: "palette_grid")`)).toThrow("duplicate reverse");
+  });
+
   // Bug reproduction: the lexer treats `#` as a comment, but the regex
   // scanner matches `palette(k: ...)` inside comments and poisons the item.
   it("ignores palette declarations inside # comments", () => {

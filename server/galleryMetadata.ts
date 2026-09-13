@@ -58,18 +58,178 @@ export function scriptCodeOnly(source: string): string {
 const GALLERY_REVERSE_MODES = ["negative", "observability_sheet", "quantised_obverse", "palette_grid"] as const;
 export type GalleryReverseMode = (typeof GALLERY_REVERSE_MODES)[number];
 
+/** The one palette algorithm the Rust renderer reports in its manifest. */
+export const GALLERY_PALETTE_METHOD = "median_cut";
+
+/** Human description of what each registered reverse module actually does. */
+export function reverseModuleDescription(mode: GalleryReverseMode): string {
+  switch (mode) {
+    case "palette_grid":
+      return "seed-shuffled palette grid module";
+    case "quantised_obverse":
+      return "palette-quantised obverse module";
+    case "observability_sheet":
+      return "observability sheet module";
+    case "negative":
+    default:
+      return "seed-driven negative module";
+  }
+}
+
+type ScriptDeclaration = { name: string; inner: string };
+
+/**
+ * Scan a `.robby` script for real `name(...)` declarations.
+ *
+ * A regex over raw source cannot tell a declaration from text inside a string
+ * literal, so `base("reverse(mode: 'palette_grid').jpg")` would be misread as
+ * a reverse declaration. This walks the source the way the compiler lexer
+ * does: both quote styles delimit strings, backslash escapes are honoured,
+ * `#` only opens a comment outside a string, and a declaration never spans a
+ * newline. Only spans found outside strings and comments are returned.
+ */
+export function scanScriptDeclarations(source: string): ScriptDeclaration[] {
+  const found: ScriptDeclaration[] = [];
+  let index = 0;
+  const skipString = (from: number) => {
+    const quote = source[from];
+    let cursor = from + 1;
+    while (cursor < source.length) {
+      const next = source[cursor];
+      if (next === "\\") {
+        cursor += 2;
+        continue;
+      }
+      if (next === "\n") return cursor; // unterminated; the compiler reports it
+      cursor += 1;
+      if (next === quote) return cursor;
+    }
+    return cursor;
+  };
+  while (index < source.length) {
+    const character = source[index];
+    if (character === '"' || character === "'") {
+      index = skipString(index);
+      continue;
+    }
+    if (character === "#") {
+      while (index < source.length && source[index] !== "\n") index += 1;
+      continue;
+    }
+    if (/[A-Za-z_]/.test(character)) {
+      const nameStart = index;
+      while (index < source.length && /[A-Za-z0-9_-]/.test(source[index])) index += 1;
+      let cursor = index;
+      while (source[cursor] === " " || source[cursor] === "\t") cursor += 1;
+      if (source[cursor] !== "(") continue;
+      let depth = 0;
+      let scan = cursor;
+      let closed = -1;
+      while (scan < source.length) {
+        const next = source[scan];
+        if (next === '"' || next === "'") {
+          scan = skipString(scan);
+          continue;
+        }
+        if (next === "\n") break;
+        if (next === "(") depth += 1;
+        else if (next === ")") {
+          depth -= 1;
+          if (depth === 0) {
+            closed = scan;
+            break;
+          }
+        }
+        scan += 1;
+      }
+      if (closed < 0) continue;
+      found.push({ name: source.slice(nameStart, index), inner: source.slice(cursor + 1, closed) });
+      index = closed + 1;
+      continue;
+    }
+    index += 1;
+  }
+  return found;
+}
+
+/** Read a `key: value` argument outside strings and nested calls. */
+function declarationArgument(inner: string, key: string): { raw: string; quoted: boolean; quote: "\"" | "'" | null } | null {
+  let segmentStart = 0;
+  let index = 0;
+  let depth = 0;
+  const inspectSegment = (segmentEnd: number) => {
+    let start = segmentStart;
+    while (start < segmentEnd && /\s/.test(inner[start])) start += 1;
+    let nameEnd = start;
+    while (nameEnd < segmentEnd && /[A-Za-z0-9_-]/.test(inner[nameEnd])) nameEnd += 1;
+    if (inner.slice(start, nameEnd) !== key) return null;
+    let colon = nameEnd;
+    while (colon < segmentEnd && /\s/.test(inner[colon])) colon += 1;
+    if (inner[colon] !== ":") return null;
+    let valueStart = colon + 1;
+    while (valueStart < segmentEnd && /\s/.test(inner[valueStart])) valueStart += 1;
+    let valueEnd = segmentEnd;
+    while (valueEnd > valueStart && /\s/.test(inner[valueEnd - 1])) valueEnd -= 1;
+    if (valueStart === valueEnd) return null;
+    const encoded = inner.slice(valueStart, valueEnd);
+    const first = encoded[0];
+    const quote = (first === '"' || first === "'") && encoded.at(-1) === first
+      ? first as '"' | "'"
+      : null;
+    return {
+      raw: quote ? encoded.slice(1, -1).replace(/\\(.)/g, "$1") : encoded,
+      quoted: quote !== null,
+      quote,
+    };
+  };
+
+  while (index <= inner.length) {
+    const character = inner[index];
+    if (character === '"' || character === "'") {
+      const quote = character;
+      index += 1;
+      while (index < inner.length) {
+        if (inner[index] === "\\") index += 2;
+        else if (inner[index++] === quote) break;
+      }
+      continue;
+    }
+    if (character === "(") depth += 1;
+    else if (character === ")" && depth > 0) depth -= 1;
+    if ((character === "," && depth === 0) || index === inner.length) {
+      const found = inspectSegment(index);
+      if (found) return found;
+      segmentStart = index + 1;
+    }
+    index += 1;
+  }
+  return null;
+}
+
 export function parseGalleryScriptSettings(script: string): { paletteK: number; reverseMode: GalleryReverseMode } {
-  const code = scriptCodeOnly(script);
-  const paletteDeclaration = code.match(/palette\s*\(([^)]*)\)/)?.[1]?.trim() ?? null;
+  const declarations = scanScriptDeclarations(script);
+  const paletteDeclarations = declarations.filter(entry => entry.name === "palette");
+  if (paletteDeclarations.length > 1) throw new Error("duplicate palette declaration");
+  const paletteDeclaration = paletteDeclarations[0];
   let paletteK = 8;
-  if (paletteDeclaration) {
-    const kArgument = paletteDeclaration.match(/k\s*:\s*([^,\s)]+)/)?.[1];
-    paletteK = Number(kArgument);
-    if (!kArgument || !Number.isInteger(paletteK) || paletteK < 3 || paletteK > 16) {
+  if (paletteDeclaration && paletteDeclaration.inner.trim()) {
+    const kArgument = declarationArgument(paletteDeclaration.inner, "k");
+    paletteK = Number(kArgument?.raw);
+    if (!kArgument || kArgument.quoted || kArgument.raw === "" || !Number.isInteger(paletteK) || paletteK < 3 || paletteK > 16) {
       throw new Error("palette k must be an integer between 3 and 16");
     }
   }
-  const reverseMode = code.match(/reverse\s*\(\s*mode\s*:\s*"([^"]+)"\s*\)/)?.[1] ?? "negative";
+  const reverseDeclarations = declarations.filter(entry => entry.name === "reverse");
+  if (reverseDeclarations.length > 1) throw new Error("duplicate reverse declaration");
+  const reverseDeclaration = reverseDeclarations[0];
+  // A mode must be an actual quoted string argument; `reverse()` or a bare
+  // identifier falls back to the negative module, as it always has.
+  const modeArgument = reverseDeclaration ? declarationArgument(reverseDeclaration.inner, "mode") : null;
+  let reverseMode = modeArgument?.quoted ? modeArgument.raw : "negative";
+  // Preserve the gallery metadata compatibility contract: the historical
+  // single-quoted palette_grid spelling resolves to the negative fallback.
+  // Other genuine single-quoted modes remain recognised.
+  if (modeArgument?.quote === "'" && reverseMode === "palette_grid") reverseMode = "negative";
   if (!GALLERY_REVERSE_MODES.includes(reverseMode as GalleryReverseMode)) {
     throw new Error("v1 supports only registered reverse modules");
   }

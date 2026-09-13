@@ -15,7 +15,7 @@ import { EventEmitter } from "node:events";
 import { existsSync, lstatSync, readFileSync, readdirSync, realpathSync, statSync } from "node:fs";
 import { basename, extname, join, resolve } from "node:path";
 import { watch, type FSWatcher } from "node:fs";
-import { buildDefaultGalleryScript, parseGalleryScriptSettings, readJpegDimensions, scriptCodeOnly, type GalleryReverseMode } from "./galleryMetadata";
+import { buildDefaultGalleryScript, GALLERY_PALETTE_METHOD, parseGalleryScriptSettings, readJpegDimensions, reverseModuleDescription, scriptCodeOnly, type GalleryReverseMode } from "./galleryMetadata";
 import { galleryDirectory, validateGalleryFilename } from "./gallerySource";
 
 export function configuredGalleryDirectory() {
@@ -89,7 +89,7 @@ function buildTrace(script: string, source: string, dimensions: string): { stage
   const paletteCode = code.match(/palette\s*\([^)]*\)/)?.[0] ?? `palette(k: ${paletteK})`;
   trace.push({ stage: "02", label: "Calculate palette", code: paletteCode, detail: `${paletteK} dominant clusters sampled from obverse` });
   const reverseCode = code.match(/reverse\s*\([^)]*\)/)?.[0] ?? `reverse(mode: "${reverseMode}")`;
-  trace.push({ stage: "03", label: "Render inverse", code: reverseCode, detail: "seed-driven negative module · generated only on flip" });
+  trace.push({ stage: "03", label: "Render inverse", code: reverseCode, detail: `${reverseModuleDescription(reverseMode)} · generated only on flip` });
   const outputCode = code.match(/output\s*\([^)]*\)/)?.[0] ?? "output(…)";
   trace.push({ stage: "04", label: "Return manifest", code: outputCode, detail: "transient PNG + reproducibility record · no persisted reverse" });
   return trace;
@@ -150,7 +150,7 @@ export async function scanGallery(galleryDir = configuredGalleryDirectory()): Pr
       script,
       trace: buildTrace(script, filename, dimensions),
       credentialSignature: { status: "absent", sourceSha256: "", verificationMethod: "none", note: "C2PA not yet inspected" },
-      colourSignature: { pixelSha256: "", paletteSha256: "", algorithm: `robby-render-v1 kmeans-${paletteK} · computed on flip` },
+      colourSignature: { pixelSha256: "", paletteSha256: "", algorithm: `robby-render-v1 ${GALLERY_PALETTE_METHOD}-${paletteK} · computed on flip` },
     };
     } catch {
       return null;
