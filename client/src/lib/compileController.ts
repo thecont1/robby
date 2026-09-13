@@ -16,9 +16,17 @@ import { auditPublicSafeProjection, publicSafeCandidateFromRun } from "@/lib/dis
 import { c2paEvidenceFromCredential } from "@/lib/c2paEvidence";
 import { buildIdentityRecord } from "@/lib/identityRecord";
 
+export type SourceIntake = {
+  pixelSha256: string;
+  width: number;
+  height: number;
+  mimeType: string;
+};
+
 export type CompileDeps = {
   fetchSourceBytes: (sourceUrl: string, signal: AbortSignal) => Promise<Uint8Array>;
   sha256Hex: (value: string | Uint8Array) => Promise<string>;
+  measureSourceBytes: (originalName: string, bytes: Uint8Array, signal: AbortSignal) => Promise<SourceIntake>;
   compileRecipe: (recipeSource: string, signal: AbortSignal) => Promise<RobbyIr>;
   inspectC2pa: (sourceName: string, signal: AbortSignal) => Promise<CredentialSignature>;
   renderReverse: (ir: RobbyIr, signal: AbortSignal) => Promise<EphemeralReverseResult>;
@@ -136,6 +144,7 @@ export function createCompileController(deps: CompileDeps) {
             sourceName: request.sourceName,
             byteSize: bytes.length,
             sourceByteSha256,
+            bytes,
           };
         });
 
@@ -150,11 +159,17 @@ export function createCompileController(deps: CompileDeps) {
           gps: "private",
         }));
 
-        await station(run, "measure", "measured", async () => ({
-          sourceByteSha256: sourceBytes.sourceByteSha256,
-          byteSize: sourceBytes.byteSize,
-          pixelSha256: undefined,
-        }));
+        const intake = await station(run, "measure", "measured", async () => {
+          const measurement = await deps.measureSourceBytes(request.sourceName, sourceBytes.bytes as Uint8Array, signal);
+          return {
+            sourceByteSha256: sourceBytes.sourceByteSha256,
+            byteSize: sourceBytes.byteSize,
+            pixelSha256: measurement.pixelSha256,
+            width: measurement.width,
+            height: measurement.height,
+            mimeType: measurement.mimeType,
+          };
+        });
 
         const compiledIr = await deps.compileRecipe(request.recipeSource, signal);
         await station(run, "split", "derived", async () => ({
@@ -175,9 +190,11 @@ export function createCompileController(deps: CompileDeps) {
           const visibilityPolicyHash = await deps.sha256Hex("gps:private");
           const evidenceSelectionHash = await deps.sha256Hex(String(credential.c2paStatus));
           const canonicalRecipeHash = String(ir.recipeHash);
+          const pixelSha256 = String(intake.pixelSha256);
           const key = sessionCacheKey({
             galleryItemId: request.galleryItemId,
             sourceByteSha256: String(sourceBytes.sourceByteSha256),
+            pixelSha256,
             canonicalRecipeHash,
             visibilityPolicyHash,
             evidenceSelectionHash,
@@ -188,7 +205,7 @@ export function createCompileController(deps: CompileDeps) {
           const objectBinding = await deps.sha256Hex([
             "robby-object-binding-v1",
             sourceBytes.sourceByteSha256,
-            "pixels:unavailable",
+            pixelSha256,
             authoredRecipeSha256,
             canonicalRecipeHash,
             visibilityPolicyHash,
@@ -204,6 +221,7 @@ export function createCompileController(deps: CompileDeps) {
             canonicalRecipeHash,
             authoredRecipeSha256,
             sourceByteSha256: sourceBytes.sourceByteSha256,
+            pixelSha256,
             visibilityPolicyHash,
             evidenceSelectionHash,
             statement: "A reproducibility record, not an ownership certificate.",
@@ -262,7 +280,7 @@ export function createCompileController(deps: CompileDeps) {
         const identity = buildIdentityRecord({
           runId: run.id,
           sourceByteSha256: String(binding.sourceByteSha256),
-          canonicalPixelSha256: null,
+          canonicalPixelSha256: String(binding.pixelSha256),
           authoredRecipeSha256: String(binding.authoredRecipeSha256),
           canonicalRecipeSha256: String(binding.canonicalRecipeHash),
           evidencePolicySha256: String(binding.visibilityPolicyHash),
@@ -296,7 +314,7 @@ export function createCompileController(deps: CompileDeps) {
           identity: buildIdentityRecord({
             runId: run.id,
             sourceByteSha256: String(sourceBytes.sourceByteSha256),
-            canonicalPixelSha256: null,
+            canonicalPixelSha256: String(binding.pixelSha256),
             authoredRecipeSha256: String(binding.authoredRecipeSha256),
             canonicalRecipeSha256: String(binding.canonicalRecipeHash),
             evidencePolicySha256: String(binding.visibilityPolicyHash),

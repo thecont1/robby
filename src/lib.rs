@@ -33,6 +33,20 @@ pub fn compile_source(source: &str) -> CompileResult<Ir> {
     Ok(ir::lower(&ast, source))
 }
 
+/// Inspect raw source bytes into a deterministic, public-safe intake manifest.
+///
+/// This is the shared native/WASM path that yields the canonical pixel hash
+/// and the source dimensions shown in the browser Measure station. The public
+/// projection redacts GPS/EXIF/IPTC/XMP values and neutralizes C2PA claim
+/// metadata, so only reproducibility fingerprints cross into the browser.
+pub fn inspect_image_json(original_name: &str, bytes: &[u8]) -> CompileResult<String> {
+    let manifest = intake::inspect_image(original_name, bytes)?;
+    let public = manifest.sanitize_public();
+    serde_json::to_string(&public).map_err(|error| {
+        CompilerError::plain(format!("Unable to serialize intake manifest: {error}"))
+    })
+}
+
 /// A stable human-readable version for the CLI, manifest UI, and WASM bridge.
 pub const COMPILER_VERSION: &str = "robby-compiler-v0.1.0";
 
@@ -46,13 +60,21 @@ mod wasm {
     use wasm_bindgen::prelude::*;
 
     use crate::render::{render_reverse, RenderSettings};
-    use crate::{compile_source, COMPILER_VERSION, RUST_TOOLCHAIN};
+    use crate::{compile_source, inspect_image_json as inspect, COMPILER_VERSION, RUST_TOOLCHAIN};
 
     /// Compile Robby source in the browser using this exact Rust library.
     #[wasm_bindgen]
     pub fn compile_source_json(source: &str) -> Result<String, JsValue> {
         let ir = compile_source(source).map_err(|error| JsValue::from_str(&error.to_string()))?;
         serde_json::to_string(&ir).map_err(|error| JsValue::from_str(&error.to_string()))
+    }
+
+    /// Inspect raw image bytes into the same public-safe intake manifest the
+    /// native CLI produces. Returns a JSON `IngredientManifest` (sanitized),
+    /// including the canonical pixel hash and source dimensions.
+    #[wasm_bindgen]
+    pub fn inspect_image_json(original_name: &str, bytes: &[u8]) -> Result<String, JsValue> {
+        inspect(original_name, bytes).map_err(|error| JsValue::from_str(&error.to_string()))
     }
 
     #[wasm_bindgen]

@@ -45,6 +45,7 @@ describe("Teppanyaki Counter derivation", () => {
       byteSize: 482911,
     })).toBe("SOURCE 7F3A…4455 · 482911 B");
     expect(stationSummary("measure", { sourceByteSha256: "7f3a91c2aabbccddeeff00112233445566778899aabbccddeeff001122334455" })).toBe("PIXELS UNAVAILABLE");
+    expect(stationSummary("measure", { pixelSha256: "a1b2c3d4e5f600112233445566778899aabbccddeeff00112233445566778899" })).toBe("PIXELS A1B2…8899");
     expect(stationSummary("read", {
       c2paStatus: "absent",
       gps: "private",

@@ -88,6 +88,7 @@ export const STATION_LABELS: Record<CompileStage, string> = {
 export function sessionCacheKey(parts: {
   galleryItemId: string;
   sourceByteSha256: string;
+  pixelSha256: string;
   canonicalRecipeHash: string;
   visibilityPolicyHash: string;
   evidenceSelectionHash: string;
@@ -97,6 +98,7 @@ export function sessionCacheKey(parts: {
   return [
     parts.galleryItemId,
     parts.sourceByteSha256,
+    parts.pixelSha256,
     parts.canonicalRecipeHash,
     parts.visibilityPolicyHash,
     parts.evidenceSelectionHash,

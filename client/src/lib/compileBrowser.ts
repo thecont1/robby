@@ -1,7 +1,7 @@
 import { inspectC2paCredential } from "@/lib/c2paCredentials";
 import { createCompileController, type CompileDeps } from "@/lib/compileController";
 import { requestEphemeralReverse } from "@/lib/liveRender";
-import { compileWithRust, rustCompilerVersion } from "@/lib/robbyCompiler";
+import { compileWithRust, inspectWithRust, rustCompilerVersion } from "@/lib/robbyCompiler";
 
 async function sha256Hex(value: string | Uint8Array) {
   const bytes = typeof value === "string" ? new TextEncoder().encode(value) : new Uint8Array(value);
@@ -17,6 +17,16 @@ export function createBrowserCompileDeps(): CompileDeps {
       return new Uint8Array(await response.arrayBuffer());
     },
     sha256Hex,
+    measureSourceBytes: async (originalName, bytes, signal) => {
+      if (signal.aborted) throw new DOMException("Aborted", "AbortError");
+      const manifest = await inspectWithRust(originalName, bytes);
+      return {
+        pixelSha256: manifest.obverse.pixel_sha256,
+        width: manifest.obverse.width,
+        height: manifest.obverse.height,
+        mimeType: manifest.obverse.mime_type,
+      };
+    },
     compileRecipe: async (recipeSource, signal) => {
       if (signal.aborted) throw new DOMException("Aborted", "AbortError");
       return compileWithRust(recipeSource);

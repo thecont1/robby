@@ -2,7 +2,7 @@ import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { beforeAll, describe, expect, it } from "vitest";
-import initWasm, { render_reverse_json as renderWasm } from "../client/src/wasm/robby_compiler.js";
+import initWasm, { inspect_image_json as inspectWasm, render_reverse_json as renderWasm } from "../client/src/wasm/robby_compiler.js";
 
 const root = resolve(import.meta.dirname, "..");
 const sourcePath = resolve(root, "tests", "fixtures", "render-source.jpg");
@@ -51,5 +51,22 @@ describe("native/WASM render parity", () => {
     expect(wasmManifest.render_module).toBe(mode);
     expect(wasmManifest).toEqual(native.manifest);
     expect(Buffer.from(wasmPng)).toEqual(native.png);
+  });
+
+  it("produces the identical public-safe intake manifest natively and in WASM", async () => {
+    await initWasm(wasmBytes);
+    const native = spawnSync(nativeBinary, ["inspect", sourcePath, "render-source.jpg"], {
+      cwd: root,
+      encoding: "utf8",
+    });
+    expect(native.status).toBe(0);
+    const nativeManifest = JSON.parse(native.stdout);
+    const wasmManifest = JSON.parse(inspectWasm("render-source.jpg", sourceBytes));
+
+    expect(wasmManifest).toEqual(nativeManifest);
+    expect(wasmManifest.obverse.pixel_sha256).toMatch(/^[0-9a-f]{64}$/);
+    expect(wasmManifest.obverse.byte_sha256).not.toBe(wasmManifest.obverse.pixel_sha256);
+    expect(wasmManifest.evidence.gps.visibility).toBe("redacted");
+    expect(wasmManifest.evidence.exif.value).toBeNull();
   });
 });

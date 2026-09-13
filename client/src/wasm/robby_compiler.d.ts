@@ -7,6 +7,15 @@
 */
 export function compile_source_json(source: string): string;
 /**
+* Inspect raw image bytes into the same public-safe intake manifest the
+* native CLI produces. Returns a JSON `IngredientManifest` (sanitized),
+* including the canonical pixel hash and source dimensions.
+* @param {string} original_name
+* @param {Uint8Array} bytes
+* @returns {string}
+*/
+export function inspect_image_json(original_name: string, bytes: Uint8Array): string;
+/**
 * @returns {string}
 */
 export function compiler_version(): string;
@@ -29,6 +38,7 @@ export interface InitOutput {
   readonly memory: WebAssembly.Memory;
   readonly compile_source_json: (a: number, b: number, c: number) => void;
   readonly compiler_version: (a: number) => void;
+  readonly inspect_image_json: (a: number, b: number, c: number, d: number, e: number) => void;
   readonly render_reverse_json: (a: number, b: number, c: number, d: number, e: number) => void;
   readonly rust_toolchain: (a: number) => void;
   readonly __wbindgen_add_to_stack_pointer: (a: number) => number;

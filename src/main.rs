@@ -5,12 +5,13 @@ use std::fs;
 use std::io::Write;
 use std::path::PathBuf;
 
+use robby_compiler::inspect_image_json;
 use robby_compiler::render::{render_reverse, RenderSettings};
 use robby_compiler::{compile_source, COMPILER_VERSION};
 
 fn usage() {
     eprintln!(
-        "{COMPILER_VERSION}\n\nUsage:\n  robby compile <script.robby> --out <ir.json>\n  robby check <script.robby>\n  robby render <source-image> --settings <json>\n  robby version"
+        "{COMPILER_VERSION}\n\nUsage:\n  robby compile <script.robby> --out <ir.json>\n  robby check <script.robby>\n  robby render <source-image> --settings <json>\n  robby inspect <source-image> <original-name>\n  robby version"
     );
 }
 
@@ -46,6 +47,21 @@ fn main() {
                     eprintln!("Error: Could not stream reverse PNG: {error}");
                     std::process::exit(1);
                 });
+            return;
+        }
+    }
+    if let [command, source_path, original_name] = arguments.as_slice() {
+        if command == "inspect" {
+            let source_bytes = fs::read(source_path).unwrap_or_else(|error| {
+                eprintln!("Error: Could not read `{source_path}`: {error}");
+                std::process::exit(1);
+            });
+            let manifest =
+                inspect_image_json(original_name, &source_bytes).unwrap_or_else(|error| {
+                    eprintln!("Error: {error}");
+                    std::process::exit(1);
+                });
+            println!("{manifest}");
             return;
         }
     }
