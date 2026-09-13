@@ -69,7 +69,9 @@ export function createBrowserCompileDeps(): CompileDeps {
     },
     renderReverse: async (ir, signal, sheet) => {
       if (signal.aborted) throw new DOMException("Aborted", "AbortError");
-      return requestEphemeralReverse(ir, sheet);
+      // The signal must reach fetch itself so cancelActive() aborts the
+      // in-flight /api/reverse request instead of leaving it running.
+      return requestEphemeralReverse(ir, sheet, signal);
     },
     now: () => new Date().toISOString(),
     createId: () => {

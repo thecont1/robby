@@ -24,12 +24,14 @@ function requiredHeader(response: Response, name: string) {
 export async function requestEphemeralReverse(
   ir: RobbyIr,
   sheet?: ObservabilitySheetFacts,
+  signal?: AbortSignal,
 ): Promise<EphemeralReverseResult> {
   const response = await fetch("/api/reverse", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(sheet ? { ir, sheet } : { ir }),
     cache: "no-store",
+    ...(signal ? { signal } : {}),
   });
   if (!response.ok) {
     const payload = await response.json().catch(() => ({}));

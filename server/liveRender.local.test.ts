@@ -15,6 +15,19 @@ const validIr = (source: string) => ({
 });
 
 describe("local live-render source boundary", () => {
+  it.each([
+    ["reverse_mode", { reverse_mode: "observability_sheet" }, "reverse_mode"],
+    ["palette_k", { palette_k: 9 }, "palette_k"],
+    ["ir_schema", { ir_schema: "robby-ir-v2" }, "ir_schema"],
+  ])("rejects conflicting sheet %s before source lookup", async (_label, conflict, expected) => {
+    await expect(renderEphemeralReverse(validIr("missing.jpg"), {
+      evidence: { exif: null, iptc: null, xmp: null, gps: null, c2pa: null },
+      included: [],
+      withheld: [],
+      ...conflict,
+    })).rejects.toThrow(expected);
+  });
+
   it("rejects a JPEG that is not present in the watched gallery folder", async () => {
     const root = mkdtempSync(join(tmpdir(), "robby-live-source-"));
     const previous = process.env.ROBBY_GALLERY_DIR;

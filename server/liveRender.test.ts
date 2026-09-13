@@ -94,6 +94,25 @@ describe("ephemeral reverse HTTP handler", () => {
     expect(rejected.code).toBe(400);
   });
 
+  it.each([
+    ["included filename", { included: ["private-source.jpg"], withheld: [] }],
+    ["withheld path", { included: [], withheld: ["private/source"] }],
+    ["included GPS", { included: ["12.9716, 77.5946"], withheld: [] }],
+  ])("rejects unsafe disclosure-list entry: %s", async (_label, lists) => {
+    const response = responseDouble();
+    const handler = createEphemeralReverseHandler(async () => ({ png: Buffer.from("png"), manifest }));
+    await handler({
+      body: {
+        ir: { version: "robby-ir-v1" },
+        sheet: {
+          evidence: { exif: null, iptc: null, xmp: null, gps: null, c2pa: null },
+          ...lists,
+        },
+      },
+    }, response);
+    expect(response.code).toBe(400);
+  });
+
   it("returns a clear 400 response when the render program is rejected", async () => {
     const response = responseDouble();
     const handler = createEphemeralReverseHandler(async () => {

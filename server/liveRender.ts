@@ -61,6 +61,15 @@ function stringList(value: unknown, label: string): string[] {
     if (typeof entry !== "string" || entry.length === 0 || entry.length > 64) {
       throw new LiveRenderValidationError(`Sheet ${label}[${index}] must be a short string.`);
     }
+    // Disclosure entries are printed onto a public sheet, so they carry the
+    // same public-safe obligation as every other sheet string: no filenames,
+    // no paths, no raw GPS.
+    if (/[-+]?\d+(?:\.\d+)?\s*[,/]\s*[-+]?\d+(?:\.\d+)?/.test(entry)) {
+      throw new LiveRenderValidationError("Sheet facts must not include raw GPS.");
+    }
+    if (/\.(jpe?g|png|tiff?|webp)$/i.test(entry) || /[/\\]/.test(entry)) {
+      throw new LiveRenderValidationError("Sheet facts must not include filenames or paths.");
+    }
     return entry;
   });
 }
@@ -202,10 +211,33 @@ async function runRustRenderer(
   });
 }
 
+/**
+ * Reject a sheet that contradicts the IR it rides beside.
+ *
+ * The sheet is observability copy printed onto the render; the IR is what the
+ * renderer actually executes. If a caller declares `reverse_mode` or
+ * `palette_k` that disagree with the IR, the resulting plate would document a
+ * render that never happened. Absent fields stay absent — only present values
+ * are checked.
+ */
+function assertSheetMatchesIr(ir: LiveRenderableIr, sheet: LiveSheetFacts | undefined) {
+  if (!sheet) return;
+  if (sheet.reverse_mode !== null && sheet.reverse_mode !== ir.reverse.mode) {
+    throw new LiveRenderValidationError("Sheet reverse_mode does not match the compiled IR reverse mode.");
+  }
+  if (sheet.palette_k !== null && sheet.palette_k !== ir.palette.k) {
+    throw new LiveRenderValidationError("Sheet palette_k does not match the compiled IR palette k.");
+  }
+  if (sheet.ir_schema !== null && sheet.ir_schema !== ir.version) {
+    throw new LiveRenderValidationError("Sheet ir_schema does not match the compiled IR version.");
+  }
+}
+
 /** One request invokes one Rust render and keeps its PNG only in process memory. */
 export async function renderEphemeralReverse(irInput: unknown, sheetInput?: unknown): Promise<EphemeralReverse> {
   const ir = normalizeLiveRenderableIr(irInput);
   const sheet = normalizeLiveSheetFacts(sheetInput);
+  assertSheetMatchesIr(ir, sheet);
   let source;
   try {
     source = await readLocalGallerySource(ir.canvas.base);

@@ -34,6 +34,7 @@ function deps(overrides: Partial<CompileDeps> = {}): CompileDeps & { calls: stri
   const calls: string[] = [];
   let clock = 0;
   let ids = 0;
+  let urls = 0;
   const base: CompileDeps & { calls: string[] } = {
     calls,
     fetchSourceBytes: async () => {
@@ -60,28 +61,56 @@ function deps(overrides: Partial<CompileDeps> = {}): CompileDeps & { calls: stri
         }),
       };
     },
-    buildBinding: async (_intakeJson, recipeSource, evidence) => {
+    buildBinding: async (intakeJson, recipeSource, evidence, compilerVersion, rendererVersion) => {
       calls.push("buildBinding");
       // A deterministic stand-in for the Rust core: mirrors the real field
       // derivation so downstream identity/cache logic is exercised truthfully.
-      const digestOf = (value: string) => `d:${value}`.padEnd(64, "0").slice(0, 64);
+      // Every buildBinding input feeds the binding digest, exactly as the Rust
+      // core does — changing the intake manifest, the recipe, the evidence
+      // selection, or either runtime version must produce a different binding.
+      const digestOf = (value: string) => {
+        let hash = 0x811c9dc5;
+        for (let index = 0; index < value.length; index += 1) {
+          hash ^= value.charCodeAt(index);
+          hash = Math.imul(hash, 0x01000193) >>> 0;
+        }
+        // Fold the length in too so distinct-but-colliding inputs stay apart.
+        return `${hash.toString(16).padStart(8, "0")}${value.length.toString(16)}`.padEnd(64, "0").slice(0, 64);
+      };
       const authored = digestOf(recipeSource);
-      const canonical = `canon:${String(evidence.c2pa.presence)}`.padEnd(64, "0").slice(0, 64);
-      const policy = "p:".padEnd(64, "0");
-      const selected = `e:${evidence.c2pa.presence}/${evidence.c2pa.validation}`.padEnd(64, "0").slice(0, 64);
-      const bindingSha256 = `b:${authored}${canonical}`.padEnd(64, "0").slice(0, 64);
+      const canonical = digestOf(`canon:${recipeSource}`);
+      const policy = digestOf("policy:robby-v1-default");
+      const selected = digestOf(`e:${evidence.schema}/${evidence.c2pa.presence}/${evidence.c2pa.validation}/${evidence.c2pa.signerTrust}/${evidence.c2pa.availability}`);
+      let intake: { obverse?: { byte_sha256?: string; pixel_sha256?: string } } = {};
+      try {
+        intake = JSON.parse(intakeJson);
+      } catch {
+        intake = {};
+      }
+      const sourceByteSha256 = intake.obverse?.byte_sha256 ?? "sourcebytes".padEnd(64, "a");
+      const canonicalPixelSha256 = intake.obverse?.pixel_sha256 ?? "pixels".padEnd(64, "a");
+      const bindingSha256 = digestOf([
+        intakeJson,
+        recipeSource,
+        authored,
+        canonical,
+        policy,
+        selected,
+        compilerVersion,
+        rendererVersion,
+      ].join("\u0000"));
       return {
         bindingSha256,
         shortId: `RB-${bindingSha256.slice(0, 4).toUpperCase()}-${bindingSha256.slice(4, 8).toUpperCase()}`,
         recipeIrSchema: "robby-ir-v1",
-        sourceByteSha256: "sourcebytes".padEnd(64, "a"),
-        canonicalPixelSha256: "pixels".padEnd(64, "a"),
+        sourceByteSha256,
+        canonicalPixelSha256,
         authoredRecipeSha256: authored,
         canonicalRecipeSha256: canonical,
         disclosurePolicySha256: policy,
         selectedEvidenceSha256: selected,
-        compilerVersion: "robby-compiler-v0.1.0",
-        rendererVersion: "robby-render-manifest-v1",
+        compilerVersion,
+        rendererVersion,
         statement: "A reproducibility binding, not an ownership certificate.",
       };
     },
@@ -118,7 +147,9 @@ function deps(overrides: Partial<CompileDeps> = {}): CompileDeps & { calls: stri
     createId: () => `run-${++ids}`,
     createObjectUrl: blob => {
       calls.push("createObjectUrl");
-      return `blob:${blob.size}`;
+      // Unique per creation, like the real URL.createObjectURL: two renders
+      // of identical bytes must still yield distinct handles.
+      return `blob:${blob.size}:${++urls}`;
     },
     revokeObjectUrl: () => {
       calls.push("revokeObjectUrl");
@@ -197,7 +228,7 @@ describe("CompileController", () => {
       "marry",
     ]);
     expect(first.status).toBe("completed");
-    expect(first.result?.reverseObjectUrl).toBe("blob:3");
+    expect(first.result?.reverseObjectUrl).toBe("blob:3:1");
     expect(first.result?.disclosure.safe).toBe(true);
     expect(first.result?.disclosure.omitted).toEqual(expect.arrayContaining(["source pixels", "raw GPS", "filename"]));
     expect(first.result?.identity.canonicalPixelSha256).toBe("pixels".padEnd(64, "a"));
@@ -235,13 +266,55 @@ describe("CompileController", () => {
     const controller = createCompileController(environment);
     const pending = controller.compile(request());
     await waitFor(() => environment.calls.includes("renderReverse"));
-    const duplicate = await controller.compile(request());
-    expect(duplicate.status).toBe("running");
+    // An identical caller coalesces onto the same run: it receives the same
+    // inflight promise rather than starting a second render.
+    const duplicate = controller.compile(request());
     expect(environment.calls.filter(call => call === "renderReverse")).toHaveLength(1);
     gate.resolve();
     const finished = await pending;
-    expect(finished.id).toBe(duplicate.id);
+    const coalesced = await duplicate;
+    expect(finished.id).toBe(coalesced.id);
     expect(finished.status).toBe("completed");
+    expect(coalesced.status).toBe("completed");
+    expect(environment.calls.filter(call => call === "renderReverse")).toHaveLength(1);
+  });
+
+  it("does not coalesce a changed recipe onto an in-flight run for the same item", async () => {
+    const gate = deferred<void>();
+    const environment = deps({
+      renderReverse: async (_ir, signal) => {
+        environment.calls.push("renderReverse");
+        await gate.promise;
+        if (signal.aborted) throw new DOMException("Aborted", "AbortError");
+        return {
+          blob: new Blob(["png"], { type: "image/png" }),
+          manifest: {
+            version: "robby-render-manifest-v1",
+            source_obverse_sha256: "sourcebytes".padEnd(64, "a"),
+            script_settings_sha256: "settings".padEnd(64, "b"),
+            derived_seed: "seed".padEnd(64, "c"),
+            output_sha256: "output".padEnd(64, "d"),
+            render_module: "negative",
+            colour_swatches: ["#112233"],
+            cached_intermediate: null,
+          },
+        };
+      },
+    });
+    const controller = createCompileController(environment);
+    const first = controller.compile(request());
+    await waitFor(() => environment.calls.includes("renderReverse"));
+    // Same gallery item, different recipe: this must start its own run
+    // rather than silently receive the run compiled from the old source.
+    const changedSource = 'base("source.jpg")\npalette(k: 5)\nreverse(mode: "negative")\noutput(obverse: "front.jpg", reverse: "transient", manifest: "transient")';
+    const second = controller.compile(request({ recipeSource: changedSource }));
+    gate.resolve();
+    const cancelled = await first;
+    const changed = await second;
+    expect(cancelled.id).not.toBe(changed.id);
+    expect(changed.recipeSource).toBe(changedSource);
+    expect(changed.status).toBe("completed");
+    expect(environment.calls.filter(call => call === "renderReverse")).toHaveLength(2);
   });
 
   it("cancels an in-flight run so its result cannot update a later selection", async () => {
@@ -294,47 +367,42 @@ describe("CompileController", () => {
   });
 
   it("never reuses the session cache when any identity-domain input changes", async () => {
-    const first = deps();
-    const controllerA = createCompileController(first);
-    const firstRun = await controllerA.compile(request());
+    // One controller and one session cache throughout: the point is that the
+    // cache itself refuses to serve a stale orio, not that a fresh controller
+    // starts empty.
+    let pixelSha256 = "pixels".padEnd(64, "a");
+    const environment = deps({
+      measureSourceBytes: async () => {
+        environment.calls.push("measureSourceBytes");
+        return {
+          pixelSha256,
+          width: 2,
+          height: 1,
+          mimeType: "image/jpeg",
+          intakeManifestJson: JSON.stringify({
+            schema_version: "0.2",
+            obverse: { byte_sha256: "sourcebytes".padEnd(64, "a"), pixel_sha256: pixelSha256 },
+          }),
+        };
+      },
+    });
+    const controller = createCompileController(environment);
+    const firstRun = await controller.compile(request());
     expect(firstRun.status).toBe("completed");
 
     // Same binding inputs → reuse (one render only).
-    const reusedRun = await controllerA.compile(request());
+    const reusedRun = await controller.compile(request());
     expect(reusedRun.result?.reverseObjectUrl).toBe(firstRun.result?.reverseObjectUrl);
-    expect(first.calls.filter(call => call === "renderReverse")).toHaveLength(1);
+    expect(environment.calls.filter(call => call === "renderReverse")).toHaveLength(1);
 
-    // Any identity-domain change must NOT reuse: different pixel hash.
-    const second = deps({
-      measureSourceBytes: async () => ({
-        pixelSha256: "different-pixels".padEnd(64, "e"),
-        width: 2,
-        height: 1,
-        mimeType: "image/jpeg",
-        intakeManifestJson: JSON.stringify({
-          schema_version: "0.2",
-          obverse: { byte_sha256: "sourcebytes".padEnd(64, "a"), pixel_sha256: "different-pixels".padEnd(64, "e") },
-        }),
-      }),
-      buildBinding: async () => ({
-        bindingSha256: "changed-binding".padEnd(64, "f"),
-        shortId: "RB-CHAN-GED1",
-        recipeIrSchema: "robby-ir-v1",
-        sourceByteSha256: "sourcebytes".padEnd(64, "a"),
-        canonicalPixelSha256: "different-pixels".padEnd(64, "e"),
-        authoredRecipeSha256: "authored".padEnd(64, "0"),
-        canonicalRecipeSha256: "canon".padEnd(64, "0"),
-        disclosurePolicySha256: "policy".padEnd(64, "0"),
-        selectedEvidenceSha256: "evidence".padEnd(64, "0"),
-        compilerVersion: "robby-compiler-v0.1.0",
-        rendererVersion: "robby-render-manifest-v1",
-        statement: "A reproducibility binding, not an ownership certificate.",
-      }),
-    });
-    const controllerB = createCompileController(second);
-    const changedRun = await controllerB.compile(request());
+    // An identity-domain change (different canonical pixels) yields a
+    // different binding, so the same controller must render again.
+    pixelSha256 = "different-pixels".padEnd(64, "e");
+    const changedRun = await controller.compile(request());
     expect(changedRun.status).toBe("completed");
-    expect(second.calls.filter(call => call === "renderReverse")).toHaveLength(1);
+    expect(changedRun.result?.identity.canonicalPixelSha256).toBe(pixelSha256);
+    expect(changedRun.result?.reverseObjectUrl).not.toBe(firstRun.result?.reverseObjectUrl);
+    expect(environment.calls.filter(call => call === "renderReverse")).toHaveLength(2);
   });
 
   it("revokes the reverse Blob URL when a cancelled run created one mid-flight", async () => {
@@ -391,12 +459,14 @@ describe("CompileController", () => {
     const revoked = environment.calls.filter(call => call === "revokeObjectUrl").length;
     expect(revoked).toBeGreaterThanOrEqual(2);
     expect(urlsAtPeak).toBeGreaterThanOrEqual(2);
-    // Cache is cleared: a new compile on a fresh controller renders again.
-    const after = deps();
-    const controllerAfter = createCompileController(after);
-    const run = await controllerAfter.compile(request());
+    // Cache is cleared: compiling again through the SAME controller renders
+    // again, which is what proves dispose() emptied this controller's cache
+    // rather than a new controller merely starting empty.
+    const run = await controller.compile(request());
     expect(run.status).toBe("completed");
-    expect(after.calls.filter(call => call === "renderReverse")).toHaveLength(1);
+    const rendersAfterDispose = environment.calls.filter(call => call === "renderReverse").length;
+    expect(rendersAfterDispose).toBeGreaterThan(2);
+    expect(run.result?.reverseObjectUrl).toBeTruthy();
   });
 
   it("treats cancelled as distinct from failed and never marks cancelled runs completed", async () => {

@@ -85,11 +85,22 @@ type CachedOrio = {
 
 export function createCompileController(deps: CompileDeps) {
   let active: CompileRun | null = null;
+  let activeRequestKey: string | null = null;
   let inflight: Promise<CompileRun> | null = null;
   let abort: AbortController | null = null;
   const cache = new Map<string, CachedOrio>();
   const runReverseUrls = new Map<string, string>();
   const listeners = new Set<(run: CompileRun) => void>();
+
+  // Two callers coalesce onto one run only when every request field matches.
+  // Keying on galleryItemId alone would silently drop a changed recipe or a
+  // changed source and hand back a run compiled from stale input.
+  const requestKey = (request: CompileRequest) => JSON.stringify([
+    request.galleryItemId,
+    request.sourceName,
+    request.sourceUrl,
+    request.recipeSource,
+  ]);
 
   const snapshot = (run: CompileRun): CompileRun => ({
     ...run,
@@ -162,8 +173,12 @@ export function createCompileController(deps: CompileDeps) {
   };
 
   const compile = async (request: CompileRequest, options: CompileOptions = {}): Promise<CompileRun> => {
-    if (!options.force && inflight && active?.status === "running" && active.galleryItemId === request.galleryItemId) {
-      return active;
+    const key = requestKey(request);
+    if (!options.force && inflight && active?.status === "running" && activeRequestKey === key) {
+      // Identical caller: await the same run rather than receive a
+      // half-finished run object. A changed recipe or source yields a
+      // different key and starts its own run below.
+      return inflight;
     }
 
     if (inflight) {
@@ -185,20 +200,26 @@ export function createCompileController(deps: CompileDeps) {
       events: [],
     };
     active = run;
+    activeRequestKey = key;
     abort = new AbortController();
     const signal = abort.signal;
     notify(run);
 
     const execute = (async () => {
       try {
+        // The raw source bytes stay in this private local. They are never
+        // returned through `station`, so they never enter run.events, the
+        // published SessionOrio, or the session cache — only bounded intake
+        // facts (name, size, digest) are observable.
+        let sourceByteArray: Uint8Array | null = null;
         const sourceBytes = await station(run, "intake", "measured", async () => {
           const bytes = await deps.fetchSourceBytes(request.sourceUrl, signal);
+          sourceByteArray = bytes;
           const sourceByteSha256 = await deps.sha256Hex(bytes);
           return {
             sourceName: request.sourceName,
             byteSize: bytes.length,
             sourceByteSha256,
-            bytes,
           };
         });
 
@@ -214,7 +235,8 @@ export function createCompileController(deps: CompileDeps) {
         }));
 
         const intake = await station(run, "measure", "measured", async () => {
-          const measurement = await deps.measureSourceBytes(request.sourceName, sourceBytes.bytes as Uint8Array, signal);
+          if (!sourceByteArray) throw new Error("Source bytes were not read during intake.");
+          const measurement = await deps.measureSourceBytes(request.sourceName, sourceByteArray, signal);
           return {
             sourceByteSha256: sourceBytes.sourceByteSha256,
             byteSize: sourceBytes.byteSize,
@@ -307,7 +329,10 @@ export function createCompileController(deps: CompileDeps) {
               events: run.events,
               colourSwatches: cached.orio.colourSwatches ?? [],
               c2paEvidence: cached.orio.c2paEvidence,
-              identity: cached.orio.identity,
+              // The reused orio belongs to THIS run: its identity record must
+              // name the current runId, not the run that first produced it,
+              // so compileRunId and identity.runId never disagree.
+              identity: { ...cached.orio.identity, runId: run.id },
             };
             await station(run, "marry", "derived", async () => ({
               objectId: orio.objectId,
@@ -479,6 +504,7 @@ export function createCompileController(deps: CompileDeps) {
         if (inflight && active?.id === run.id) {
           inflight = null;
           abort = null;
+          activeRequestKey = null;
         }
       }
     })();
