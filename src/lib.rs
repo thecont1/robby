@@ -4,6 +4,7 @@
 //! the optional WebAssembly adapter used by the browser showcase.
 
 pub mod ast;
+pub mod binding;
 pub mod error;
 pub mod intake;
 pub mod ir;
@@ -12,6 +13,7 @@ pub mod parser;
 pub mod render;
 pub mod validator;
 
+pub use binding::{BindingOptions, BindingResult, BINDING_STATEMENT};
 pub use error::{CompileResult, CompilerError};
 pub use ir::{Ir, RecipeIr};
 

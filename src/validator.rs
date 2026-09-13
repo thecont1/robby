@@ -465,6 +465,7 @@ fn validate_bind(recipe: &crate::ast::Recipe) -> CompileResult<()> {
         ("pixels", "canonical_rgba_sha256"),
         ("recipe", "canonical_ir"),
         ("evidence", "verified_public"),
+        ("evidence", "none"),
         ("compiler", "version"),
     ];
     for entry in &clause.entries {
