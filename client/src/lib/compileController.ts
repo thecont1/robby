@@ -222,6 +222,7 @@ export function createCompileController(deps: CompileDeps) {
             width: measurement.width,
             height: measurement.height,
             mimeType: measurement.mimeType,
+            intakeManifestJson: measurement.intakeManifestJson,
           };
         });
 
