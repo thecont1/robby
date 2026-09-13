@@ -27,7 +27,7 @@ export default function Manual() {
         <p className="eyebrow"><span className="product-name">robby</span> language reference · v0.1</p>
         <h1>Small language.<br /><em>Two-sided evidence.</em></h1>
         <div className="manual-intro-copy">
-          <p><strong className="product-name">robby</strong> is a small visual-composition language. A script names an obverse image, declares its transformations, and requires an inverse that can be read as evidence rather than decoration.</p>
+          <p><strong className="product-name">robby</strong> is a small reverse-obverse image language. A script names one obverse image, declares its deterministic reverse, and makes the compiler's evidence legible rather than decorative.</p>
           <p>This reference reflects the current Rust validator. It is a living index: add a command in Rust, then add its entry here.</p>
         </div>
       </section>

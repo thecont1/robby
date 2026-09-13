@@ -3,6 +3,10 @@
 Version: v0.1 (living document)
 Status: **Constitutional purge and deterministic live-render parity verified.**
 
+> Contract note: one compile run accepts exactly one obverse photograph and produces one reverse image-object face. Robby is not a semantic image editor, compositor, masking system, or multi-image collage engine. Reverse output is transient in v1; manifest fields are reproducibility evidence, not ownership or authorship claims.
+>
+> Related accepted decisions: [`docs/ARCHITECTURE-DECISIONS.md`](docs/ARCHITECTURE-DECISIONS.md), [`docs/EVIDENCE-TAXONOMY.md`](docs/EVIDENCE-TAXONOMY.md), [`docs/BASELINE.md`](docs/BASELINE.md).
+
 ---
 
 ## 1. System definition
