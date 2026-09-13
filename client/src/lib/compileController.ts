@@ -14,6 +14,7 @@ import {
 import type { EpistemicClass } from "@/lib/evidence";
 import { auditPublicSafeProjection, publicSafeCandidateFromRun } from "@/lib/disclosureAudit";
 import { c2paEvidenceFromCredential } from "@/lib/c2paEvidence";
+import { buildIdentityRecord } from "@/lib/identityRecord";
 
 export type CompileDeps = {
   fetchSourceBytes: (sourceUrl: string, signal: AbortSignal) => Promise<Uint8Array>;
@@ -152,6 +153,7 @@ export function createCompileController(deps: CompileDeps) {
         await station(run, "measure", "measured", async () => ({
           sourceByteSha256: sourceBytes.sourceByteSha256,
           byteSize: sourceBytes.byteSize,
+          pixelSha256: undefined,
         }));
 
         const compiledIr = await deps.compileRecipe(request.recipeSource, signal);
@@ -182,14 +184,28 @@ export function createCompileController(deps: CompileDeps) {
             compilerVersion,
             rendererVersion,
           });
-          const sourceHash = String(sourceBytes.sourceByteSha256).replace(/[^0-9a-fA-F]/g, "").toUpperCase();
+          const authoredRecipeSha256 = await deps.sha256Hex(request.recipeSource);
+          const objectBinding = await deps.sha256Hex([
+            "robby-object-binding-v1",
+            sourceBytes.sourceByteSha256,
+            "pixels:unavailable",
+            authoredRecipeSha256,
+            canonicalRecipeHash,
+            visibilityPolicyHash,
+            evidenceSelectionHash,
+            compilerVersion,
+            rendererVersion,
+          ].join("|"));
           return {
             key,
-            objectBinding: `ORIO-${sourceHash.slice(0, 4)}-${sourceHash.slice(-4)}`,
+            objectBinding,
             compilerVersion,
             rendererVersion,
             canonicalRecipeHash,
+            authoredRecipeSha256,
             sourceByteSha256: sourceBytes.sourceByteSha256,
+            visibilityPolicyHash,
+            evidenceSelectionHash,
             statement: "A reproducibility record, not an ownership certificate.",
           };
         });
@@ -208,6 +224,7 @@ export function createCompileController(deps: CompileDeps) {
               events: run.events,
               colourSwatches: cached.orio.colourSwatches ?? [],
               c2paEvidence: cached.orio.c2paEvidence,
+              identity: cached.orio.identity,
             };
             await station(run, "marry", "derived", async () => ({
               objectId: orio.objectId,
@@ -242,6 +259,18 @@ export function createCompileController(deps: CompileDeps) {
         }
 
         const colourSwatches = Array.isArray(rendered.colourSwatches) ? rendered.colourSwatches.map(String) : [];
+        const identity = buildIdentityRecord({
+          runId: run.id,
+          sourceByteSha256: String(binding.sourceByteSha256),
+          canonicalPixelSha256: null,
+          authoredRecipeSha256: String(binding.authoredRecipeSha256),
+          canonicalRecipeSha256: String(binding.canonicalRecipeHash),
+          evidencePolicySha256: String(binding.visibilityPolicyHash),
+          objectBinding: String(binding.objectBinding),
+          outputSha256: String(rendered.outputSha256),
+        });
+        const bindEvent = run.events.findLast(event => event.stage === "bind" && event.status === "completed");
+        if (bindEvent) bindEvent.payload = { ...bindEvent.payload, objectBinding: identity.objectBinding };
         const disclosure = auditPublicSafeProjection(publicSafeCandidateFromRun({
           reverseMode: String(rendered.renderModule),
           colourSwatches,
@@ -264,6 +293,16 @@ export function createCompileController(deps: CompileDeps) {
           derivedSeed: String(rendered.derivedSeed),
           colourSwatches,
           c2paEvidence,
+          identity: buildIdentityRecord({
+            runId: run.id,
+            sourceByteSha256: String(sourceBytes.sourceByteSha256),
+            canonicalPixelSha256: null,
+            authoredRecipeSha256: String(binding.authoredRecipeSha256),
+            canonicalRecipeSha256: String(binding.canonicalRecipeHash),
+            evidencePolicySha256: String(binding.visibilityPolicyHash),
+            objectBinding: String(binding.objectBinding),
+            outputSha256: String(rendered.outputSha256),
+          }),
           compilerVersion: deps.compilerVersion,
           rendererVersion: deps.rendererVersion,
           events: run.events,

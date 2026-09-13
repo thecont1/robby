@@ -1,5 +1,6 @@
 import type { EpistemicClass } from "@/lib/evidence";
 import type { C2paEvidence } from "@/lib/c2paEvidence";
+import type { IdentityRecord } from "@/lib/identityRecord";
 
 export const COMPILE_STAGES = [
   "intake",
@@ -49,6 +50,7 @@ export type SessionOrio = {
   derivedSeed: string;
   colourSwatches: string[];
   c2paEvidence: C2paEvidence;
+  identity: IdentityRecord;
   compilerVersion: string;
   rendererVersion: string;
   events: CompileEvent[];

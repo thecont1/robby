@@ -156,6 +156,12 @@ describe("CompileController", () => {
     expect(first.result?.reverseObjectUrl).toBe("blob:3");
     expect(first.result?.disclosure.safe).toBe(true);
     expect(first.result?.disclosure.omitted).toEqual(expect.arrayContaining(["source pixels", "raw GPS", "filename"]));
+    expect(first.result?.identity.canonicalPixelSha256).toBeNull();
+    expect(first.result?.identity.objectBinding).not.toBe(first.result?.identity.sourceByteSha256);
+    expect(first.result?.identity.canonicalRecipeSha256).not.toBe(first.result?.identity.authoredRecipeSha256);
+    expect(first.result?.identity.canonicalRecipeSha256).toBe(ir.meta.script_sha256);
+    expect(first.events.find(event => event.stage === "measure" && event.status === "completed")?.payload).toMatchObject({ pixelSha256: undefined });
+    expect(first.events.find(event => event.stage === "bind" && event.status === "completed")?.payload.objectBinding).toBe(first.result?.identity.objectBinding);
   });
 
   it("does not start a second run while one is already running for the same selection", async () => {

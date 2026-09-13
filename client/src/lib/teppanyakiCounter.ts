@@ -50,8 +50,8 @@ export function stationSummary(stage: CompileStage, payload: Record<string, unkn
       return [c2pa, gps].filter(Boolean).join(" · ");
     }
     case "measure": {
-      const hash = typeof payload.sourceByteSha256 === "string" ? truncateHash(payload.sourceByteSha256) : "";
-      return hash ? `PIXELS ${hash}` : STATION_LABELS.measure;
+      const hash = typeof payload.pixelSha256 === "string" ? truncateHash(payload.pixelSha256) : "";
+      return hash ? `PIXELS ${hash}` : "PIXELS UNAVAILABLE";
     }
     case "split": {
       const method = String(payload.method ?? "median_cut");
@@ -86,7 +86,9 @@ export function stationViews(events: readonly CompileEvent[]): StationView[] {
       index: String(index).padStart(2, "0"),
       name: STATION_LABELS[stage],
       status: latest?.status ?? "idle",
-      label: latest ? stationSummary(stage, payload) : STATION_LABELS[stage],
+      // Keep the dormant instrument legible without repeating the station name
+      // as its own placeholder description. Real payloads replace this copy.
+      label: latest ? stationSummary(stage, payload) : "Awaiting compile",
       classification: latest?.classification,
       swatches: Array.isArray(payload.colourSwatches) ? payload.colourSwatches.map(String).slice(0, 16) : [],
     };
@@ -96,7 +98,7 @@ export function stationViews(events: readonly CompileEvent[]): StationView[] {
 export function counterCopy(state: CounterState) {
   switch (state) {
     case "dormant":
-      return { kicker: "The counter is resting", body: "Turn this image to compile its reverse." };
+      return { kicker: "Resting", body: "Compile an orio to create this image's reverse." };
     case "primed":
       return { kicker: "Recipe ready", body: "Compile Orio to start a visible run." };
     case "running":
