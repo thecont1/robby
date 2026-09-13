@@ -16,4 +16,11 @@ export default defineConfig({
     environment: "node",
     include: ["server/**/*.test.ts", "server/**/*.spec.ts", "client/src/lib/**/*.test.ts"],
   },
+  // Tests that render components need the automatic JSX runtime. The app build
+  // gets this from @vitejs/plugin-react in vite.config.ts; this config has no
+  // plugins, so esbuild would otherwise emit classic React.createElement calls
+  // and fail with "React is not defined".
+  esbuild: {
+    jsx: "automatic",
+  },
 });
