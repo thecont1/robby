@@ -16,6 +16,15 @@ fn tiny_png() -> Vec<u8> {
     bytes.into_inner()
 }
 
+fn tiny_jpeg() -> Vec<u8> {
+    let image = RgbImage::from_pixel(1, 1, Rgb([96, 112, 128]));
+    let mut bytes = Cursor::new(Vec::new());
+    DynamicImage::ImageRgb8(image)
+        .write_to(&mut bytes, ImageFormat::Jpeg)
+        .expect("encode JPEG fixture");
+    bytes.into_inner()
+}
+
 #[test]
 fn repeated_intake_has_stable_source_and_pixel_hashes() {
     let bytes = tiny_png();
@@ -91,20 +100,19 @@ fn manifest_contains_typed_robby_object_foundation() {
 
 #[test]
 fn malformed_and_unsupported_metadata_are_localized_states() {
-    let mut corrupt = tiny_png();
+    let mut corrupt = tiny_jpeg();
     corrupt.extend_from_slice(b"Exif\\0\\0not-a-tiff");
-    let corrupt_path = "corrupt.jpg";
     let corrupt_manifest =
-        inspect_image(corrupt_path, &corrupt).expect("corrupt metadata is non-fatal");
+        inspect_image("corrupt.jpg", &corrupt).expect("corrupt metadata is non-fatal");
     assert_eq!(
         corrupt_manifest.evidence.exif.state,
         robby_compiler::intake::ExtractionState::Corrupt
     );
     assert!(corrupt_manifest.evidence.exif.value.is_none());
 
-    let mut unsupported = tiny_png();
+    let mut unsupported = tiny_jpeg();
     unsupported.extend_from_slice(b"Exif\\0\\0II*\\0\\x08\\0\\0\\0\\x01\\0\\x12\\x01\\x03\\0\\x01\\0\\0\\0\\x06\\0\\0\\0\\0\\0\\0\\0");
-    let unsupported_manifest = inspect_image("png-with-exif.jpg", &unsupported)
+    let unsupported_manifest = inspect_image("jpeg-with-exif.jpg", &unsupported)
         .expect("unsupported metadata is non-fatal");
     assert_eq!(
         unsupported_manifest.evidence.exif.state,
