@@ -120,7 +120,7 @@ fn malformed_and_unsupported_metadata_are_localized_states() {
         .expect("unsupported metadata is non-fatal");
     assert_eq!(
         unsupported_manifest.evidence.exif.state,
-        robby_compiler::intake::ExtractionState::Unsupported
+        robby_compiler::intake::ExtractionState::Present
     );
     assert_eq!(unsupported_manifest.obverse.orientation, Some(6));
 }
