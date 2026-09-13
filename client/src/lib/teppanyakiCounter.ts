@@ -20,15 +20,61 @@ export function deriveCounterState(run: CompileRun | null, recipeChanged: boolea
   return "dormant";
 }
 
+export function truncateHash(value: string) {
+  const hex = value.replace(/[^0-9a-fA-F]/g, "").toUpperCase();
+  if (hex.length < 8) return hex || "————";
+  return `${hex.slice(0, 4)}…${hex.slice(-4)}`;
+}
+
+export function stationSummary(stage: CompileStage, payload: Record<string, unknown> = {}) {
+  switch (stage) {
+    case "intake": {
+      const hash = typeof payload.sourceByteSha256 === "string" ? truncateHash(payload.sourceByteSha256) : "";
+      const size = typeof payload.byteSize === "number" ? ` · ${payload.byteSize} B` : "";
+      return hash ? `SOURCE ${hash}${size}` : STATION_LABELS.intake;
+    }
+    case "read": {
+      const status = String(payload.c2paStatus ?? "");
+      if (status === "present") return "C2PA VERIFIED";
+      if (status === "candidate") return "C2PA CANDIDATE";
+      if (status === "checking") return "C2PA CHECKING";
+      return "C2PA UNAVAILABLE";
+    }
+    case "measure": {
+      const hash = typeof payload.sourceByteSha256 === "string" ? truncateHash(payload.sourceByteSha256) : "";
+      return hash ? `PIXELS ${hash}` : STATION_LABELS.measure;
+    }
+    case "split":
+      return `PALETTE ${String(payload.method ?? "median_cut")}`;
+    case "declare": {
+      const mode = payload.reverseMode ? String(payload.reverseMode) : "";
+      const k = payload.paletteK != null ? `k ${payload.paletteK}` : "";
+      return ["MODE", mode, k].filter(Boolean).join(" · ").replace("MODE ·", "MODE");
+    }
+    case "bind": {
+      const binding = String(payload.objectBinding ?? "").toUpperCase();
+      return binding ? `${binding} · reproducibility record, not ownership` : STATION_LABELS.bind;
+    }
+    case "resolve": {
+      const hash = typeof payload.outputSha256 === "string" ? truncateHash(payload.outputSha256) : "";
+      const moduleName = payload.renderModule ? String(payload.renderModule) : "";
+      return ["REVERSE", hash, moduleName].filter(Boolean).join(" · ").replace("REVERSE ·", "REVERSE");
+    }
+    case "marry":
+      return payload.objectId ? String(payload.objectId) : STATION_LABELS.marry;
+  }
+}
+
 export function stationViews(events: readonly CompileEvent[]): StationView[] {
   return COMPILE_STAGES.map((stage, index) => {
     const latest = [...events].reverse().find(event => event.stage === stage);
+    const payload = latest?.payload ?? {};
     return {
       stage,
       index: String(index).padStart(2, "0"),
       name: STATION_LABELS[stage],
       status: latest?.status ?? "idle",
-      label: latest?.label ?? STATION_LABELS[stage],
+      label: latest ? stationSummary(stage, payload) : STATION_LABELS[stage],
       classification: latest?.classification,
     };
   });

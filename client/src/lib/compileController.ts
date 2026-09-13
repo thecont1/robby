@@ -176,8 +176,10 @@ export function createCompileController(deps: CompileDeps) {
             compilerVersion,
             rendererVersion,
           });
+          const sourceHash = String(sourceBytes.sourceByteSha256).replace(/[^0-9a-fA-F]/g, "").toUpperCase();
           return {
             key,
+            objectBinding: `ORIO-${sourceHash.slice(0, 4)}-${sourceHash.slice(-4)}`,
             compilerVersion,
             rendererVersion,
             canonicalRecipeHash,

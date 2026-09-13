@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { CompileEvent, CompileRun } from "./compileEvents";
-import { counterCopy, deriveCounterState, stationViews } from "./teppanyakiCounter";
+import { counterCopy, deriveCounterState, stationSummary, stationViews } from "./teppanyakiCounter";
 
 const event = (stage: CompileEvent["stage"], sequence: number, status: CompileEvent["status"] = "completed"): CompileEvent => ({
   compileRunId: "run-1",
@@ -37,5 +37,21 @@ describe("Teppanyaki Counter derivation", () => {
     expect(views[0]?.status).toBe("completed");
     expect(views[1]?.status).toBe("started");
     expect(views[2]?.status).toBe("idle");
+  });
+
+  it("shows truncated hashes and bounded evidence, never full dumps", () => {
+    expect(stationSummary("intake", {
+      sourceByteSha256: "7f3a91c2aabbccddeeff00112233445566778899aabbccddeeff001122334455",
+      byteSize: 482911,
+    })).toBe("SOURCE 7F3A…4455 · 482911 B");
+    expect(stationSummary("read", { c2paStatus: "absent", note: "No Content Credentials on these bytes." })).toBe("C2PA UNAVAILABLE");
+    expect(stationSummary("bind", {
+      objectBinding: "orio-7f3a-91c2",
+      statement: "A reproducibility record, not an ownership certificate.",
+    })).toBe("ORIO-7F3A-91C2 · reproducibility record, not ownership");
+    expect(stationSummary("resolve", {
+      outputSha256: "e1d2a73b00112233445566778899aabbccddeeff00112233445566778899aabb",
+      renderModule: "negative",
+    })).toBe("REVERSE E1D2…AABB · negative");
   });
 });
