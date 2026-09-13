@@ -14,19 +14,19 @@ export default function TeppanyakiCounter({
   const stations = stationViews(run?.events ?? []);
 
   return (
-    <aside className={`teppanyaki-counter state-${state}`} aria-label="Teppanyaki compilation counter">
+    <aside className={`teppanyaki-counter state-${state}`} data-state={state} aria-labelledby="teppanyaki-counter-title">
       <div className="trace-heading">
         <div>
-          <CircleDotDashed size={15} />
-          <span className="mono-label">Teppanyaki Counter</span>
+          <CircleDotDashed size={15} aria-hidden="true" />
+          <h2 id="teppanyaki-counter-title" className="mono-label">Teppanyaki counter</h2>
         </div>
-        <span>{state.toUpperCase()}</span>
+        <span aria-label={`Compilation state: ${state}`}>{state.toUpperCase()}</span>
       </div>
       <div className="trace-title" role="status" aria-live="polite" aria-atomic="true">
         <p className="eyebrow">{copy.kicker}</p>
-        <h3>{copy.body}</h3>
+        <p className="counter-message">{copy.body}</p>
       </div>
-      <ol className="teppanyaki-stations">
+      <ol className="teppanyaki-stations" aria-label="Compilation stations">
         {stations.map(station => (
           <li key={station.stage} className={`teppanyaki-station status-${station.status}`} data-stage={station.stage}>
             <span className="trace-number">{station.index}</span>

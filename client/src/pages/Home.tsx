@@ -313,8 +313,7 @@ export default function Home() {
         if (action === "close") {
           event.preventDefault();
           event.stopPropagation();
-          setArtworkView(false);
-          requestAnimationFrame(() => artworkOpenerRef.current?.focus());
+          closeArtworkView();
           return;
         }
         if (event.key === "Tab" && focusables.length > 0 && (action === "previous" || action === "next")) {
@@ -327,6 +326,8 @@ export default function Home() {
 
       const target = event.target as HTMLElement | null;
       if (target?.isContentEditable || target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || target instanceof HTMLSelectElement) return;
+      // Gallery shortcuts must not steal caret, menu, tab, or control input.
+      if (target?.closest("button, a, [role=tab], [role=menuitem], [contenteditable=true]")) return;
       if (imageOnly && isImageOnlyExitKey(event.key)) {
         setImageOnly(false);
         return;
@@ -427,6 +428,11 @@ export default function Home() {
     const offset = swipeGalleryOffset(startX, endX);
     if (offset === 0) return;
     selectImage(selectedIndex + offset);
+  };
+
+  const closeArtworkView = () => {
+    setArtworkView(false);
+    requestAnimationFrame(() => artworkOpenerRef.current?.focus());
   };
 
   if (galleryLoading || gallery.length === 0) {
@@ -663,7 +669,8 @@ export default function Home() {
         </div>
         <p className="footer-copyright">© 2026 <a href="https://thecontrarian.in/" target="_blank" rel="noreferrer">Mahesh Shantaram / thecontrarian.in</a></p>
       </footer>
-      {artworkView && <div ref={artworkViewRef} className="artwork-view" role="dialog" aria-modal="true" aria-label={`${selected.title} full-bleed artwork view`} tabIndex={-1} onClick={() => { setArtworkView(false); requestAnimationFrame(() => artworkOpenerRef.current?.focus()); }}>
+      {artworkView && <div ref={artworkViewRef} className="artwork-view" role="dialog" aria-modal="true" aria-labelledby="artwork-view-title" tabIndex={-1} onClick={closeArtworkView}>
+        <h2 id="artwork-view-title" className="sr-only">{selected.title} full-bleed artwork view</h2>
         <div className="artwork-view-frame" onClick={event => event.stopPropagation()} onTouchStart={handleArtworkTouchStart} onTouchEnd={handleArtworkTouchEnd}>
           <div className="artwork-view-image-viewport">
             {face === "obverse"
