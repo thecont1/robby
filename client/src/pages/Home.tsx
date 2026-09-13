@@ -128,6 +128,7 @@ export default function Home() {
   const compileHistory = useRef<Record<string, CompileSnapshot[]>>({});
   const selectedIdRef = useRef("");
   const selectedRecipeRef = useRef({ specimenId: "", source: "" });
+  const paletteReprocessTimer = useRef<number | null>(null);
   const discardReverseAfterFlip = useRef(false);
   const { theme, toggleTheme } = useTheme();
 
@@ -498,6 +499,26 @@ export default function Home() {
     setFailureMessage(null);
   };
 
+  // The counter slider rewrites the authored recipe and recompiles after a
+  // short pause; direct recipe edits remain explicit via Compile Orio.
+  const editPaletteK = (value: number) => {
+    if (!Number.isInteger(value) || value < 3 || value > 64 || isRenderingReverse) return;
+    try {
+      const nextRecipe = editPaletteInRecipe(activeRecipe, value);
+      draftStore.current.set(selected.id, nextRecipe);
+      selectedRecipeRef.current = { specimenId: selected.id, source: nextRecipe };
+      bumpDraftRevision();
+      setPaletteK(value);
+      setCompiledEdit(null);
+      setProjectionState("draft");
+      setFailureMessage(null);
+      if (paletteReprocessTimer.current !== null) window.clearTimeout(paletteReprocessTimer.current);
+      paletteReprocessTimer.current = window.setTimeout(() => void compileOrio(true), 320);
+    } catch (error) {
+      setFailureMessage(error instanceof Error ? error.message : String(error));
+    }
+  };
+
   const focusReverseStep = () => {
     setTraceMode("evidence");
     const reverseStage = trace.find(step => step.code.startsWith("reverse("))?.stage;
@@ -668,34 +689,6 @@ export default function Home() {
                 </div>
               </div>
               <div className="caption-turn">
-                <label className="palette-k-control">
-                  <span>k</span>
-                  <input
-                    aria-label="Palette clusters k"
-                    type="number"
-                    min={3}
-                    max={16}
-                    step={1}
-                    value={paletteK}
-                    disabled={isFlipping || isRenderingReverse}
-                    onChange={(event) => {
-                      const value = Number(event.target.value);
-                      if (!Number.isInteger(value) || value < 3 || value > 16) return;
-                      try {
-                        const nextRecipe = editPaletteInRecipe(activeRecipe, value);
-                        draftStore.current.set(selected.id, nextRecipe);
-                        selectedRecipeRef.current = { specimenId: selected.id, source: nextRecipe };
-                        bumpDraftRevision();
-                        setPaletteK(value);
-                        setCompiledEdit(null);
-                        setProjectionState("draft");
-                        setFailureMessage(null);
-                      } catch (error) {
-                        setFailureMessage(error instanceof Error ? error.message : String(error));
-                      }
-                    }}
-                  />
-                </label>
                 <button type="button" className="compile-orio-control" onClick={() => void compileOrio(actions.compileForce)} disabled={!actions.compileEnabled || isFlipping} aria-label={`${actions.compileLabel} for ${selected.title}`}>
                   <CircleDotDashed size={16} /><span>{actions.compileLabel}</span>
                 </button>
@@ -737,13 +730,18 @@ export default function Home() {
         </section>
 
         <div className="counter-column" inert={imageOnly}>
-          <TeppanyakiCounter run={compileRun?.galleryItemId === selected.id ? compileRun : null} recipeChanged={recipeChanged} />
+          <TeppanyakiCounter
+            run={compileRun?.galleryItemId === selected.id ? compileRun : null}
+            recipeChanged={recipeChanged}
+            paletteK={paletteK}
+            onPaletteKChange={editPaletteK}
+          />
         </div>
         <div className="source-workbench-wrap" inert={imageOnly}>
           <SourceEditor
             specimenId={selected.id}
             title={selected.title}
-            source={selectedDraft}
+            source={activeRecipe}
             onCompiled={applyCompiledSource}
             onCompileStart={clearLiveProjection}
             onCompileError={markProjectionUnavailable}

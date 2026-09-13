@@ -359,4 +359,21 @@
 .dark .teppanyaki-station { border-bottom-color:#e3442f; }.dark .teppanyaki-station p,.dark .teppanyaki-audit { color:#d79a8d; }.dark .teppanyaki-swatches i { border-color:#e3442f; }
 .image-only .teppanyaki-counter { pointer-events:none; visibility:hidden; }
 
+/* Palette slider sits inside the counter, mirroring the recipe's `palette(k:)`
+ * setting without a numeric input under the gallery. */
+.palette-slider { border-top:1px solid rgba(28,26,25,.16); margin:14px 0 12px; padding-top:12px; }
+.palette-slider .mono-label { display:block; margin-bottom:8px; }
+.palette-slider-row { align-items:center; display:flex; gap:10px; }
+.palette-slider-row input[type="range"] { accent-color:#7c3024; flex:1 1 auto; min-width:0; }
+.palette-k-value { background:#ede5d3; border:1px solid rgba(28,26,25,.22); border-radius:2px; color:#1c1a19; font-family:"DM Mono",monospace; font-size:11px; font-weight:700; min-width:30px; padding:3px 6px; text-align:center; }
+.dark .palette-slider { border-top-color:rgba(231,224,206,.18); }
+.dark .palette-slider-row input[type="range"] { accent-color:#e3442f; }
+.dark .palette-k-value { background:#1c1a19; border-color:rgba(231,224,206,.22); color:#f7efe0; }
+
+/* Colour swatches render in fixed rows of 8 so a 64-colour palette reads as a
+ * tidy grid rather than a widening single strip. */
+.palette-swatch-grid { display:grid; grid-template-columns:repeat(8, 1fr); gap:3px; margin:4px 0 14px; }
+.palette-swatch-grid i { aspect-ratio:1 / 1; border:1px solid rgba(28,26,25,.55); display:block; min-width:0; }
+.dark .palette-swatch-grid i { border-color:#e3442f; }
+
 /* Colour signature swatch strip — horizontally scrollable for large palettes */

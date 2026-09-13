@@ -2,16 +2,25 @@ import { CircleDotDashed } from "lucide-react";
 import type { CompileRun } from "@/lib/compileEvents";
 import { counterCopy, deriveCounterState, stationViews } from "@/lib/teppanyakiCounter";
 
+const PALETTE_MIN = 3;
+const PALETTE_MAX = 64;
+
 export default function TeppanyakiCounter({
   run,
   recipeChanged,
+  paletteK,
+  onPaletteKChange,
 }: {
   run: CompileRun | null;
   recipeChanged: boolean;
+  paletteK: number;
+  onPaletteKChange: (value: number) => void;
 }) {
   const state = deriveCounterState(run, recipeChanged);
   const copy = counterCopy(state);
   const stations = stationViews(run?.events ?? []);
+  const splitStation = stations.find(station => station.stage === "split");
+  const swatches = splitStation?.swatches ?? [];
 
   return (
     <aside className={`teppanyaki-counter state-${state}`} data-state={state} aria-labelledby="teppanyaki-counter-title">
@@ -26,6 +35,29 @@ export default function TeppanyakiCounter({
         <p className="eyebrow">{copy.kicker}</p>
         <p className="counter-message">{copy.body}</p>
       </div>
+      <div className="palette-slider">
+        <label htmlFor="palette-k-slider" className="mono-label">Palette k</label>
+        <div className="palette-slider-row">
+          <input
+            id="palette-k-slider"
+            type="range"
+            min={PALETTE_MIN}
+            max={PALETTE_MAX}
+            step={1}
+            value={paletteK}
+            onChange={(event) => onPaletteKChange(Number(event.target.value))}
+            aria-valuetext={`${paletteK} colour clusters`}
+          />
+          <output htmlFor="palette-k-slider" className="palette-k-value">{paletteK}</output>
+        </div>
+      </div>
+      {swatches.length > 0 && (
+        <div className="palette-swatch-grid" role="img" aria-label={`${swatches.length} palette swatches in rows of 8`}>
+          {swatches.map(swatch => (
+            <i key={swatch} style={{ background: swatch }} title={swatch} />
+          ))}
+        </div>
+      )}
       <ol className="teppanyaki-stations" aria-label="Compilation stations">
         {stations.map(station => (
           <li key={station.stage} className={`teppanyaki-station status-${station.status}`} data-stage={station.stage}>
@@ -33,13 +65,6 @@ export default function TeppanyakiCounter({
             <div>
               <strong>{station.name}</strong>
               <p>{station.label}</p>
-              {station.swatches.length > 0 && (
-                <span className="teppanyaki-swatches" aria-label={`${station.swatches.length} palette swatches`}>
-                  {station.swatches.map(swatch => (
-                    <i key={swatch} style={{ background: swatch }} title={swatch} />
-                  ))}
-                </span>
-              )}
               {station.classification && <em>{station.classification}</em>}
             </div>
           </li>
