@@ -736,7 +736,7 @@ export default function Home() {
 
         </section>
 
-        <div inert={imageOnly}>
+        <div className="counter-column" inert={imageOnly}>
           <TeppanyakiCounter run={compileRun?.galleryItemId === selected.id ? compileRun : null} recipeChanged={recipeChanged} />
         </div>
         <div className="source-workbench-wrap" inert={imageOnly}>
