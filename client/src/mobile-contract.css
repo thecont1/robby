@@ -1,0 +1,40 @@
+/* Plan 8 P0: narrow screens remain readable, operable, and zoomable. */
+@media (max-width: 560px) {
+  html, body, #root { max-width: 100%; overflow-x: hidden; }
+  .site-header { align-items: center; min-height: 70px; height: auto; padding: 12px 5vw; }
+  .header-toolset { flex: 0 0 auto; }
+  .feature-control.icon-control, .menu-control { min-height: 44px; min-width: 44px; }
+  .gallery-intro { display: block; min-height: 0; padding: 30px 5vw 25px; }
+  .gallery-intro .intro-copy h1 { font-size: clamp(30px, 9.7vw, 40px); max-width: 100%; overflow-wrap: anywhere; }
+  .gallery-workspace { display: block; padding: 28px 5vw 45px; }
+  .stage-control-row { align-items: stretch; display: flex; flex-wrap: wrap; gap: 10px; }
+  .stage-control-row .stage-metadata { flex: 1 1 100%; min-height: 44px; }
+  .stage-control-row .caption-turn { flex: 1 1 auto; min-height: 44px; }
+  .stage-control-row .caption-navigation { flex: 1 1 100%; min-height: 44px; }
+  .stage-control-row .stage-display-tools, .stage-control-row .object-navigation { min-height: 44px; }
+  .stage-control-row .object-navigation button,
+  .stage-control-row .artwork-view-control,
+  .stage-control-row .palette-k-control,
+  .stage-control-row .compile-orio-control,
+  .caption-turn .flip-control { min-height: 44px; }
+  .stage-control-row .artwork-view-control { min-width: 44px; }
+  .palette-k-control input { font-size: 16px; min-height: 40px; width: 32px; }
+  .trace-panel, .teppanyaki-counter { padding: 17px; }
+  .teppanyaki-counter { margin-top: 20px; }
+  .source-workbench-wrap { margin-top: 20px; }
+  .provenance-tablist button { min-height: 48px; min-width: 150px; }
+  .artwork-view { padding: 10px; }
+  .artwork-view-frame { min-height: 0; }
+  .artwork-view-frame > .artwork-view-controls > button { min-height: 44px; min-width: 44px; }
+  .artwork-view-meta { max-width: calc(100% - 58px); overflow-wrap: anywhere; }
+}
+
+@media (max-width: 360px) {
+  .site-header { padding-left: 4vw; padding-right: 4vw; }
+  .brand-title { font-size: 14px; }
+  .brand-copy .compile-status { font-size: 6px; }
+  .header-toolset { gap: 3px; }
+  .feature-control.icon-control, .menu-control { min-height: 44px; min-width: 44px; }
+  .stage-control-row .caption-turn { flex-basis: 100%; }
+  .stage-control-row .compile-orio-control { width: 100%; justify-content: center; }
+}
