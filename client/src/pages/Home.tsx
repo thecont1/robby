@@ -106,6 +106,7 @@ export default function Home() {
   const artworkTouchStartX = useRef<number | null>(null);
   const artworkViewRef = useRef<HTMLDivElement>(null);
   const appShellRef = useRef<HTMLElement>(null);
+  const mainContentRef = useRef<HTMLElement>(null);
   const artworkOpenerRef = useRef<HTMLButtonElement>(null);
   const compileHistory = useRef<Record<string, CompileSnapshot[]>>({});
   const selectedIdRef = useRef("");
@@ -304,6 +305,29 @@ export default function Home() {
     return () => background.forEach((child) => child.removeAttribute("inert"));
   }, [artworkView]);
 
+  // Skip-to-content helpers: reveal the visually-hidden link when it receives
+  // keyboard focus, then return the user (and the link) to the header once
+  // focus leaves it. This keeps the skip link usable without ever tapping a key.
+  const revealSkipLink = () => {
+    const link = document.querySelector<HTMLAnchorElement>(".skip-link");
+    link?.classList.add("skip-link-focus");
+  };
+  const restoreSkipLink = () => {
+    const link = document.querySelector<HTMLAnchorElement>(".skip-link");
+    if (link && !link.matches(":focus")) link.classList.remove("skip-link-focus");
+  };
+
+  // On first load, give the header messaging a short beat, then glide the top of
+  // the gallery slider and Teppanyaki Counter up to the top of the viewport.
+  // Mirrors the "skip to main content" behaviour, without the intervening click.
+  useEffect(() => {
+    if (galleryLoading || gallery.length === 0) return;
+    const timer = window.setTimeout(() => {
+      mainContentRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 1800);
+    return () => window.clearTimeout(timer);
+  }, [galleryLoading, gallery.length]);
+
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (artworkView) {
@@ -445,6 +469,14 @@ export default function Home() {
 
   return (
     <main ref={appShellRef} className={`app-shell min-h-screen overflow-hidden bg-[#f4efe1] text-[#1c1a19]${imageOnly ? " image-only" : ""}`}>
+      <a
+        className="skip-link"
+        href="#gallery"
+        onFocus={revealSkipLink}
+        onBlur={restoreSkipLink}
+      >
+        Skip to gallery &amp; compilation
+      </a>
       <header className="site-header">
         <a className="brand-lockup" href="#gallery" aria-label="robby gallery">
           <img src="/icons/robby-registration-mark_658aceee.png" alt="robby split registration disc" />
@@ -488,7 +520,7 @@ export default function Home() {
         </div>
       </section>
 
-      <section id="gallery" className="gallery-workspace" aria-label="robby image-object gallery">
+      <section ref={mainContentRef} id="gallery" className="gallery-workspace" aria-label="robby image-object gallery" tabIndex={-1}>
         <section className="object-stage" aria-label={`${selected.title} ${activeFace} image-object`}>
           <div className="artwork-stage-frame">
             <span className="stage-corner top-left" aria-hidden="true" /><span className="stage-corner top-right" aria-hidden="true" /><span className="stage-corner bottom-left" aria-hidden="true" /><span className="stage-corner bottom-right" aria-hidden="true" />

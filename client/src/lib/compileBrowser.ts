@@ -1,7 +1,7 @@
 import { inspectC2paCredential } from "@/lib/c2paCredentials";
 import { createCompileController, type CompileDeps } from "@/lib/compileController";
 import { requestEphemeralReverse } from "@/lib/liveRender";
-import { compileWithRust, inspectWithRust, rustCompilerVersion } from "@/lib/robbyCompiler";
+import { buildCanonicalBindingWithRust, compileWithRust, inspectWithRust, rustCompilerVersion } from "@/lib/robbyCompiler";
 
 async function sha256Hex(value: string | Uint8Array) {
   const bytes = typeof value === "string" ? new TextEncoder().encode(value) : new Uint8Array(value);
@@ -25,6 +25,38 @@ export function createBrowserCompileDeps(): CompileDeps {
         width: manifest.obverse.width,
         height: manifest.obverse.height,
         mimeType: manifest.obverse.mime_type,
+        intakeManifestJson: JSON.stringify(manifest),
+      };
+    },
+    buildBinding: async (intakeManifestJson, recipeSource, evidence, compilerVersion, rendererVersion) => {
+      const record = await buildCanonicalBindingWithRust(
+        intakeManifestJson,
+        recipeSource,
+        {
+          schema: "robby-evidence-selection-v1",
+          c2pa: {
+            presence: evidence.c2pa.presence,
+            validation: evidence.c2pa.validation,
+            signerTrust: evidence.c2pa.signerTrust,
+            availability: evidence.c2pa.availability,
+          },
+        },
+        compilerVersion,
+        rendererVersion,
+      );
+      return {
+        bindingSha256: record.binding_sha256,
+        shortId: record.short_id,
+        recipeIrSchema: record.recipe_ir_schema,
+        sourceByteSha256: record.source_byte_sha256,
+        canonicalPixelSha256: record.canonical_pixel_sha256,
+        authoredRecipeSha256: record.authored_recipe_sha256,
+        canonicalRecipeSha256: record.canonical_recipe_sha256,
+        disclosurePolicySha256: record.disclosure_policy_sha256,
+        selectedEvidenceSha256: record.selected_evidence_sha256,
+        compilerVersion: record.compiler_version,
+        rendererVersion: record.renderer_version,
+        statement: record.statement,
       };
     },
     compileRecipe: async (recipeSource, signal) => {

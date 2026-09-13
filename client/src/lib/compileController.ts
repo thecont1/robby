@@ -21,12 +21,35 @@ export type SourceIntake = {
   width: number;
   height: number;
   mimeType: string;
+  intakeManifestJson: string;
+};
+
+export type CanonicalBinding = {
+  bindingSha256: string;
+  shortId: string;
+  recipeIrSchema: string;
+  sourceByteSha256: string;
+  canonicalPixelSha256: string;
+  authoredRecipeSha256: string;
+  canonicalRecipeSha256: string;
+  disclosurePolicySha256: string;
+  selectedEvidenceSha256: string;
+  compilerVersion: string;
+  rendererVersion: string;
+  statement: string;
 };
 
 export type CompileDeps = {
   fetchSourceBytes: (sourceUrl: string, signal: AbortSignal) => Promise<Uint8Array>;
   sha256Hex: (value: string | Uint8Array) => Promise<string>;
   measureSourceBytes: (originalName: string, bytes: Uint8Array, signal: AbortSignal) => Promise<SourceIntake>;
+  buildBinding: (
+    intakeManifestJson: string,
+    recipeSource: string,
+    evidence: { schema: string; c2pa: { presence: string; validation: string; signerTrust: string; availability: string } },
+    compilerVersion: string,
+    rendererVersion: string,
+  ) => Promise<CanonicalBinding>;
   compileRecipe: (recipeSource: string, signal: AbortSignal) => Promise<RobbyIr>;
   inspectC2pa: (sourceName: string, signal: AbortSignal) => Promise<CredentialSignature>;
   renderReverse: (ir: RobbyIr, signal: AbortSignal) => Promise<EphemeralReverseResult>;
@@ -185,46 +208,48 @@ export function createCompileController(deps: CompileDeps) {
         }));
 
         const binding = await station(run, "bind", "derived", async () => {
-          const compilerVersion = deps.compilerVersion;
-          const rendererVersion = deps.rendererVersion;
-          const visibilityPolicyHash = await deps.sha256Hex("gps:private");
-          const evidenceSelectionHash = await deps.sha256Hex(String(credential.c2paStatus));
-          const canonicalRecipeHash = String(ir.recipeHash);
-          const pixelSha256 = String(intake.pixelSha256);
+          // P9A.6: the authoritative binding is produced by Rust/WASM. The
+          // browser never composites its own binding and never falls back to
+          // an alternate algorithm.
+          const record = await deps.buildBinding(
+            String(intake.intakeManifestJson),
+            request.recipeSource,
+            {
+              schema: "robby-evidence-selection-v1",
+              c2pa: {
+                presence: String(inspected.status === "present" || inspected.status === "candidate" ? inspected.status : "absent"),
+                validation: String(c2paEvidence.validation),
+                signerTrust: String(c2paEvidence.signerTrust),
+                availability: String(c2paEvidence.availability === "not_inspected" ? "not_inspected" : "inspected"),
+              },
+            },
+            deps.compilerVersion,
+            deps.rendererVersion,
+          );
           const key = sessionCacheKey({
             galleryItemId: request.galleryItemId,
-            sourceByteSha256: String(sourceBytes.sourceByteSha256),
-            pixelSha256,
-            canonicalRecipeHash,
-            visibilityPolicyHash,
-            evidenceSelectionHash,
-            compilerVersion,
-            rendererVersion,
+            sourceByteSha256: record.sourceByteSha256,
+            pixelSha256: record.canonicalPixelSha256,
+            canonicalRecipeHash: record.canonicalRecipeSha256,
+            visibilityPolicyHash: record.disclosurePolicySha256,
+            evidenceSelectionHash: record.selectedEvidenceSha256,
+            compilerVersion: record.compilerVersion,
+            rendererVersion: record.rendererVersion,
           });
-          const authoredRecipeSha256 = await deps.sha256Hex(request.recipeSource);
-          const objectBinding = await deps.sha256Hex([
-            "robby-object-binding-v1",
-            sourceBytes.sourceByteSha256,
-            pixelSha256,
-            authoredRecipeSha256,
-            canonicalRecipeHash,
-            visibilityPolicyHash,
-            evidenceSelectionHash,
-            compilerVersion,
-            rendererVersion,
-          ].join("|"));
           return {
             key,
-            objectBinding,
-            compilerVersion,
-            rendererVersion,
-            canonicalRecipeHash,
-            authoredRecipeSha256,
-            sourceByteSha256: sourceBytes.sourceByteSha256,
-            pixelSha256,
-            visibilityPolicyHash,
-            evidenceSelectionHash,
-            statement: "A reproducibility record, not an ownership certificate.",
+            objectBinding: record.bindingSha256,
+            shortId: record.shortId,
+            recipeIrSchema: record.recipeIrSchema,
+            compilerVersion: record.compilerVersion,
+            rendererVersion: record.rendererVersion,
+            canonicalRecipeHash: record.canonicalRecipeSha256,
+            authoredRecipeSha256: record.authoredRecipeSha256,
+            sourceByteSha256: record.sourceByteSha256,
+            pixelSha256: record.canonicalPixelSha256,
+            visibilityPolicyHash: record.disclosurePolicySha256,
+            evidenceSelectionHash: record.selectedEvidenceSha256,
+            statement: record.statement,
           };
         });
 

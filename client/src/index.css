@@ -15,6 +15,15 @@
 
 .sr-only { border: 0; clip: rect(0, 0, 0, 0); height: 1px; margin: -1px; overflow: hidden; padding: 0; position: absolute; white-space: nowrap; width: 1px; }
 
+/* Skip-to-gallery link: off-screen until keyboard focus, then a visible,
+ * high-contrast target. Classes toggled in Home.tsx keep it accessible even
+ * when focus lands programmatically. */
+.skip-link { position: absolute; left: 4.2vw; top: -100px; z-index: 100; background: #7c3024; color: #fff8e9; font-family: "DM Mono", ui-monospace, monospace; font-size: 11px; font-weight: 700; letter-spacing: .08em; padding: 11px 16px; text-decoration: none; text-transform: uppercase; transition: top .18s cubic-bezier(.23,1,.32,1); }
+.skip-link:focus, .skip-link.skip-link-focus { top: 14px; }
+.skip-link:focus-visible { outline: 2px solid #1c1a19; outline-offset: 2px; }
+.dark .skip-link { color: #000; }
+.dark .skip-link:focus-visible { outline-color: #f7efe0; }
+
 /* Primary controls retain a comfortable activation area at narrow widths. */
 .compile-orio-control, .flip-control, .artwork-view-control, .object-navigation button, .feature-control.icon-control, .menu-control { min-height: 44px; }
 .mono, .mono-label, code { font-family: "DM Mono", ui-monospace, monospace; }.mono-label { color: #6b665e; font-size: 9px; font-weight: 700; letter-spacing: .15em; text-transform: uppercase; }

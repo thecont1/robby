@@ -126,6 +126,36 @@ pub(crate) fn lower(script: &Script, source: &str) -> Ir {
     }
 }
 
+/// Rust-defined canonical serialization of a validated/lowered v1 IR.
+///
+/// This is the canonical v1 recipe identity: a stable, versioned encoding of
+/// the typed IR that is independent of authored formatting, UI property
+/// order, or JavaScript object layout. `build_binding_record` hashes these
+/// bytes as `canonicalRecipeSha256` (Plan 9 / ADR-003 / P9A.3).
+///
+/// Encoding: NUL-separated `key=value` lines over the lowered semantic
+/// content, anchored by the schema tag.
+pub fn canonical_v1_recipe_bytes(ir: &Ir) -> String {
+    [
+        format!("schema={}", ir.version),
+        format!("canvas.base={}", ir.canvas.base),
+        match ir.canvas.width {
+            Some(width) => format!("canvas.width={width}"),
+            None => "canvas.width=".to_string(),
+        },
+        match ir.canvas.height {
+            Some(height) => format!("canvas.height={height}"),
+            None => "canvas.height=".to_string(),
+        },
+        format!("palette.k={}", ir.palette.k),
+        format!("reverse.mode={}", ir.reverse.mode),
+        format!("output.obverse={}", ir.output.obverse),
+        format!("output.reverse={}", ir.output.reverse),
+        format!("output.manifest={}", ir.output.manifest),
+    ]
+    .join("\u{0}")
+}
+
 pub(crate) fn lower_recipe(recipe: &Recipe) -> RecipeIr {
     let object = &recipe.object;
     let input = clause(object, "input")

@@ -2,6 +2,12 @@
 //!
 //! Binding is deliberately an identity of selected inputs and policies. It is
 //! not an ownership claim, a signature, or a provenance authority.
+//!
+//! ADR-003 (Plan 9): the canonical algorithm is version-independent. Recipe
+//! languages plug in through explicit adapters that produce a
+//! `CanonicalBindingRequest`; `build_binding_record` is the only producer of
+//! binding identities. v1 (`robby-ir-v1`) and v2 (`robby-ir-v2`) records are
+//! domain-separated by schema tags and can never collide.
 
 use std::collections::BTreeMap;
 
@@ -10,9 +16,26 @@ use serde_json::{json, Value as JsonValue};
 use sha2::{Digest, Sha256};
 
 use crate::intake::{C2paState, EvidenceClass, IngredientManifest, Visibility};
-use crate::ir::RecipeIr;
+use crate::ir::{canonical_v1_recipe_bytes, Ir, RecipeIr};
 
 pub const BINDING_STATEMENT: &str = "This binding identifies this source, recipe, selected evidence policy, and compiler runtime. It is a reproducibility record, not an ownership certificate.";
+
+/// Statement carried by canonical `BindingRecord`s (Plan 9 / ADR-003).
+pub const CANONICAL_BINDING_STATEMENT: &str =
+    "A reproducibility binding, not an ownership certificate.";
+
+/// Domain-separation schema tag for bindings derived from `robby-ir-v1`.
+pub const BINDING_SCHEMA_V1: &str = "robby-object-binding-v1";
+/// Domain-separation schema tag for bindings derived from `robby-ir-v2`.
+pub const BINDING_SCHEMA_V2: &str = "robby-object-binding-v2";
+
+/// Named default disclosure policy applied to v1 recipes, which carry no
+/// `bind`/`publish` clauses. Recorded as a named default, never as user
+/// authorship.
+pub const V1_DEFAULT_DISCLOSURE_POLICY_SCHEMA: &str = "robby-v1-default-disclosure-policy";
+
+/// Schema tag for structured selected-evidence records.
+pub const SELECTED_EVIDENCE_SCHEMA: &str = "robby-evidence-selection-v1";
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct BindingOptions {
@@ -64,6 +87,21 @@ pub struct BindingComponents {
     pub runtime_hash: String,
 }
 
+impl BindingComponents {
+    fn from_request(request: &CanonicalBindingRequest) -> Self {
+        Self {
+            source_byte_hash: request.source_byte_sha256.clone(),
+            canonical_pixel_hash: request.canonical_pixel_sha256.clone(),
+            canonical_recipe_hash: request.canonical_recipe_sha256.clone(),
+            approved_evidence_hash: request.selected_evidence_sha256.clone(),
+            visibility_context_policy_hash: request.disclosure_policy_sha256.clone(),
+            runtime_hash: digest_string(
+                canonical_runtime(&request.compiler_version, &request.renderer_version).as_bytes(),
+            ),
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct BindingResult {
     pub object_binding: String,
@@ -78,7 +116,274 @@ pub struct BindingResult {
     pub statement: String,
 }
 
-/// Build all binding material from the already validated intake manifest and IR.
+/// Version-independent canonical binding request (ADR-003). Every identity
+/// domain is explicit; adapters translate recipe-language specifics into this
+/// shape before the core runs.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct CanonicalBindingRequest {
+    pub binding_schema: String,
+    pub recipe_ir_schema: String,
+
+    pub source_byte_sha256: String,
+    pub canonical_pixel_sha256: String,
+
+    pub authored_recipe_sha256: String,
+    pub canonical_recipe_sha256: String,
+
+    pub disclosure_policy_sha256: String,
+    pub selected_evidence_sha256: String,
+
+    pub compiler_version: String,
+    pub renderer_version: String,
+}
+
+/// The authoritative, versioned reproducibility record produced only by
+/// `build_binding_record`.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct BindingRecord {
+    pub schema_version: String,
+    pub binding_sha256: String,
+    pub short_id: String,
+
+    pub recipe_ir_schema: String,
+
+    pub source_byte_sha256: String,
+    pub canonical_pixel_sha256: String,
+
+    pub authored_recipe_sha256: String,
+    pub canonical_recipe_sha256: String,
+
+    pub disclosure_policy_sha256: String,
+    pub selected_evidence_sha256: String,
+
+    pub compiler_version: String,
+    pub renderer_version: String,
+
+    pub statement: String,
+}
+
+/// Structured selected evidence. Never hash human-facing display labels.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct SelectedEvidence {
+    pub schema: String,
+    pub c2pa: C2paEvidenceSelection,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct C2paEvidenceSelection {
+    pub presence: String,
+    pub validation: String,
+    pub signer_trust: String,
+    pub availability: String,
+}
+
+impl SelectedEvidence {
+    pub fn validate(&self) -> Result<(), String> {
+        if self.schema != SELECTED_EVIDENCE_SCHEMA {
+            return Err(format!(
+                "Unknown evidence schema `{}`. Expected `{SELECTED_EVIDENCE_SCHEMA}`.",
+                self.schema
+            ));
+        }
+        Ok(())
+    }
+
+    /// Canonical serialization hashed into `selected_evidence_sha256`.
+    pub fn canonical_bytes(&self) -> String {
+        serde_json::to_string(self).expect("selected evidence serializes")
+    }
+}
+
+/// The named default v1 disclosure policy. v1 recipes author no `bind` or
+/// `publish` clauses, so the policy is a recorded default rather than a claim
+/// of user authorship.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct V1DisclosurePolicy {
+    pub schema: String,
+    pub gps: String,
+    pub raw_metadata: String,
+    pub source_pixels: String,
+    pub c2pa: String,
+}
+
+impl V1DisclosurePolicy {
+    pub fn default_v1() -> Self {
+        Self {
+            schema: V1_DEFAULT_DISCLOSURE_POLICY_SCHEMA.to_string(),
+            gps: "private".to_string(),
+            raw_metadata: "omitted".to_string(),
+            source_pixels: "omitted".to_string(),
+            c2pa: "summary/status-only".to_string(),
+        }
+    }
+
+    /// Canonical serialization hashed into `disclosure_policy_sha256`.
+    pub fn canonical_bytes(&self) -> String {
+        serde_json::to_string(self).expect("disclosure policy serializes")
+    }
+}
+
+/// The only canonical binding algorithm (ADR-003). Given a validated
+/// `CanonicalBindingRequest`, produce the authoritative `BindingRecord`.
+///
+/// The preimage is a NUL-separated, key=value encoding with domain separation
+/// and every identity domain, exactly as specified by Plan 9:
+///
+/// ```text
+/// robby-object-binding-v1 NUL recipe-ir-schema=… NUL source-byte-sha256=…
+/// NUL canonical-pixel-sha256=… NUL authored-recipe-sha256=…
+/// NUL canonical-recipe-sha256=… NUL disclosure-policy-sha256=…
+/// NUL selected-evidence-sha256=… NUL compiler-version=… NUL renderer-version=…
+/// ```
+pub fn build_binding_record(request: &CanonicalBindingRequest) -> Result<BindingRecord, String> {
+    validate_tag(&request.binding_schema, "binding_schema")?;
+    validate_tag(&request.recipe_ir_schema, "recipe_ir_schema")?;
+    validate_digest(&request.source_byte_sha256, "source_byte_sha256")?;
+    validate_digest(&request.canonical_pixel_sha256, "canonical_pixel_sha256")?;
+    validate_digest(&request.authored_recipe_sha256, "authored_recipe_sha256")?;
+    validate_digest(&request.canonical_recipe_sha256, "canonical_recipe_sha256")?;
+    validate_digest(
+        &request.disclosure_policy_sha256,
+        "disclosure_policy_sha256",
+    )?;
+    validate_digest(
+        &request.selected_evidence_sha256,
+        "selected_evidence_sha256",
+    )?;
+    validate_tag(&request.compiler_version, "compiler_version")?;
+    validate_tag(&request.renderer_version, "renderer_version")?;
+
+    let preimage = [
+        request.binding_schema.clone(),
+        format!("recipe-ir-schema={}", request.recipe_ir_schema),
+        format!("source-byte-sha256={}", request.source_byte_sha256),
+        format!("canonical-pixel-sha256={}", request.canonical_pixel_sha256),
+        format!("authored-recipe-sha256={}", request.authored_recipe_sha256),
+        format!(
+            "canonical-recipe-sha256={}",
+            request.canonical_recipe_sha256
+        ),
+        format!(
+            "disclosure-policy-sha256={}",
+            request.disclosure_policy_sha256
+        ),
+        format!(
+            "selected-evidence-sha256={}",
+            request.selected_evidence_sha256
+        ),
+        format!("compiler-version={}", request.compiler_version),
+        format!("renderer-version={}", request.renderer_version),
+    ]
+    .join("\u{0}");
+    let binding_sha256 = digest_string(preimage.as_bytes());
+    let short_id = short_id(&binding_sha256);
+    Ok(BindingRecord {
+        schema_version: "robby-binding-record-v1".to_string(),
+        binding_sha256: binding_sha256.clone(),
+        short_id,
+        recipe_ir_schema: request.recipe_ir_schema.clone(),
+        source_byte_sha256: request.source_byte_sha256.clone(),
+        canonical_pixel_sha256: request.canonical_pixel_sha256.clone(),
+        authored_recipe_sha256: request.authored_recipe_sha256.clone(),
+        canonical_recipe_sha256: request.canonical_recipe_sha256.clone(),
+        disclosure_policy_sha256: request.disclosure_policy_sha256.clone(),
+        selected_evidence_sha256: request.selected_evidence_sha256.clone(),
+        compiler_version: request.compiler_version.clone(),
+        renderer_version: request.renderer_version.clone(),
+        statement: CANONICAL_BINDING_STATEMENT.to_string(),
+    })
+}
+
+fn short_id(binding_sha256: &str) -> String {
+    format!(
+        "RB-{}-{}",
+        binding_sha256[0..4].to_uppercase(),
+        binding_sha256[4..8].to_uppercase()
+    )
+}
+
+fn validate_digest(value: &str, field: &str) -> Result<(), String> {
+    if value.len() != 64
+        || !value
+            .bytes()
+            .all(|b| b.is_ascii_hexdigit() && !b.is_ascii_uppercase())
+    {
+        return Err(format!(
+            "{field} must be exactly 64 lowercase hex characters."
+        ));
+    }
+    Ok(())
+}
+
+fn validate_tag(value: &str, field: &str) -> Result<(), String> {
+    if value.is_empty() || !value.bytes().all(|b| b.is_ascii_graphic() && b != b'=') {
+        return Err(format!(
+            "{field} must be non-empty printable ASCII without NUL or `=`."
+        ));
+    }
+    Ok(())
+}
+
+/// Build a canonical binding request from the active `robby-ir-v1` language.
+///
+/// The intake manifest supplies the byte and canonical-pixel identities. The
+/// canonical v1 recipe identity is the Rust-defined canonical serialization of
+/// the lowered typed IR (formatting-independent); the authored identity is the
+/// exact submitted recipe source bytes. Policy is the named v1 default.
+pub fn binding_request_from_ir_v1(
+    intake: &IngredientManifest,
+    ir: &Ir,
+    authored_recipe_sha256: &str,
+    policy: &V1DisclosurePolicy,
+    evidence: &SelectedEvidence,
+    compiler_version: &str,
+    renderer_version: &str,
+) -> CanonicalBindingRequest {
+    CanonicalBindingRequest {
+        binding_schema: BINDING_SCHEMA_V1.to_string(),
+        recipe_ir_schema: ir.version.clone(),
+        source_byte_sha256: intake.obverse.byte_sha256.clone(),
+        canonical_pixel_sha256: intake.obverse.pixel_sha256.clone(),
+        authored_recipe_sha256: authored_recipe_sha256.to_string(),
+        canonical_recipe_sha256: digest_string(canonical_v1_recipe_bytes(ir).as_bytes()),
+        disclosure_policy_sha256: digest_string(policy.canonical_bytes().as_bytes()),
+        selected_evidence_sha256: digest_string(evidence.canonical_bytes().as_bytes()),
+        compiler_version: compiler_version.to_string(),
+        renderer_version: renderer_version.to_string(),
+    }
+}
+
+/// Build a canonical binding request from the Phase-3 `robby-ir-v2` recipe IR.
+///
+/// v2 recipes carry their own `bind`/`publish` clauses; policy and evidence
+/// serializations come from the validated recipe and options. The v2 pipeline
+/// currently has no separate authored-source input, so authored identity
+/// equals canonical identity until an authored source is plumbed through.
+pub fn binding_request_from_recipe_ir_v2(
+    manifest: &IngredientManifest,
+    recipe: &RecipeIr,
+    options: &BindingOptions,
+    compiler_version: &str,
+    renderer_version: &str,
+) -> CanonicalBindingRequest {
+    let evidence_serialization = canonical_approved_evidence(manifest, options);
+    let policy_serialization = canonical_visibility_context_policy(recipe, options);
+    CanonicalBindingRequest {
+        binding_schema: BINDING_SCHEMA_V2.to_string(),
+        recipe_ir_schema: recipe.version.clone(),
+        source_byte_sha256: manifest.obverse.byte_sha256.clone(),
+        canonical_pixel_sha256: manifest.obverse.pixel_sha256.clone(),
+        authored_recipe_sha256: recipe.recipe_sha256.clone(),
+        canonical_recipe_sha256: recipe.recipe_sha256.clone(),
+        disclosure_policy_sha256: digest_string(policy_serialization.as_bytes()),
+        selected_evidence_sha256: digest_string(evidence_serialization.as_bytes()),
+        compiler_version: compiler_version.to_string(),
+        renderer_version: renderer_version.to_string(),
+    }
+}
+
+/// Build all legacy v2 binding material through the canonical core.
 pub fn build_binding(
     manifest: &IngredientManifest,
     recipe: &RecipeIr,
@@ -86,18 +391,17 @@ pub fn build_binding(
     compiler_version: &str,
     renderer_version: &str,
 ) -> BindingResult {
+    let request = binding_request_from_recipe_ir_v2(
+        manifest,
+        recipe,
+        options,
+        compiler_version,
+        renderer_version,
+    );
+    let record = build_binding_record(&request).expect("v2 adapter produces a valid request");
     let evidence_serialization = canonical_approved_evidence(manifest, options);
     let policy_serialization = canonical_visibility_context_policy(recipe, options);
-    let components = BindingComponents {
-        source_byte_hash: manifest.obverse.byte_sha256.clone(),
-        canonical_pixel_hash: manifest.obverse.pixel_sha256.clone(),
-        canonical_recipe_hash: recipe.recipe_sha256.clone(),
-        approved_evidence_hash: digest_string(evidence_serialization.as_bytes()),
-        visibility_context_policy_hash: digest_string(policy_serialization.as_bytes()),
-        runtime_hash: digest_string(
-            canonical_runtime(compiler_version, renderer_version).as_bytes(),
-        ),
-    };
+    let components = BindingComponents::from_request(&request);
     let component_hashes = BTreeMap::from([
         (
             "source_byte_hash".into(),
@@ -121,24 +425,10 @@ pub fn build_binding(
         ),
         ("runtime_hash".into(), components.runtime_hash.clone()),
     ]);
-    let object_binding = digest_concat(&[
-        &components.source_byte_hash,
-        &components.canonical_pixel_hash,
-        &components.canonical_recipe_hash,
-        &components.approved_evidence_hash,
-        &components.visibility_context_policy_hash,
-        &components.runtime_hash,
-    ]);
-    let render_seed = object_binding[..16].to_string();
-    let display_identifier = format!(
-        "RB-{}-{}",
-        object_binding[..4].to_uppercase(),
-        object_binding[4..8].to_uppercase()
-    );
     BindingResult {
-        object_binding,
-        render_seed,
-        display_identifier,
+        object_binding: record.binding_sha256.clone(),
+        render_seed: record.binding_sha256[..16].to_string(),
+        display_identifier: record.short_id.clone(),
         component_hashes,
         components,
         evidence_serialization,
@@ -216,14 +506,6 @@ fn sort_json(value: JsonValue) -> JsonValue {
         JsonValue::Array(values) => JsonValue::Array(values.into_iter().map(sort_json).collect()),
         other => other,
     }
-}
-
-fn digest_concat(parts: &[&str]) -> String {
-    let mut hasher = Sha256::new();
-    for part in parts {
-        hasher.update(part.as_bytes());
-    }
-    format!("{:x}", hasher.finalize())
 }
 
 fn digest_string(bytes: &[u8]) -> String {

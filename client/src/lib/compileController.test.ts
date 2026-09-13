@@ -51,6 +51,38 @@ function deps(overrides: Partial<CompileDeps> = {}): CompileDeps & { calls: stri
         width: 2,
         height: 1,
         mimeType: "image/jpeg",
+        intakeManifestJson: JSON.stringify({
+          schema_version: "0.2",
+          obverse: {
+            byte_sha256: "sourcebytes".padEnd(64, "a"),
+            pixel_sha256: "pixels".padEnd(64, "a"),
+          },
+        }),
+      };
+    },
+    buildBinding: async (_intakeJson, recipeSource, evidence) => {
+      calls.push("buildBinding");
+      // A deterministic stand-in for the Rust core: mirrors the real field
+      // derivation so downstream identity/cache logic is exercised truthfully.
+      const digestOf = (value: string) => `d:${value}`.padEnd(64, "0").slice(0, 64);
+      const authored = digestOf(recipeSource);
+      const canonical = `canon:${String(evidence.c2pa.presence)}`.padEnd(64, "0").slice(0, 64);
+      const policy = "p:".padEnd(64, "0");
+      const selected = `e:${evidence.c2pa.presence}/${evidence.c2pa.validation}`.padEnd(64, "0").slice(0, 64);
+      const bindingSha256 = `b:${authored}${canonical}`.padEnd(64, "0").slice(0, 64);
+      return {
+        bindingSha256,
+        shortId: `RB-${bindingSha256.slice(0, 4).toUpperCase()}-${bindingSha256.slice(4, 8).toUpperCase()}`,
+        recipeIrSchema: "robby-ir-v1",
+        sourceByteSha256: "sourcebytes".padEnd(64, "a"),
+        canonicalPixelSha256: "pixels".padEnd(64, "a"),
+        authoredRecipeSha256: authored,
+        canonicalRecipeSha256: canonical,
+        disclosurePolicySha256: policy,
+        selectedEvidenceSha256: selected,
+        compilerVersion: "robby-compiler-v0.1.0",
+        rendererVersion: "robby-render-manifest-v1",
+        statement: "A reproducibility binding, not an ownership certificate.",
       };
     },
     compileRecipe: async () => {
@@ -168,7 +200,10 @@ describe("CompileController", () => {
     expect(first.result?.identity.canonicalPixelSha256).toBe("pixels".padEnd(64, "a"));
     expect(first.result?.identity.objectBinding).not.toBe(first.result?.identity.sourceByteSha256);
     expect(first.result?.identity.canonicalRecipeSha256).not.toBe(first.result?.identity.authoredRecipeSha256);
-    expect(first.result?.identity.canonicalRecipeSha256).toBe(ir.meta.script_sha256);
+    // Canonical v1 identity is Rust-derived from the lowered IR; the authored
+    // hash (ir.meta.script_sha256) is the source-text digest and must remain
+    // a separate identity domain (Plan 9A / ADR-003).
+    expect(first.result?.identity.canonicalRecipeSha256).not.toBe(ir.meta.script_sha256);
     expect(first.events.find(event => event.stage === "measure" && event.status === "completed")?.payload).toMatchObject({ pixelSha256: "pixels".padEnd(64, "a") });
     expect(first.events.find(event => event.stage === "bind" && event.status === "completed")?.payload.objectBinding).toBe(first.result?.identity.objectBinding);
   });
