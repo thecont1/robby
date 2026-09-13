@@ -241,7 +241,7 @@ export default function Home() {
         mode: orio.renderModule,
         seed: orio.derivedSeed,
         settingsSha256: orio.canonicalRecipeHash,
-        swatches: [],
+        swatches: orio.colourSwatches,
       },
     }));
   };

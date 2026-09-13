@@ -10,6 +10,7 @@ export type StationView = {
   status: "idle" | "started" | "artifact" | "warning" | "completed" | "failed";
   label: string;
   classification?: string;
+  swatches: string[];
 };
 
 export function deriveCounterState(run: CompileRun | null, recipeChanged: boolean): CounterState {
@@ -44,8 +45,11 @@ export function stationSummary(stage: CompileStage, payload: Record<string, unkn
       const hash = typeof payload.sourceByteSha256 === "string" ? truncateHash(payload.sourceByteSha256) : "";
       return hash ? `PIXELS ${hash}` : STATION_LABELS.measure;
     }
-    case "split":
-      return `PALETTE ${String(payload.method ?? "median_cut")}`;
+    case "split": {
+      const method = String(payload.method ?? "median_cut");
+      const count = Array.isArray(payload.colourSwatches) ? payload.colourSwatches.length : 0;
+      return count > 0 ? `PALETTE ${method} · ${count}` : `PALETTE ${method}`;
+    }
     case "declare": {
       const mode = payload.reverseMode ? String(payload.reverseMode) : "";
       const k = payload.paletteK != null ? `k ${payload.paletteK}` : "";
@@ -76,6 +80,7 @@ export function stationViews(events: readonly CompileEvent[]): StationView[] {
       status: latest?.status ?? "idle",
       label: latest ? stationSummary(stage, payload) : STATION_LABELS[stage],
       classification: latest?.classification,
+      swatches: Array.isArray(payload.colourSwatches) ? payload.colourSwatches.map(String).slice(0, 16) : [],
     };
   });
 }

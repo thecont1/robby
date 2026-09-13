@@ -53,5 +53,9 @@ describe("Teppanyaki Counter derivation", () => {
       outputSha256: "e1d2a73b00112233445566778899aabbccddeeff00112233445566778899aabb",
       renderModule: "negative",
     })).toBe("REVERSE E1D2…AABB · negative");
+    expect(stationSummary("split", {
+      method: "median_cut",
+      colourSwatches: ["#112233", "#445566", "#778899"],
+    })).toBe("PALETTE median_cut · 3");
   });
 });

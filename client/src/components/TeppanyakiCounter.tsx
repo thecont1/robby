@@ -33,6 +33,13 @@ export default function TeppanyakiCounter({
             <div>
               <strong>{station.name}</strong>
               <p>{station.label}</p>
+              {station.swatches.length > 0 && (
+                <span className="teppanyaki-swatches" aria-label={`${station.swatches.length} palette swatches`}>
+                  {station.swatches.map(swatch => (
+                    <i key={swatch} style={{ background: swatch }} title={swatch} />
+                  ))}
+                </span>
+              )}
               {station.classification && <em>{station.classification}</em>}
             </div>
           </li>

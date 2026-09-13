@@ -149,11 +149,12 @@ export function createCompileController(deps: CompileDeps) {
           byteSize: sourceBytes.byteSize,
         }));
 
+        const compiledIr = await deps.compileRecipe(request.recipeSource, signal);
         await station(run, "split", "derived", async () => ({
           method: "median_cut",
+          paletteK: compiledIr.palette.k,
         }));
 
-        const compiledIr = await deps.compileRecipe(request.recipeSource, signal);
         const ir = await station(run, "declare", "declared", async () => ({
           irVersion: compiledIr.version,
           reverseMode: compiledIr.reverse.mode,
@@ -200,6 +201,7 @@ export function createCompileController(deps: CompileDeps) {
               ...cached.orio,
               compileRunId: run.id,
               events: run.events,
+              colourSwatches: cached.orio.colourSwatches ?? [],
             };
             await station(run, "marry", "derived", async () => ({
               objectId: orio.objectId,
@@ -225,6 +227,14 @@ export function createCompileController(deps: CompileDeps) {
           };
         });
 
+        const splitEvent = run.events.findLast(event => event.stage === "split");
+        if (splitEvent && Array.isArray(rendered.colourSwatches)) {
+          splitEvent.payload = {
+            ...splitEvent.payload,
+            colourSwatches: rendered.colourSwatches,
+          };
+        }
+
         const orio: SessionOrio = {
           objectId: `orio-${run.id}`,
           compileRunId: run.id,
@@ -236,6 +246,7 @@ export function createCompileController(deps: CompileDeps) {
           reverseOutputSha256: String(rendered.outputSha256),
           renderModule: String(rendered.renderModule),
           derivedSeed: String(rendered.derivedSeed),
+          colourSwatches: Array.isArray(rendered.colourSwatches) ? rendered.colourSwatches.map(String) : [],
           compilerVersion: deps.compilerVersion,
           rendererVersion: deps.rendererVersion,
           events: run.events,

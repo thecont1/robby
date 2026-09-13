@@ -46,6 +46,7 @@ export type SessionOrio = {
   reverseOutputSha256: string;
   renderModule: string;
   derivedSeed: string;
+  colourSwatches: string[];
   compilerVersion: string;
   rendererVersion: string;
   events: CompileEvent[];
