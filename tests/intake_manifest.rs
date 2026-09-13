@@ -111,16 +111,16 @@ fn malformed_and_unsupported_metadata_are_localized_states() {
     );
     assert!(corrupt_manifest.evidence.exif.value.is_none());
 
-    let mut unsupported = tiny_jpeg();
+    let mut unsupported = tiny_png();
     unsupported.extend_from_slice(&[
         b'E', b'x', b'i', b'f', 0, 0, b'I', b'I', 42, 0, 8, 0, 0, 0, 1, 0, 18, 1, 3, 0, 1, 0, 0, 0,
         6, 0, 0, 0, 0, 0, 0, 0,
     ]);
-    let unsupported_manifest = inspect_image("jpeg-with-exif.jpg", &unsupported)
+    let unsupported_manifest = inspect_image("png-with-exif.png", &unsupported)
         .expect("unsupported metadata is non-fatal");
     assert_eq!(
         unsupported_manifest.evidence.exif.state,
-        robby_compiler::intake::ExtractionState::Present
+        robby_compiler::intake::ExtractionState::Unsupported
     );
     assert_eq!(unsupported_manifest.obverse.orientation, Some(6));
 }
