@@ -64,7 +64,10 @@ export function stationSummary(stage: CompileStage, payload: Record<string, unkn
       return ["MODE", mode, k].filter(Boolean).join(" · ").replace("MODE ·", "MODE");
     }
     case "bind": {
-      const binding = String(payload.objectBinding ?? "").toUpperCase();
+      // The authoritative digest is 64 hex characters; the counter shows the
+      // same shortened form as every other hash on the strip.
+      const raw = String(payload.objectBinding ?? "");
+      const binding = raw ? truncateHash(raw) : "";
       return binding ? `${binding} · reproducibility record, not ownership` : STATION_LABELS.bind;
     }
     case "resolve": {

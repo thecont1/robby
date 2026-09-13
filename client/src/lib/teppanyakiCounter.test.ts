@@ -53,9 +53,9 @@ describe("Teppanyaki Counter derivation", () => {
     })).toBe("C2PA UNAVAILABLE · GPS PRIVATE");
     expect(stationSummary("read", { c2paStatus: "present", gps: "private" })).toBe("C2PA VERIFIED · GPS PRIVATE");
     expect(stationSummary("bind", {
-      objectBinding: "orio-7f3a-91c2",
+      objectBinding: "7f3a91c200112233445566778899aabbccddeeff00112233445566778899aabb",
       statement: "A reproducibility record, not an ownership certificate.",
-    })).toBe("ORIO-7F3A-91C2 · reproducibility record, not ownership");
+    })).toBe("7F3A…AABB · reproducibility record, not ownership");
     expect(stationSummary("resolve", {
       outputSha256: "e1d2a73b00112233445566778899aabbccddeeff00112233445566778899aabb",
       renderModule: "negative",
