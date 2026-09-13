@@ -6,7 +6,7 @@
 
 import { compileWithRust, type RobbyIr } from "@/lib/robbyCompiler";
 import { AlertTriangle, CheckCircle2, Code2, Play, RotateCcw } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 
 type EditorState =
   | { kind: "idle" }
@@ -29,8 +29,15 @@ export default function SourceEditor({ specimenId, title, source, onCompiled, on
   const [draft, setDraft] = useState(source);
   const [state, setState] = useState<EditorState>({ kind: "idle" });
   const compileGeneration = useRef(0);
+  // `source` is now the caller's stored draft for this specimen, so it echoes
+  // back every keystroke we emit. Remember what we last emitted (scoped to the
+  // specimen) so the re-seed effect ignores its own echo and only fires for a
+  // genuine outside change: a specimen switch or a reset.
+  const lastEmitted = useRef<string | null>(null);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
+    if (lastEmitted.current === `${specimenId}\u0000${source}`) return;
+    lastEmitted.current = null;
     compileGeneration.current += 1;
     setDraft(source);
     setState({ kind: "idle" });
@@ -56,6 +63,7 @@ export default function SourceEditor({ specimenId, title, source, onCompiled, on
 
   const reset = () => {
     compileGeneration.current += 1;
+    lastEmitted.current = null;
     setDraft(source);
     setState({ kind: "idle" });
     onReset();
@@ -64,7 +72,9 @@ export default function SourceEditor({ specimenId, title, source, onCompiled, on
   const updateDraft = (nextDraft: string) => {
     if (nextDraft === draft) return;
     compileGeneration.current += 1;
+    lastEmitted.current = `${specimenId}\u0000${nextDraft}`;
     setDraft(nextDraft);
+    setState({ kind: "idle" });
     onDraftChange(nextDraft);
   };
 
