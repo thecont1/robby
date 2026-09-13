@@ -44,7 +44,12 @@ describe("Teppanyaki Counter derivation", () => {
       sourceByteSha256: "7f3a91c2aabbccddeeff00112233445566778899aabbccddeeff001122334455",
       byteSize: 482911,
     })).toBe("SOURCE 7F3A…4455 · 482911 B");
-    expect(stationSummary("read", { c2paStatus: "absent", note: "No Content Credentials on these bytes." })).toBe("C2PA UNAVAILABLE");
+    expect(stationSummary("read", {
+      c2paStatus: "absent",
+      gps: "private",
+      note: "No Content Credentials on these bytes.",
+    })).toBe("C2PA UNAVAILABLE · GPS PRIVATE");
+    expect(stationSummary("read", { c2paStatus: "present", gps: "private" })).toBe("C2PA VERIFIED · GPS PRIVATE");
     expect(stationSummary("bind", {
       objectBinding: "orio-7f3a-91c2",
       statement: "A reproducibility record, not an ownership certificate.",

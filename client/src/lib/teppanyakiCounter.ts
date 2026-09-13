@@ -36,10 +36,13 @@ export function stationSummary(stage: CompileStage, payload: Record<string, unkn
     }
     case "read": {
       const status = String(payload.c2paStatus ?? "");
-      if (status === "present") return "C2PA VERIFIED";
-      if (status === "candidate") return "C2PA CANDIDATE";
-      if (status === "checking") return "C2PA CHECKING";
-      return "C2PA UNAVAILABLE";
+      const c2pa =
+        status === "present" ? "C2PA VERIFIED" :
+        status === "candidate" ? "C2PA CANDIDATE" :
+        status === "checking" ? "C2PA CHECKING" :
+        "C2PA UNAVAILABLE";
+      const gps = payload.gps ? `GPS ${String(payload.gps).toUpperCase()}` : "";
+      return [c2pa, gps].filter(Boolean).join(" · ");
     }
     case "measure": {
       const hash = typeof payload.sourceByteSha256 === "string" ? truncateHash(payload.sourceByteSha256) : "";

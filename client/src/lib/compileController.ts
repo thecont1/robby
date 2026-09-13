@@ -142,6 +142,7 @@ export function createCompileController(deps: CompileDeps) {
           c2paStatus: inspected.status,
           verificationMethod: inspected.verificationMethod,
           note: inspected.note,
+          gps: "private",
         }));
 
         await station(run, "measure", "measured", async () => ({

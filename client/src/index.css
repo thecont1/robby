@@ -287,7 +287,10 @@
 .failure-record code { color: #d7cdbc; font-size: 11px; }
 .mode-notice, .mode-intro { font-size: 11px; line-height: 1.45; }
 
-.teppanyaki-counter { background:#1c1a19; color:#f4efe1; display:flex; flex-direction:column; min-height:100%; opacity:.42; padding:19px 19px 17px; transition:opacity .22s cubic-bezier(.23,1,.32,1); }
+.teppanyaki-counter { background:#1c1a19; color:#f4efe1; display:flex; flex-direction:column; min-height:100%; opacity:.62; padding:19px 19px 17px; transition:opacity .22s cubic-bezier(.23,1,.32,1); }
+@media (prefers-reduced-motion: reduce) {
+  .teppanyaki-counter { transition:none; }
+}
 .teppanyaki-counter.state-primed { opacity:.72; }
 .teppanyaki-counter.state-running,
 .teppanyaki-counter.state-resolved,

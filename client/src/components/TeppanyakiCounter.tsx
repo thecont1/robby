@@ -22,7 +22,7 @@ export default function TeppanyakiCounter({
         </div>
         <span>{state.toUpperCase()}</span>
       </div>
-      <div className="trace-title">
+      <div className="trace-title" role="status" aria-live="polite" aria-atomic="true">
         <p className="eyebrow">{copy.kicker}</p>
         <h3>{copy.body}</h3>
       </div>
