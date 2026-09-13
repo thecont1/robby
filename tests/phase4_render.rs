@@ -118,6 +118,44 @@ fn renderer_registry_exposes_only_phase_four_visual_modes_and_legacy_negative() 
     let modes = robby_compiler::render::render_module_names();
     assert!(modes.contains(&"quantised_obverse"));
     assert!(modes.contains(&"palette_grid"));
+    assert!(modes.contains(&"observability_sheet"));
+}
+
+#[test]
+fn observability_sheet_is_an_instrument_plate_not_the_source_scene() {
+    let source = bmp(8, 6);
+    let first = render_reverse(&source, &settings("observability_sheet")).expect("sheet");
+    let repeat = render_reverse(&source, &settings("observability_sheet")).expect("repeat");
+    let quantised = render_reverse(&source, &settings("quantised_obverse")).expect("quantised");
+
+    assert_eq!(first.png, repeat.png);
+    assert_eq!(first.manifest.render_module, "observability_sheet");
+    assert_eq!(first.manifest.palette_method, "median_cut");
+    assert!(!first.manifest.colour_swatches.is_empty());
+    assert_eq!(
+        u32::from_be_bytes(first.png[16..20].try_into().unwrap()),
+        1024
+    );
+    assert_eq!(
+        u32::from_be_bytes(first.png[20..24].try_into().unwrap()),
+        768
+    );
+    assert_ne!(first.png, quantised.png);
+    assert_ne!(
+        u32::from_be_bytes(quantised.png[16..20].try_into().unwrap()),
+        1024
+    );
+    assert_eq!(
+        first
+            .manifest
+            .artifacts
+            .observability_sheet
+            .as_ref()
+            .unwrap()
+            .sha256,
+        first.manifest.output_sha256
+    );
+    assert!(first.manifest.artifacts.quantised_obverse.is_none());
 }
 
 #[test]

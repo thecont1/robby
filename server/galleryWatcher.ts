@@ -15,7 +15,7 @@ import { EventEmitter } from "node:events";
 import { existsSync, lstatSync, readFileSync, readdirSync, realpathSync, statSync, writeFileSync } from "node:fs";
 import { basename, extname, join, resolve } from "node:path";
 import { watch, type FSWatcher } from "node:fs";
-import { buildDefaultGalleryScript, parseGalleryScriptSettings, readJpegDimensions, scriptCodeOnly } from "./galleryMetadata";
+import { buildDefaultGalleryScript, parseGalleryScriptSettings, readJpegDimensions, scriptCodeOnly, type GalleryReverseMode } from "./galleryMetadata";
 import { galleryDirectory, validateGalleryFilename } from "./gallerySource";
 
 export function configuredGalleryDirectory() {
@@ -33,7 +33,7 @@ export type DynamicGalleryItem = {
   ratio: "four-three" | "three-two";
   obverse: string;
   reverse: string;
-  reverseMode: "negative";
+  reverseMode: GalleryReverseMode;
   reverseKind: string;
   reverseDescription: string;
   scriptHash: string;
@@ -148,7 +148,7 @@ export async function scanGallery(galleryDir = configuredGalleryDirectory()): Pr
       obverse: `/gallery/${filename}`,
       reverse: "",
       reverseMode,
-      reverseKind: "Seeded negative",
+      reverseKind: reverseMode === "observability_sheet" ? "Instrument plate" : "Seeded reverse",
       reverseDescription: "",
       scriptHash: "",
       outputHash: "",

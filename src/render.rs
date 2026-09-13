@@ -13,7 +13,17 @@ use sha2::{Digest, Sha256};
 use zune_core::{colorspace::ColorSpace, options::DecoderOptions};
 use zune_jpeg::JpegDecoder;
 
-const MODULE_NAMES: &[&str] = &["quantised_obverse", "palette_grid", "negative"];
+const MODULE_NAMES: &[&str] = &[
+    "quantised_obverse",
+    "palette_grid",
+    "observability_sheet",
+    "negative",
+];
+const PAPER: Rgb<u8> = Rgb([28, 26, 25]);
+const INK: Rgb<u8> = Rgb([244, 239, 225]);
+const VERMILION: Rgb<u8> = Rgb([227, 68, 47]);
+const MUTED: Rgb<u8> = Rgb([88, 82, 74]);
+const RULE: Rgb<u8> = Rgb([216, 206, 188]);
 const OUTPUT_WIDTH: u32 = 1024;
 const OUTPUT_HEIGHT: u32 = 768;
 const MAX_MEDIAN_CUT_ITERATIONS: usize = 16;
@@ -50,6 +60,7 @@ pub struct ArtifactDescriptor {
 pub struct RenderArtifacts {
     pub quantised_obverse: Option<ArtifactDescriptor>,
     pub palette_grid: Option<ArtifactDescriptor>,
+    pub observability_sheet: Option<ArtifactDescriptor>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -173,6 +184,56 @@ impl RenderModule for PaletteGridModule {
     }
 }
 
+struct ObservabilitySheetModule;
+
+impl RenderModule for ObservabilitySheetModule {
+    fn name(&self) -> &'static str {
+        "observability_sheet"
+    }
+
+    fn render(
+        &self,
+        _pixels: &[[u8; 3]],
+        palette: &[PaletteEntry],
+        _settings: &RenderSettings,
+        rng: &mut SplitMix64,
+        _source_width: u32,
+        _source_height: u32,
+    ) -> RgbImage {
+        let mut image = ImageBuffer::from_pixel(OUTPUT_WIDTH, OUTPUT_HEIGHT, PAPER);
+        fill_rect(&mut image, 0, 0, OUTPUT_WIDTH, 72, VERMILION);
+        fill_rect(&mut image, 36, 24, 36, 24, INK);
+        fill_rect(&mut image, 80, 24, 12, 24, PAPER);
+        fill_rect(&mut image, OUTPUT_WIDTH - 72, 24, 36, 24, PAPER);
+
+        draw_weighted_swatches(&mut image, 36, 108, OUTPUT_WIDTH - 72, 84, palette);
+
+        let field_x = OUTPUT_WIDTH / 2 + 12;
+        let field_w = OUTPUT_WIDTH / 2 - 48;
+        draw_seeded_field(&mut image, field_x, 228, field_w, 360, palette, rng);
+        stroke_rect(&mut image, field_x, 228, field_w, 360, RULE);
+
+        draw_hash_bars(&mut image, 36, 228, OUTPUT_WIDTH / 2 - 72, 72, rng.seed);
+        draw_binding_mark(&mut image, 36, 332, 148, rng.seed);
+        fill_rect(&mut image, 200, 332, OUTPUT_WIDTH / 2 - 236, 8, MUTED);
+        fill_rect(&mut image, 200, 352, OUTPUT_WIDTH / 2 - 280, 8, RULE);
+        fill_rect(&mut image, 200, 372, 88, 8, VERMILION);
+
+        fill_rect(
+            &mut image,
+            0,
+            OUTPUT_HEIGHT - 56,
+            OUTPUT_WIDTH,
+            56,
+            Rgb([18, 16, 15]),
+        );
+        fill_rect(&mut image, 36, OUTPUT_HEIGHT - 36, 96, 8, MUTED);
+        fill_rect(&mut image, 148, OUTPUT_HEIGHT - 36, 96, 8, MUTED);
+        fill_rect(&mut image, 260, OUTPUT_HEIGHT - 36, 128, 8, VERMILION);
+        image
+    }
+}
+
 struct NegativeModule;
 
 impl RenderModule for NegativeModule {
@@ -220,8 +281,14 @@ impl RenderModule for NegativeModule {
 
 static QUANTISED_OBVERSE: QuantisedObverseModule = QuantisedObverseModule;
 static PALETTE_GRID: PaletteGridModule = PaletteGridModule;
+static OBSERVABILITY_SHEET: ObservabilitySheetModule = ObservabilitySheetModule;
 static NEGATIVE: NegativeModule = NegativeModule;
-static MODULES: [&dyn RenderModule; 3] = [&QUANTISED_OBVERSE, &PALETTE_GRID, &NEGATIVE];
+static MODULES: [&dyn RenderModule; 4] = [
+    &QUANTISED_OBVERSE,
+    &PALETTE_GRID,
+    &OBSERVABILITY_SHEET,
+    &NEGATIVE,
+];
 
 pub fn render_module_names() -> &'static [&'static str] {
     MODULE_NAMES
@@ -299,6 +366,7 @@ pub fn render_reverse(
     match settings.mode.as_str() {
         "quantised_obverse" => artifacts.quantised_obverse = Some(output_descriptor),
         "palette_grid" => artifacts.palette_grid = Some(output_descriptor),
+        "observability_sheet" => artifacts.observability_sheet = Some(output_descriptor),
         _ => {}
     }
     let manifest_palette = palette
@@ -541,6 +609,141 @@ fn deterministic_shuffle(values: &mut [usize], rng: &mut SplitMix64) {
         let swap = (rng.next_u64() % (index as u64 + 1)) as usize;
         values.swap(index, swap);
     }
+}
+
+fn fill_rect(image: &mut RgbImage, x: u32, y: u32, width: u32, height: u32, color: Rgb<u8>) {
+    let max_x = (x + width).min(image.width());
+    let max_y = (y + height).min(image.height());
+    for py in y..max_y {
+        for px in x..max_x {
+            image.put_pixel(px, py, color);
+        }
+    }
+}
+
+fn stroke_rect(image: &mut RgbImage, x: u32, y: u32, width: u32, height: u32, color: Rgb<u8>) {
+    if width == 0 || height == 0 {
+        return;
+    }
+    fill_rect(image, x, y, width, 1, color);
+    fill_rect(image, x, y + height.saturating_sub(1), width, 1, color);
+    fill_rect(image, x, y, 1, height, color);
+    fill_rect(image, x + width.saturating_sub(1), y, 1, height, color);
+}
+
+fn draw_weighted_swatches(
+    image: &mut RgbImage,
+    x: u32,
+    y: u32,
+    width: u32,
+    height: u32,
+    palette: &[PaletteEntry],
+) {
+    if palette.is_empty() || width == 0 {
+        return;
+    }
+    let weight_total = palette
+        .iter()
+        .map(|entry| entry.weight.max(1))
+        .sum::<u64>()
+        .max(1);
+    let mut cursor = x;
+    for (index, entry) in palette.iter().enumerate() {
+        let remaining = palette.len() - index;
+        let span = if remaining == 1 {
+            x + width - cursor
+        } else {
+            ((entry.weight.max(1) * u64::from(width)) / weight_total).max(8) as u32
+        };
+        fill_rect(image, cursor, y, span, height, Rgb(entry.rgb));
+        cursor = (cursor + span).min(x + width);
+    }
+}
+
+fn draw_seeded_field(
+    image: &mut RgbImage,
+    x: u32,
+    y: u32,
+    width: u32,
+    height: u32,
+    palette: &[PaletteEntry],
+    rng: &mut SplitMix64,
+) {
+    if palette.is_empty() || width == 0 || height == 0 {
+        return;
+    }
+    let cell = 16_u32;
+    let columns = width.div_ceil(cell);
+    let rows = height.div_ceil(cell);
+    let mut tiles = weighted_tile_indices(palette, (columns * rows) as usize);
+    deterministic_shuffle(&mut tiles, rng);
+    for row in 0..rows {
+        for column in 0..columns {
+            let tile = (row * columns + column) as usize;
+            let color = Rgb(palette[tiles[tile]].rgb);
+            fill_rect(
+                image,
+                x + column * cell,
+                y + row * cell,
+                cell.min(x + width - (x + column * cell)),
+                cell.min(y + height - (y + row * cell)),
+                color,
+            );
+        }
+    }
+}
+
+fn draw_hash_bars(image: &mut RgbImage, x: u32, y: u32, width: u32, height: u32, seed: u64) {
+    let bar_count = 16_u32;
+    let bar_width = (width / bar_count).max(4);
+    for index in 0..bar_count {
+        let bit = (seed >> (index % 64)) & 1;
+        let color = if bit == 1 { INK } else { MUTED };
+        fill_rect(
+            image,
+            x + index * bar_width,
+            y,
+            bar_width.saturating_sub(3),
+            height,
+            color,
+        );
+    }
+}
+
+fn draw_binding_mark(image: &mut RgbImage, x: u32, y: u32, size: u32, seed: u64) {
+    fill_rect(image, x, y, size, size, INK);
+    for ring in 0..4 {
+        let inset = 10 + ring * 12;
+        let color = if (seed >> ring) & 1 == 1 {
+            VERMILION
+        } else {
+            PAPER
+        };
+        stroke_rect(
+            image,
+            x + inset,
+            y + inset,
+            size.saturating_sub(inset * 2),
+            size.saturating_sub(inset * 2),
+            color,
+        );
+    }
+    fill_rect(
+        image,
+        x + size / 2 - 6,
+        y + 18,
+        12,
+        size.saturating_sub(36),
+        PAPER,
+    );
+    fill_rect(
+        image,
+        x + 18,
+        y + size / 2 - 6,
+        size.saturating_sub(36),
+        12,
+        PAPER,
+    );
 }
 
 fn mix_coordinates(x: u32, y: u32, seed: u64) -> u64 {

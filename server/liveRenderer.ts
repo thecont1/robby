@@ -2,11 +2,20 @@ import crypto from "node:crypto";
 
 type UnknownRecord = Record<string, unknown>;
 
+export const LIVE_REVERSE_MODES = [
+  "negative",
+  "observability_sheet",
+  "quantised_obverse",
+  "palette_grid",
+] as const;
+
+export type LiveReverseMode = (typeof LIVE_REVERSE_MODES)[number];
+
 export type LiveRenderableIr = {
   version: "robby-ir-v1";
   canvas: { base: string; width: number | null; height: number | null };
   palette: { k: number };
-  reverse: { mode: "negative" };
+  reverse: { mode: LiveReverseMode };
   output: { obverse: string; reverse: string; manifest: string };
   meta: { script_sha256: string };
 };
@@ -47,8 +56,11 @@ export function normalizeLiveRenderableIr(value: unknown): LiveRenderableIr {
     throw new LiveRenderValidationError("Palette k must be an integer between 3 and 16.");
   }
   exactKeys(value.palette, ["k"], "palette");
-  if (!isRecord(value.reverse) || value.reverse.mode !== "negative") {
-    throw new LiveRenderValidationError("Live reverse mode must be negative.");
+  if (!isRecord(value.reverse) || typeof value.reverse.mode !== "string") {
+    throw new LiveRenderValidationError("Live reverse mode must be a registered renderer.");
+  }
+  if (!LIVE_REVERSE_MODES.includes(value.reverse.mode as LiveReverseMode)) {
+    throw new LiveRenderValidationError("Live reverse mode must be a registered renderer.");
   }
   exactKeys(value.reverse, ["mode"], "reverse");
   if (!isRecord(value.output)) throw new LiveRenderValidationError("IR output must be an object.");
@@ -70,7 +82,7 @@ export function normalizeLiveRenderableIr(value: unknown): LiveRenderableIr {
     version: "robby-ir-v1",
     canvas: { base: value.canvas.base, width, height },
     palette: { k: Number(value.palette.k) },
-    reverse: { mode: "negative" },
+    reverse: { mode: value.reverse.mode as LiveReverseMode },
     output: {
       obverse: value.output.obverse as string,
       reverse: value.output.reverse as string,

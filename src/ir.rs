@@ -151,10 +151,10 @@ pub(crate) fn lower_recipe(recipe: &Recipe) -> RecipeIr {
             .variant
             .clone()
             .expect("validated reverse mode"),
-        cell: number_json(&reverse_entries, "cell") as u32,
-        arrange: string_json(&reverse_entries, "arrange"),
-        seed: string_json(&reverse_entries, "seed"),
-        border: string_json(&reverse_entries, "border"),
+        cell: optional_number_json(&reverse_entries, "cell") as u32,
+        arrange: optional_string_json(&reverse_entries, "arrange"),
+        seed: optional_string_json(&reverse_entries, "seed"),
+        border: optional_string_json(&reverse_entries, "border"),
     };
     let publish = string_entries(clause(object, "publish"));
     let mut result = RecipeIr {
@@ -253,11 +253,23 @@ fn string_json(values: &BTreeMap<String, JsonValue>, key: &str) -> String {
         .to_string()
 }
 
+fn optional_string_json(values: &BTreeMap<String, JsonValue>, key: &str) -> String {
+    values
+        .get(key)
+        .and_then(JsonValue::as_str)
+        .unwrap_or("")
+        .to_string()
+}
+
 fn number_json(values: &BTreeMap<String, JsonValue>, key: &str) -> f64 {
     values
         .get(key)
         .and_then(JsonValue::as_f64)
         .expect("validated number")
+}
+
+fn optional_number_json(values: &BTreeMap<String, JsonValue>, key: &str) -> f64 {
+    values.get(key).and_then(JsonValue::as_f64).unwrap_or(0.0)
 }
 
 fn command<'a>(script: &'a Script, name: &str) -> &'a Command {

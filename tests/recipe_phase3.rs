@@ -132,3 +132,13 @@ output(obverse: "front.png", reverse: "transient", manifest: "transient")"#;
         .message
         .contains("object"));
 }
+
+#[test]
+fn v1_scripts_accept_observability_sheet_as_a_development_reverse() {
+    let source = r#"base("image.jpg")
+palette(k: 8)
+reverse(mode: "observability_sheet")
+output(obverse: "front.png", reverse: "transient", manifest: "transient")"#;
+    let ir = compile_source(source).expect("sheet script");
+    assert_eq!(ir.reverse.mode, "observability_sheet");
+}

@@ -55,7 +55,10 @@ export function scriptCodeOnly(source: string): string {
     .join("\n");
 }
 
-export function parseGalleryScriptSettings(script: string): { paletteK: number; reverseMode: "negative" } {
+const GALLERY_REVERSE_MODES = ["negative", "observability_sheet", "quantised_obverse", "palette_grid"] as const;
+export type GalleryReverseMode = (typeof GALLERY_REVERSE_MODES)[number];
+
+export function parseGalleryScriptSettings(script: string): { paletteK: number; reverseMode: GalleryReverseMode } {
   const code = scriptCodeOnly(script);
   const paletteDeclaration = code.match(/palette\s*\(([^)]*)\)/)?.[1]?.trim() ?? null;
   let paletteK = 8;
@@ -67,6 +70,8 @@ export function parseGalleryScriptSettings(script: string): { paletteK: number; 
     }
   }
   const reverseMode = code.match(/reverse\s*\(\s*mode\s*:\s*"([^"]+)"\s*\)/)?.[1] ?? "negative";
-  if (reverseMode !== "negative") throw new Error("v1 supports only the negative render module");
-  return { paletteK, reverseMode };
+  if (!GALLERY_REVERSE_MODES.includes(reverseMode as GalleryReverseMode)) {
+    throw new Error("v1 supports only registered reverse modules");
+  }
+  return { paletteK, reverseMode: reverseMode as GalleryReverseMode };
 }

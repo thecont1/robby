@@ -10,11 +10,13 @@ import initRobbyCompiler, {
   rust_toolchain,
 } from "../wasm/robby_compiler";
 
+export type RobbyReverseMode = "negative" | "observability_sheet" | "quantised_obverse" | "palette_grid";
+
 export type RobbyIr = {
   version: "robby-ir-v1";
   canvas: { base: string; width: number | null; height: number | null };
   palette: { k: number };
-  reverse: { mode: "negative" };
+  reverse: { mode: RobbyReverseMode };
   output: { obverse: string; reverse: string; manifest: string };
   meta: { script_sha256: string };
 };

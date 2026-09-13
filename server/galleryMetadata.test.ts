@@ -37,7 +37,11 @@ describe("constitutional gallery metadata", () => {
   it("parses the bounded palette setting and canonical module", () => {
     expect(parseGalleryScriptSettings('base("x.jpg")\npalette(k: 16)\nreverse(mode: "negative")')).toEqual({ paletteK: 16, reverseMode: "negative" });
     expect(() => parseGalleryScriptSettings('base("x.jpg")\npalette(k: 17)\nreverse(mode: "negative")')).toThrow("between 3 and 16");
-    expect(() => parseGalleryScriptSettings('base("x.jpg")\npalette(k: 8)\nreverse(mode: "retired")')).toThrow("negative");
+    expect(() => parseGalleryScriptSettings('base("x.jpg")\npalette(k: 8)\nreverse(mode: "retired")')).toThrow("registered reverse modules");
+    expect(parseGalleryScriptSettings('base("x.jpg")\npalette(k: 8)\nreverse(mode: "observability_sheet")')).toEqual({
+      paletteK: 8,
+      reverseMode: "observability_sheet",
+    });
   });
 
   // Bug reproduction: the lexer treats `#` as a comment, but the regex
