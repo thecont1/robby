@@ -63,4 +63,28 @@ describe("ephemeral reverse renderer client", () => {
     await requestEphemeralReverse(ir(9) as never);
     expect(fetchMock.mock.calls.map(([, request]) => JSON.parse((request as RequestInit).body as string).ir.palette.k)).toEqual([8, 9]);
   });
+
+  it("posts public-safe sheet facts as a sibling of the IR, never inside it", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(response());
+    vi.stubGlobal("fetch", fetchMock);
+    const sheet = {
+      run_id: "9C1EAA11",
+      binding_short_id: "RB-A1B2-C3D4",
+      source_sha256: "a".repeat(64),
+      pixel_sha256: "b".repeat(64),
+      recipe_sha256: "c".repeat(64),
+      palette_k: 8,
+      reverse_mode: "observability_sheet",
+      ir_schema: "robby-ir-v1",
+      policy_name: "robby-v1-default-disclosure-policy",
+      evidence: { exif: "OBSERVED", iptc: "UNAVAILABLE", xmp: "UNAVAILABLE", gps: "REDACTED", c2pa: "ABSENT" },
+      included: ["Palette"],
+      withheld: ["filename"],
+    };
+    await requestEphemeralReverse(ir(8) as never, sheet);
+    const body = JSON.parse((fetchMock.mock.calls[0]?.[1] as RequestInit).body as string);
+    expect(body.ir).toEqual(ir(8));
+    expect(body.sheet.binding_short_id).toBe("RB-A1B2-C3D4");
+    expect(body.ir.sheet).toBeUndefined();
+  });
 });

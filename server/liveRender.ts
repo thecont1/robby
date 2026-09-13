@@ -8,6 +8,130 @@ import {
   type LiveRenderableIr,
 } from "./liveRenderer";
 
+const SHEET_ROOT_KEYS = [
+  "run_id",
+  "binding_short_id",
+  "source_sha256",
+  "pixel_sha256",
+  "recipe_sha256",
+  "palette_k",
+  "reverse_mode",
+  "ir_schema",
+  "policy_name",
+  "evidence",
+  "included",
+  "withheld",
+] as const;
+
+const SHEET_EVIDENCE_KEYS = ["exif", "iptc", "xmp", "gps", "c2pa"] as const;
+const EVIDENCE_TOKEN = "(OBSERVED|UNAVAILABLE|REDACTED|PRESENT|ABSENT|VALID|INVALID|NOT INSPECTED|NOT REPORTED|UNTRUSTED SIGNER|TRUSTED SIGNER|SIGNER NOT ASSESSED)";
+const ALLOWED_EVIDENCE_STATES = new RegExp(`^${EVIDENCE_TOKEN}(?: · ${EVIDENCE_TOKEN})*$`);
+
+type UnknownRecord = Record<string, unknown>;
+
+function isRecord(value: unknown): value is UnknownRecord {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function optionalString(value: unknown, label: string): string | null {
+  if (value === undefined || value === null) return null;
+  if (typeof value !== "string") throw new LiveRenderValidationError(`Sheet ${label} must be a string.`);
+  if (value.length > 128) throw new LiveRenderValidationError(`Sheet ${label} is too long.`);
+  if (/[-+]?\d+(?:\.\d+)?\s*[,/]\s*[-+]?\d+(?:\.\d+)?/.test(value)) {
+    throw new LiveRenderValidationError("Sheet facts must not include raw GPS.");
+  }
+  if (/\.(jpe?g|png|tiff?|webp)$/i.test(value) || /[/\\]/.test(value)) {
+    throw new LiveRenderValidationError("Sheet facts must not include filenames or paths.");
+  }
+  return value;
+}
+
+function optionalHex(value: unknown, label: string): string | null {
+  const text = optionalString(value, label);
+  if (text === null) return null;
+  if (!/^[0-9a-fA-F]{64}$/.test(text)) {
+    throw new LiveRenderValidationError(`Sheet ${label} must be a 64-character hex digest.`);
+  }
+  return text;
+}
+
+function stringList(value: unknown, label: string): string[] {
+  if (!Array.isArray(value)) throw new LiveRenderValidationError(`Sheet ${label} must be an array of strings.`);
+  return value.map((entry, index) => {
+    if (typeof entry !== "string" || entry.length === 0 || entry.length > 64) {
+      throw new LiveRenderValidationError(`Sheet ${label}[${index}] must be a short string.`);
+    }
+    return entry;
+  });
+}
+
+export type LiveSheetFacts = {
+  run_id: string | null;
+  binding_short_id: string | null;
+  source_sha256: string | null;
+  pixel_sha256: string | null;
+  recipe_sha256: string | null;
+  palette_k: number | null;
+  reverse_mode: string | null;
+  ir_schema: string | null;
+  policy_name: string | null;
+  evidence: {
+    exif: string | null;
+    iptc: string | null;
+    xmp: string | null;
+    gps: string | null;
+    c2pa: string | null;
+  };
+  included: string[];
+  withheld: string[];
+};
+
+/** Public-safe sheet facts ride beside the IR; they never enter robby-ir-v1. */
+export function normalizeLiveSheetFacts(value: unknown): LiveSheetFacts | undefined {
+  if (value === undefined || value === null) return undefined;
+  if (!isRecord(value)) throw new LiveRenderValidationError("Sheet facts must be an object.");
+  const unknown = Object.keys(value).filter(key => !SHEET_ROOT_KEYS.includes(key as typeof SHEET_ROOT_KEYS[number]));
+  if (unknown.length) throw new LiveRenderValidationError(`Unknown sheet field ${unknown[0]}.`);
+  const evidenceValue = value.evidence;
+  if (!isRecord(evidenceValue)) throw new LiveRenderValidationError("Sheet evidence must be an object.");
+  const unknownEvidence = Object.keys(evidenceValue).filter(key => !SHEET_EVIDENCE_KEYS.includes(key as typeof SHEET_EVIDENCE_KEYS[number]));
+  if (unknownEvidence.length) throw new LiveRenderValidationError(`Unknown sheet evidence field ${unknownEvidence[0]}.`);
+
+  const evidence = {
+    exif: optionalString(evidenceValue.exif, "evidence.exif"),
+    iptc: optionalString(evidenceValue.iptc, "evidence.iptc"),
+    xmp: optionalString(evidenceValue.xmp, "evidence.xmp"),
+    gps: optionalString(evidenceValue.gps, "evidence.gps"),
+    c2pa: optionalString(evidenceValue.c2pa, "evidence.c2pa"),
+  };
+  for (const [key, state] of Object.entries(evidence)) {
+    if (state && !ALLOWED_EVIDENCE_STATES.test(state)) {
+      throw new LiveRenderValidationError(`Sheet evidence.${key} is not a public-safe state.`);
+    }
+  }
+  const paletteK = value.palette_k === undefined || value.palette_k === null
+    ? null
+    : Number(value.palette_k);
+  if (paletteK !== null && (!Number.isInteger(paletteK) || paletteK < 3 || paletteK > 16)) {
+    throw new LiveRenderValidationError("Sheet palette_k must be an integer between 3 and 16.");
+  }
+
+  return {
+    run_id: optionalString(value.run_id, "run_id"),
+    binding_short_id: optionalString(value.binding_short_id, "binding_short_id"),
+    source_sha256: optionalHex(value.source_sha256, "source_sha256"),
+    pixel_sha256: optionalHex(value.pixel_sha256, "pixel_sha256"),
+    recipe_sha256: optionalHex(value.recipe_sha256, "recipe_sha256"),
+    palette_k: paletteK,
+    reverse_mode: optionalString(value.reverse_mode, "reverse_mode"),
+    ir_schema: optionalString(value.ir_schema, "ir_schema"),
+    policy_name: optionalString(value.policy_name, "policy_name"),
+    evidence,
+    included: stringList(value.included ?? [], "included"),
+    withheld: stringList(value.withheld ?? [], "withheld"),
+  };
+}
+
 export type RenderManifest = {
   version: string;
   source_obverse_sha256: string;
@@ -36,12 +160,17 @@ function rustBinary() {
   return process.env.ROBBY_BINARY ?? resolve(process.cwd(), "target", "release", "robby");
 }
 
-async function runRustRenderer(sourcePath: string, ir: LiveRenderableIr): Promise<EphemeralReverse> {
+async function runRustRenderer(
+  sourcePath: string,
+  ir: LiveRenderableIr,
+  sheet?: LiveSheetFacts,
+): Promise<EphemeralReverse> {
   const settings = JSON.stringify({
     mode: ir.reverse.mode,
     k: ir.palette.k,
     width: ir.canvas.width,
     height: ir.canvas.height,
+    ...(sheet ? { sheet } : {}),
   });
   return new Promise((resolvePromise, reject) => {
     const child = spawn(rustBinary(), ["render", sourcePath, "--settings", settings], {
@@ -74,8 +203,9 @@ async function runRustRenderer(sourcePath: string, ir: LiveRenderableIr): Promis
 }
 
 /** One request invokes one Rust render and keeps its PNG only in process memory. */
-export async function renderEphemeralReverse(irInput: unknown): Promise<EphemeralReverse> {
+export async function renderEphemeralReverse(irInput: unknown, sheetInput?: unknown): Promise<EphemeralReverse> {
   const ir = normalizeLiveRenderableIr(irInput);
+  const sheet = normalizeLiveSheetFacts(sheetInput);
   let source;
   try {
     source = await readLocalGallerySource(ir.canvas.base);
@@ -84,7 +214,7 @@ export async function renderEphemeralReverse(irInput: unknown): Promise<Ephemera
       error instanceof Error ? error.message : "The watched gallery source is unavailable.",
     );
   }
-  return runRustRenderer(source.path, ir);
+  return runRustRenderer(source.path, ir, sheet);
 }
 
 export function registerLiveRenderRoutes(app: Express) {
@@ -98,12 +228,13 @@ type ReverseResponse = {
   send: (body: Buffer) => unknown;
   json: (body: unknown) => unknown;
 };
-type RenderFunction = (ir: unknown) => Promise<EphemeralReverse>;
+type RenderFunction = (ir: unknown, sheet?: unknown) => Promise<EphemeralReverse>;
 
 export function createEphemeralReverseHandler(render: RenderFunction = renderEphemeralReverse) {
-  return async (req: { body?: { ir?: unknown } }, res: ReverseResponse) => {
+  return async (req: { body?: { ir?: unknown; sheet?: unknown } }, res: ReverseResponse) => {
     try {
-      const result = await serialized(() => render(req.body?.ir));
+      const sheet = normalizeLiveSheetFacts(req.body?.sheet);
+      const result = await serialized(() => render(req.body?.ir, sheet));
       const manifest = result.manifest;
       res.status(200);
       res.setHeader("Cache-Control", "no-store, max-age=0");

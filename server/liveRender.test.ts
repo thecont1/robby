@@ -47,6 +47,53 @@ describe("ephemeral reverse HTTP handler", () => {
     expect(JSON.stringify(response.headers)).not.toContain("storage");
   });
 
+  it("forwards sibling sheet facts to the renderer and rejects filenames", async () => {
+    const seen: unknown[] = [];
+    const response = responseDouble();
+    const png = Buffer.from("ephemeral-png");
+    const handler = createEphemeralReverseHandler(async (_ir, sheet) => {
+      seen.push(sheet);
+      return { png, manifest };
+    });
+    await handler({
+      body: {
+        ir: { version: "robby-ir-v1" },
+        sheet: {
+          run_id: "9C1EAA11",
+          binding_short_id: "RB-A1B2-C3D4",
+          source_sha256: "a".repeat(64),
+          pixel_sha256: "b".repeat(64),
+          recipe_sha256: "c".repeat(64),
+          palette_k: 8,
+          reverse_mode: "observability_sheet",
+          ir_schema: "robby-ir-v1",
+          policy_name: "robby-v1-default-disclosure-policy",
+          evidence: { exif: "OBSERVED", iptc: "UNAVAILABLE", xmp: "UNAVAILABLE", gps: "REDACTED", c2pa: "ABSENT" },
+          included: ["Palette"],
+          withheld: ["filename"],
+        },
+      },
+    }, response);
+    expect(response.code).toBe(200);
+    expect(seen[0]).toMatchObject({ binding_short_id: "RB-A1B2-C3D4", evidence: { gps: "REDACTED" } });
+
+    const rejected = responseDouble();
+    const rejecting = createEphemeralReverseHandler(async () => ({ png, manifest }));
+    await rejecting({
+      body: {
+        ir: { version: "robby-ir-v1" },
+        sheet: {
+          run_id: "x",
+          binding_short_id: "secret-source.jpg",
+          evidence: { exif: null, iptc: null, xmp: null, gps: null, c2pa: null },
+          included: [],
+          withheld: [],
+        },
+      },
+    }, rejected);
+    expect(rejected.code).toBe(400);
+  });
+
   it("returns a clear 400 response when the render program is rejected", async () => {
     const response = responseDouble();
     const handler = createEphemeralReverseHandler(async () => {

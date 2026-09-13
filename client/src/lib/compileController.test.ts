@@ -423,6 +423,46 @@ describe("CompileController", () => {
     expect(failedRun.status).toBe("failed");
     expect(failedRun.diagnostic).toBe("network down");
   });
+
+  it("passes public-safe sheet facts into renderReverse without mutating the IR", async () => {
+    let captured: { ir: RobbyIr; sheet?: unknown } | undefined;
+    const environment = deps({
+      compileRecipe: async () => {
+        environment.calls.push("compileRecipe");
+        return { ...ir, reverse: { mode: "observability_sheet" } };
+      },
+      renderReverse: async (compiled, _signal, sheet) => {
+        captured = { ir: compiled, sheet };
+        return {
+          blob: new Blob(["png"], { type: "image/png" }),
+          manifest: {
+            version: "robby-render-manifest-v1",
+            source_obverse_sha256: "sourcebytes".padEnd(64, "a"),
+            script_settings_sha256: "settings".padEnd(64, "b"),
+            derived_seed: "seed".padEnd(64, "c"),
+            output_sha256: "output".padEnd(64, "d"),
+            render_module: "observability_sheet",
+            colour_swatches: ["#112233"],
+            cached_intermediate: null,
+          },
+        };
+      },
+    });
+    const controller = createCompileController(environment);
+    const run = await controller.compile(request({
+      recipeSource: 'base("source.jpg")\npalette(k: 8)\nreverse(mode: "observability_sheet")\noutput(obverse: "front.jpg", reverse: "transient", manifest: "transient")',
+    }));
+    expect(run.status).toBe("completed");
+    expect(captured?.ir.reverse.mode).toBe("observability_sheet");
+    expect(captured?.ir).not.toHaveProperty("sheet");
+    expect(captured?.sheet).toMatchObject({
+      binding_short_id: expect.stringMatching(/^RB-/),
+      reverse_mode: "observability_sheet",
+      ir_schema: "robby-ir-v1",
+      evidence: { gps: "UNAVAILABLE" },
+      withheld: expect.arrayContaining(["source pixels", "filename"]),
+    });
+  });
 });
 
 function COMPILE_STAGES_PRESENT(events: CompileEvent[]) {

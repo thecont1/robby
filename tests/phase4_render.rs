@@ -37,6 +37,7 @@ fn settings(mode: &str) -> RenderSettings {
         height: None,
         cell: Some(2),
         seed: Some("object-binding".to_string()),
+        sheet: None,
     }
 }
 
@@ -202,4 +203,82 @@ fn median_cut_stops_when_boxes_are_uniform() {
     assert_eq!(unique.len(), result.manifest.palette.len());
     assert!(result.manifest.palette.len() <= 8);
     assert_eq!(unique.len(), 4);
+}
+
+fn sheet_facts(binding: &str) -> robby_compiler::render::SheetFacts {
+    robby_compiler::render::SheetFacts {
+        run_id: Some("run-1".into()),
+        binding_short_id: Some(binding.into()),
+        source_sha256: Some(
+            "aabbccddeeff00112233445566778899aabbccddeeff00112233445566778899".into(),
+        ),
+        pixel_sha256: Some(
+            "11223344556677889900aabbccddeeff11223344556677889900aabbccddeeff".into(),
+        ),
+        recipe_sha256: Some(
+            "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff".into(),
+        ),
+        palette_k: Some(8),
+        reverse_mode: Some("observability_sheet".into()),
+        ir_schema: Some("robby-ir-v1".into()),
+        policy_name: Some("robby-v1-default-disclosure-policy".into()),
+        evidence: robby_compiler::render::SheetEvidenceState {
+            exif: Some("OBSERVED".into()),
+            iptc: Some("UNAVAILABLE".into()),
+            xmp: Some("UNAVAILABLE".into()),
+            gps: Some("REDACTED".into()),
+            c2pa: Some("ABSENT".into()),
+        },
+        included: vec![
+            "Palette".into(),
+            "binding mark".into(),
+            "recipe parameters".into(),
+            "evidence states".into(),
+        ],
+        withheld: vec![
+            "Source pixels".into(),
+            "raw GPS".into(),
+            "timestamps".into(),
+            "filename".into(),
+            "raw metadata".into(),
+        ],
+    }
+}
+
+#[test]
+fn observability_sheet_is_byte_identical_for_identical_facts() {
+    let source = bmp(8, 6);
+    let mut first_settings = settings("observability_sheet");
+    first_settings.sheet = Some(sheet_facts("RB-A1B2-C3D4"));
+    let first = render_reverse(&source, &first_settings).expect("first");
+    let second = render_reverse(&source, &first_settings).expect("second");
+    assert_eq!(first.png, second.png);
+    assert_eq!(first.manifest.output_sha256, second.manifest.output_sha256);
+}
+
+#[test]
+fn observability_sheet_changes_when_binding_id_changes() {
+    let source = bmp(8, 6);
+    let mut left = settings("observability_sheet");
+    left.sheet = Some(sheet_facts("RB-AAAA-BBBB"));
+    let mut right = settings("observability_sheet");
+    right.sheet = Some(sheet_facts("RB-CCCC-DDDD"));
+    let first = render_reverse(&source, &left).expect("left");
+    let second = render_reverse(&source, &right).expect("right");
+    assert_ne!(first.png, second.png);
+}
+
+#[test]
+fn absent_sheet_facts_do_not_change_quantised_obverse_settings_hash() {
+    let source = bmp(8, 6);
+    let with_none = settings("quantised_obverse");
+    let mut omitted = with_none.clone();
+    omitted.sheet = None;
+    let first = render_reverse(&source, &with_none).expect("none");
+    let second = render_reverse(&source, &omitted).expect("omitted");
+    assert_eq!(first.png, second.png);
+    assert_eq!(
+        first.manifest.script_settings_sha256,
+        second.manifest.script_settings_sha256
+    );
 }

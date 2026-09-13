@@ -6,6 +6,7 @@
 pub mod ast;
 pub mod binding;
 pub mod error;
+pub mod font;
 pub mod intake;
 pub mod ir;
 pub mod lexer;

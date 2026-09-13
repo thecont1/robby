@@ -67,9 +67,9 @@ export function createBrowserCompileDeps(): CompileDeps {
       if (signal.aborted) throw new DOMException("Aborted", "AbortError");
       return inspectC2paCredential(sourceName);
     },
-    renderReverse: async (ir, signal) => {
+    renderReverse: async (ir, signal, sheet) => {
       if (signal.aborted) throw new DOMException("Aborted", "AbortError");
-      return requestEphemeralReverse(ir);
+      return requestEphemeralReverse(ir, sheet);
     },
     now: () => new Date().toISOString(),
     createId: () => {

@@ -10,6 +10,8 @@ use std::io::Cursor;
 use image::{DynamicImage, ImageBuffer, ImageFormat, Rgb, RgbImage};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
+
+use crate::font;
 use zune_core::{colorspace::ColorSpace, options::DecoderOptions};
 use zune_jpeg::JpegDecoder;
 
@@ -29,6 +31,35 @@ const OUTPUT_HEIGHT: u32 = 768;
 const MAX_MEDIAN_CUT_ITERATIONS: usize = 16;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
+#[serde(rename_all = "snake_case")]
+pub struct SheetEvidenceState {
+    pub exif: Option<String>,
+    pub iptc: Option<String>,
+    pub xmp: Option<String>,
+    pub gps: Option<String>,
+    pub c2pa: Option<String>,
+}
+
+/// Plan 9C: public-safe facts the observability sheet renders. Optional in
+/// settings so legacy modes and callers stay byte-identical when absent.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
+#[serde(default)]
+pub struct SheetFacts {
+    pub run_id: Option<String>,
+    pub binding_short_id: Option<String>,
+    pub source_sha256: Option<String>,
+    pub pixel_sha256: Option<String>,
+    pub recipe_sha256: Option<String>,
+    pub palette_k: Option<u8>,
+    pub reverse_mode: Option<String>,
+    pub ir_schema: Option<String>,
+    pub policy_name: Option<String>,
+    pub evidence: SheetEvidenceState,
+    pub included: Vec<String>,
+    pub withheld: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
 pub struct RenderSettings {
     pub mode: String,
     pub k: u8,
@@ -38,6 +69,8 @@ pub struct RenderSettings {
     pub cell: Option<u32>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub seed: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub sheet: Option<SheetFacts>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -195,43 +228,231 @@ impl RenderModule for ObservabilitySheetModule {
         &self,
         _pixels: &[[u8; 3]],
         palette: &[PaletteEntry],
-        _settings: &RenderSettings,
+        settings: &RenderSettings,
         rng: &mut SplitMix64,
         _source_width: u32,
         _source_height: u32,
     ) -> RgbImage {
-        let mut image = ImageBuffer::from_pixel(OUTPUT_WIDTH, OUTPUT_HEIGHT, PAPER);
-        fill_rect(&mut image, 0, 0, OUTPUT_WIDTH, 72, VERMILION);
-        fill_rect(&mut image, 36, 24, 36, 24, INK);
-        fill_rect(&mut image, 80, 24, 12, 24, PAPER);
-        fill_rect(&mut image, OUTPUT_WIDTH - 72, 24, 36, 24, PAPER);
-
-        draw_weighted_swatches(&mut image, 36, 108, OUTPUT_WIDTH - 72, 84, palette);
-
-        let field_x = OUTPUT_WIDTH / 2 + 12;
-        let field_w = OUTPUT_WIDTH / 2 - 48;
-        draw_seeded_field(&mut image, field_x, 228, field_w, 360, palette, rng);
-        stroke_rect(&mut image, field_x, 228, field_w, 360, RULE);
-
-        draw_hash_bars(&mut image, 36, 228, OUTPUT_WIDTH / 2 - 72, 72, rng.seed);
-        draw_binding_mark(&mut image, 36, 332, 148, rng.seed);
-        fill_rect(&mut image, 200, 332, OUTPUT_WIDTH / 2 - 236, 8, MUTED);
-        fill_rect(&mut image, 200, 352, OUTPUT_WIDTH / 2 - 280, 8, RULE);
-        fill_rect(&mut image, 200, 372, 88, 8, VERMILION);
-
-        fill_rect(
-            &mut image,
-            0,
-            OUTPUT_HEIGHT - 56,
-            OUTPUT_WIDTH,
-            56,
-            Rgb([18, 16, 15]),
-        );
-        fill_rect(&mut image, 36, OUTPUT_HEIGHT - 36, 96, 8, MUTED);
-        fill_rect(&mut image, 148, OUTPUT_HEIGHT - 36, 96, 8, MUTED);
-        fill_rect(&mut image, 260, OUTPUT_HEIGHT - 36, 128, 8, VERMILION);
-        image
+        let facts = settings.sheet.clone().unwrap_or_default();
+        // Level 2's OUTPUT line cannot embed its own final PNG digest. We
+        // stamp the digest of the unstamped raster (pass 1) into pass 2 —
+        // deterministic and documented, never a fake fixed point.
+        let unstamped = draw_sheet(palette, &facts, rng.seed, "········");
+        let stamp = font::truncated_digest(&hex(&sha256(&raster_bytes(&unstamped))));
+        draw_sheet(palette, &facts, rng.seed, &stamp)
     }
+}
+
+fn display_digest(value: Option<&str>) -> String {
+    match value {
+        Some(digest) if !digest.is_empty() => font::truncated_digest(digest),
+        _ => "UNAVAILABLE".into(),
+    }
+}
+
+fn raster_bytes(image: &RgbImage) -> Vec<u8> {
+    let (width, height) = image.dimensions();
+    let mut bytes = Vec::with_capacity(8 + (width * height * 3) as usize);
+    bytes.extend_from_slice(&width.to_be_bytes());
+    bytes.extend_from_slice(&height.to_be_bytes());
+    bytes.extend_from_slice(image.as_raw());
+    bytes
+}
+
+/// Plan 9C sheet: fixed editorial grid, five levels, no UI cards.
+fn draw_sheet(
+    palette: &[PaletteEntry],
+    facts: &SheetFacts,
+    seed: u64,
+    output_stamp: &str,
+) -> RgbImage {
+    use crate::font::{draw_text, text_width};
+
+    let mut image = ImageBuffer::from_pixel(OUTPUT_WIDTH, OUTPUT_HEIGHT, PAPER);
+    let margin = 48_u32;
+
+    // Masthead: binding mark (left) + title block.
+    draw_binding_mark(&mut image, margin, margin - 12, 64, seed);
+    draw_text(
+        &mut image,
+        margin + 84,
+        margin,
+        "ORIO OBSERVABILITY SHEET",
+        2,
+        INK,
+    );
+    draw_text(
+        &mut image,
+        margin + 84,
+        margin + 24,
+        "REPRODUCIBILITY RECORD - NOT OWNERSHIP",
+        1,
+        MUTED,
+    );
+    // Top rule.
+    fill_rect(
+        &mut image,
+        margin,
+        margin + 44,
+        OUTPUT_WIDTH - margin * 2,
+        2,
+        RULE,
+    );
+
+    // Level 1 — palette material: weighted swatches + seeded field.
+    draw_weighted_swatches(
+        &mut image,
+        margin,
+        margin + 64,
+        OUTPUT_WIDTH - margin * 2,
+        40,
+        palette,
+    );
+    let field_x = OUTPUT_WIDTH - margin - 320;
+    draw_seeded_field(
+        &mut image,
+        field_x,
+        margin + 124,
+        320,
+        200,
+        palette,
+        &mut SplitMix64::new(seed),
+    );
+    stroke_rect(&mut image, field_x, margin + 124, 320, 200, RULE);
+
+    // Level 2 — object identity. Hashes stay truncated; empty domains
+    // render UNAVAILABLE rather than a blank or a borrowed digest.
+    let identity_x = margin;
+    let identity_y = margin + 124;
+    let source = display_digest(facts.source_sha256.as_deref());
+    let pixels = display_digest(facts.pixel_sha256.as_deref());
+    let identity_lines = [
+        ("RUN", facts.run_id.as_deref().unwrap_or("········")),
+        (
+            "BIND",
+            facts.binding_short_id.as_deref().unwrap_or("········"),
+        ),
+        ("SOURCE", source.as_str()),
+        ("PIXELS", pixels.as_str()),
+        ("OUTPUT", output_stamp),
+    ];
+    for (index, (label, value)) in identity_lines.iter().enumerate() {
+        let y = identity_y + index as u32 * 26;
+        draw_text(&mut image, identity_x, y, label, 2, MUTED);
+        let label_width = text_width(label, 2);
+        draw_text(&mut image, identity_x + label_width + 12, y, value, 2, INK);
+    }
+
+    // Level 3 — declared recipe facts.
+    let recipe_y = identity_y + 5 * 26 + 16;
+    let palette_k = facts
+        .palette_k
+        .map(|k| k.to_string())
+        .unwrap_or_else(|| "··".into());
+    let recipe_lines = [
+        format!(
+            "REVERSE: {}",
+            facts
+                .reverse_mode
+                .as_deref()
+                .unwrap_or("observability_sheet")
+        ),
+        format!("PALETTE: MEDIAN_CUT / {}", palette_k),
+        "ORDER: FREQUENCY".to_string(),
+        "SEED: OBJECT_BINDING".to_string(),
+        format!(
+            "IR: {}",
+            facts.ir_schema.as_deref().unwrap_or("robby-ir-v1")
+        ),
+        format!(
+            "POLICY: {}",
+            facts
+                .policy_name
+                .as_deref()
+                .unwrap_or("robby-v1-default-disclosure-policy")
+        ),
+    ];
+    for (index, line) in recipe_lines.iter().enumerate() {
+        draw_text(
+            &mut image,
+            margin,
+            recipe_y + index as u32 * 20,
+            line,
+            1,
+            INK,
+        );
+    }
+
+    // Level 4 — evidence states (labels + state glyphs, not colour alone).
+    let evidence_y = recipe_y + recipe_lines.len() as u32 * 20 + 16;
+    let evidence = [
+        ("EXIF", facts.evidence.exif.as_deref()),
+        ("IPTC", facts.evidence.iptc.as_deref()),
+        ("XMP", facts.evidence.xmp.as_deref()),
+        ("GPS", facts.evidence.gps.as_deref()),
+        ("C2PA", facts.evidence.c2pa.as_deref()),
+    ];
+    for (index, (label, state)) in evidence.iter().enumerate() {
+        let y = evidence_y + index as u32 * 20;
+        draw_text(&mut image, margin, y, label, 1, MUTED);
+        let state_text = state.unwrap_or("UNAVAILABLE");
+        let color = if state_text.contains("REDACTED") {
+            VERMILION
+        } else {
+            INK
+        };
+        draw_text(&mut image, margin + 72, y, state_text, 1, color);
+        // State glyph: OBSERVED/VERIFIED gets a solid marker; REDACTED a
+        // hollow ring; UNAVAILABLE a dash — distinctions survive greyscale.
+        let glyph_x = margin + 320;
+        if state_text.contains("UNAVAILABLE") {
+            draw_text(&mut image, glyph_x, y, "-", 1, MUTED);
+        } else if state_text.contains("REDACTED") {
+            stroke_rect(&mut image, glyph_x, y, 8, 10, VERMILION);
+        } else {
+            fill_rect(&mut image, glyph_x, y, 8, 10, INK);
+        }
+    }
+
+    // Level 5 — disclosure audit.
+    let audit_y = evidence_y + evidence.len() as u32 * 20 + 20;
+    draw_text(&mut image, margin, audit_y, "INCLUDED", 1, MUTED);
+    draw_text(
+        &mut image,
+        margin,
+        audit_y + 18,
+        &facts.included.join(" · ").to_uppercase(),
+        1,
+        INK,
+    );
+    draw_text(&mut image, margin, audit_y + 44, "WITHHELD", 1, MUTED);
+    draw_text(
+        &mut image,
+        margin,
+        audit_y + 62,
+        &facts.withheld.join(" · ").to_uppercase(),
+        1,
+        MUTED,
+    );
+
+    // Footer: hash bars (deterministic seed fingerprint).
+    fill_rect(
+        &mut image,
+        0,
+        OUTPUT_HEIGHT - 40,
+        OUTPUT_WIDTH,
+        40,
+        Rgb([18, 16, 15]),
+    );
+    draw_hash_bars(
+        &mut image,
+        margin,
+        OUTPUT_HEIGHT - 26,
+        OUTPUT_WIDTH - margin * 2,
+        8,
+        seed,
+    );
+    image
 }
 
 struct NegativeModule;

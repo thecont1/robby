@@ -1,6 +1,7 @@
 import type { CredentialSignature } from "@/lib/demoData";
-import type { RobbyIr } from "@/lib/robbyCompiler";
+import type { IntakeManifest, RobbyIr } from "@/lib/robbyCompiler";
 import type { EphemeralReverseResult } from "@/lib/liveRender";
+import { buildObservabilitySheetFacts, type ObservabilitySheetFacts } from "@/lib/observabilitySheet";
 import {
   COMPILE_STAGES,
   STATION_LABELS,
@@ -53,7 +54,7 @@ export type CompileDeps = {
   ) => Promise<CanonicalBinding>;
   compileRecipe: (recipeSource: string, signal: AbortSignal) => Promise<RobbyIr>;
   inspectC2pa: (sourceName: string, signal: AbortSignal) => Promise<CredentialSignature>;
-  renderReverse: (ir: RobbyIr, signal: AbortSignal) => Promise<EphemeralReverseResult>;
+  renderReverse: (ir: RobbyIr, signal: AbortSignal, sheet?: ObservabilitySheetFacts) => Promise<EphemeralReverseResult>;
   now: () => string;
   createId: () => string;
   createObjectUrl: (blob: Blob) => string;
@@ -319,7 +320,35 @@ export function createCompileController(deps: CompileDeps) {
         }
 
         const rendered = await station(run, "resolve", "derived", async () => {
-          const result = await deps.renderReverse(compiledIr, signal);
+          let intakeManifest: IntakeManifest | undefined;
+          try {
+            intakeManifest = JSON.parse(String(intake.intakeManifestJson)) as IntakeManifest;
+          } catch {
+            intakeManifest = undefined;
+          }
+          const provisionalDisclosure = auditPublicSafeProjection(publicSafeCandidateFromRun({
+            reverseMode: String(compiledIr.reverse.mode),
+            colourSwatches: [],
+            sourceByteSha256: String(sourceBytes.sourceByteSha256),
+            recipeHash: String(binding.canonicalRecipeHash),
+            reverseOutputSha256: "",
+            gps: String(credential.gps ?? "private"),
+            c2paStatus: String(credential.c2paStatus),
+          }));
+          const sheet = buildObservabilitySheetFacts({
+            runId: run.id,
+            bindingShortId: String(binding.shortId),
+            sourceByteSha256: String(binding.sourceByteSha256),
+            pixelSha256: String(binding.pixelSha256),
+            canonicalRecipeSha256: String(binding.canonicalRecipeHash),
+            paletteK: Number(compiledIr.palette.k),
+            reverseMode: String(compiledIr.reverse.mode),
+            irSchema: String(binding.recipeIrSchema ?? compiledIr.version),
+            intake: intakeManifest,
+            c2paEvidence,
+            omitted: provisionalDisclosure.omitted,
+          });
+          const result = await deps.renderReverse(compiledIr, signal, sheet);
           // Plan 9B: if this run was cancelled while the renderer worked, the
           // freshly created URL must be revoked immediately — partial output
           // is never unlocked.
