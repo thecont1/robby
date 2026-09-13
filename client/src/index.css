@@ -256,6 +256,16 @@
 .provenance-records dd { font-family:"DM Mono",ui-monospace,monospace; font-size:9px; line-height:1.32; margin:7px 0 0; overflow-wrap:anywhere; }
 .provenance-records dd strong { font-weight:700; }
 .provenance-records .c2pa-badge { height:18px; margin-top:7px; width:auto; }
+
+/* Runtime manifest and reverse record are key/value lists whose hash seeds and
+ * digests can outgrow the fixed evidence box. Wrap each row and scroll the list
+ * vertically so a longer record stays fully reachable without enlarging the box. */
+.provenance-list { display:flex; flex-direction:column; gap:10px; height:100%; margin:0; overflow-y:auto; padding-right:6px; scrollbar-width:thin; }
+.provenance-list > div { border-bottom:1px solid rgba(244,239,225,.16); padding-bottom:10px; }
+.provenance-list > div:last-child { border-bottom:0; padding-bottom:0; }
+.provenance-list dt { color:#a89e91; font-family:"DM Mono",ui-monospace,monospace; font-size:7px; font-weight:700; letter-spacing:.1em; }
+.provenance-list dd { color:#f4efe1; font-family:"DM Mono",ui-monospace,monospace; font-size:9px; line-height:1.32; margin:5px 0 0; overflow-wrap:anywhere; }
+
 @media (max-width:790px) {
   .provenance-records { grid-template-columns:1fr; }
   .provenance-records > dl { display:block; }
