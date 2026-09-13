@@ -171,8 +171,8 @@ function paletteKFromDeclaration(inner: string): number {
   if (!trimmed) return 8; // `palette()` leaves the default in place
   const argument = namedArgument(inner, "k");
   const value = Number(argument?.raw);
-  if (!argument || argument.quote || !Number.isInteger(value) || value < 3 || value > 16) {
-    throw new Error("k must be an integer between 3 and 16.");
+  if (!argument || argument.quote || !Number.isInteger(value) || value < 3 || value > 64) {
+    throw new Error("k must be an integer between 3 and 64.");
   }
   return value;
 }
@@ -186,8 +186,8 @@ export function paletteKFromSource(source: string): number {
 }
 
 export function replacePaletteK(source: string, value: number): string {
-  if (!Number.isInteger(value) || value < 3 || value > 16) {
-    throw new Error("k must be an integer between 3 and 16.");
+  if (!Number.isInteger(value) || value < 3 || value > 64) {
+    throw new Error("k must be an integer between 3 and 64.");
   }
   const spans = scanDeclarations(source);
   const paletteDeclarations = spans.filter(span => span.name === "palette");

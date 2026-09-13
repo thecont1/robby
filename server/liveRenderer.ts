@@ -52,8 +52,8 @@ export function normalizeLiveRenderableIr(value: unknown): LiveRenderableIr {
   const width = dimension(value.canvas.width, "Canvas width");
   const height = dimension(value.canvas.height, "Canvas height");
 
-  if (!isRecord(value.palette) || !Number.isInteger(value.palette.k) || Number(value.palette.k) < 3 || Number(value.palette.k) > 16) {
-    throw new LiveRenderValidationError("Palette k must be an integer between 3 and 16.");
+  if (!isRecord(value.palette) || !Number.isInteger(value.palette.k) || Number(value.palette.k) < 3 || Number(value.palette.k) > 64) {
+    throw new LiveRenderValidationError("Palette k must be an integer between 3 and 64.");
   }
   exactKeys(value.palette, ["k"], "palette");
   if (!isRecord(value.reverse) || typeof value.reverse.mode !== "string") {
