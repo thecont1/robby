@@ -463,6 +463,64 @@ describe("CompileController", () => {
       withheld: expect.arrayContaining(["source pixels", "filename"]),
     });
   });
+
+  it("does not reuse a cached reverse when source bytes change", async () => {
+    let generation = 0;
+    const environment = deps({
+      fetchSourceBytes: async () => {
+        generation += 1;
+        return new Uint8Array(generation === 1 ? [1, 2, 3] : [9, 9, 9]);
+      },
+      sha256Hex: async value => {
+        if (typeof value === "string") return `s:${value}`.padEnd(64, "0").slice(0, 64);
+        const tag = Array.from(value).join(",");
+        return `src:${tag}`.padEnd(64, "a").slice(0, 64);
+      },
+      measureSourceBytes: async (_name, bytes) => {
+        const tag = Array.from(bytes).join(",");
+        const pixelSha256 = `pix:${tag}`.padEnd(64, "a").slice(0, 64);
+        const sourceByteSha256 = `src:${tag}`.padEnd(64, "a").slice(0, 64);
+        return {
+          pixelSha256,
+          width: 2,
+          height: 1,
+          mimeType: "image/jpeg",
+          intakeManifestJson: JSON.stringify({
+            schema_version: "0.2",
+            obverse: { byte_sha256: sourceByteSha256, pixel_sha256: pixelSha256 },
+          }),
+        };
+      },
+      buildBinding: async (intakeJson) => {
+        const intake = JSON.parse(String(intakeJson)) as { obverse: { byte_sha256: string; pixel_sha256: string } };
+        const source = intake.obverse.byte_sha256;
+        const pixels = intake.obverse.pixel_sha256;
+        const bindingSha256 = `b:${source}${pixels}`.padEnd(64, "0").slice(0, 64);
+        return {
+          bindingSha256,
+          shortId: `RB-${bindingSha256.slice(0, 4).toUpperCase()}-${bindingSha256.slice(4, 8).toUpperCase()}`,
+          recipeIrSchema: "robby-ir-v1",
+          sourceByteSha256: source,
+          canonicalPixelSha256: pixels,
+          authoredRecipeSha256: "authored".padEnd(64, "0"),
+          canonicalRecipeSha256: "canonical".padEnd(64, "0"),
+          disclosurePolicySha256: "p:".padEnd(64, "0"),
+          selectedEvidenceSha256: "e:".padEnd(64, "0"),
+          compilerVersion: "robby-compiler-v0.1.0",
+          rendererVersion: "robby-render-manifest-v1",
+          statement: "A reproducibility binding, not an ownership certificate.",
+        };
+      },
+    });
+    const controller = createCompileController(environment);
+    const first = await controller.compile(request());
+    expect(first.status, first.diagnostic).toBe("completed");
+    const second = await controller.compile(request());
+    expect(second.status, second.diagnostic).toBe("completed");
+    expect(second.result?.identity.sourceByteSha256).not.toBe(first.result?.identity.sourceByteSha256);
+    expect(second.result?.identity.objectBinding).not.toBe(first.result?.identity.objectBinding);
+    expect(environment.calls.filter(call => call === "renderReverse")).toHaveLength(2);
+  });
 });
 
 function COMPILE_STAGES_PRESENT(events: CompileEvent[]) {

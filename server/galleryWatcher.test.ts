@@ -1,6 +1,7 @@
-import { copyFileSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { createHash } from "node:crypto";
+import { copyFileSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { basename, join, resolve } from "node:path";
+import { join, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { scanGallery } from "./galleryWatcher";
 import { validateGalleryFilename } from "./gallerySource";
@@ -70,6 +71,45 @@ describe("gallery snapshot", () => {
         expect(() => validateGalleryFilename(item.source)).not.toThrow();
       }
       expect(items.map(item => item.source)).toEqual(["regular.jpg"]);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it("never writes recipes, previews, or sidecars into the watched source folder", async () => {
+    const root = tempGallery();
+    try {
+      const sourcePath = join(root, "configured.jpg");
+      copyFileSync(fixture, sourcePath);
+      const beforeHash = createHash("sha256").update(readFileSync(sourcePath)).digest("hex");
+      const beforeNames = readdirSync(root).sort();
+
+      const items = await scanGallery(root);
+
+      expect(items.map(item => item.source)).toEqual(["configured.jpg"]);
+      expect(items[0]?.script).toContain("configured.jpg");
+      expect(readdirSync(root).sort()).toEqual(beforeNames);
+      expect(readdirSync(root)).toEqual(["configured.jpg"]);
+      expect(createHash("sha256").update(readFileSync(sourcePath)).digest("hex")).toBe(beforeHash);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it("reads an existing user-authored recipe without rewriting it", async () => {
+    const root = tempGallery();
+    try {
+      copyFileSync(fixture, join(root, "authored.jpg"));
+      const recipe = `base("authored.jpg")\npalette(k: 12)\nreverse(mode: "observability_sheet")\noutput(obverse: "authored.jpg", reverse: "transient", manifest: "transient")\n`;
+      const recipePath = join(root, "authored.robby");
+      writeFileSync(recipePath, recipe);
+      const before = readFileSync(recipePath, "utf-8");
+
+      const items = await scanGallery(root);
+
+      expect(items[0]?.script).toBe(recipe);
+      expect(readFileSync(recipePath, "utf-8")).toBe(before);
+      expect(readdirSync(root).sort()).toEqual(["authored.jpg", "authored.robby"]);
     } finally {
       rmSync(root, { recursive: true, force: true });
     }

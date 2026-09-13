@@ -2,9 +2,9 @@
  * Gallery folder watcher.
  *
  * Scans a local `gallery/` directory for JPEG files and serves them as
- * gallery records. A `.robby` script file is generated next to each image
- * on first sight; if it already exists (e.g. the user edited parameters),
- * the existing script is read and used instead.
+ * gallery records. Existing `.robby` recipes next to a JPEG are read if
+ * present; Robby never writes recipes, previews, or sidecars into the
+ * watched source folder (Plan 9D / F08).
  *
  * When files are added, removed, or `.robby` scripts are edited, connected
  * clients are notified via Server-Sent Events.
@@ -12,7 +12,7 @@
 
 import type { Express } from "express";
 import { EventEmitter } from "node:events";
-import { existsSync, lstatSync, readFileSync, readdirSync, realpathSync, statSync, writeFileSync } from "node:fs";
+import { existsSync, lstatSync, readFileSync, readdirSync, realpathSync, statSync } from "node:fs";
 import { basename, extname, join, resolve } from "node:path";
 import { watch, type FSWatcher } from "node:fs";
 import { buildDefaultGalleryScript, parseGalleryScriptSettings, readJpegDimensions, scriptCodeOnly, type GalleryReverseMode } from "./galleryMetadata";
@@ -60,26 +60,20 @@ function computeRatio(width: number, height: number): "four-three" | "three-two"
 
 
 /**
- * Returns the script for a given image. If a `.robby` file exists next
- * to the image, it is read and used (preserving user edits). Otherwise,
- * a default script is generated and written to disk for future editing.
+ * Returns the script for a given image. An existing `.robby` next to the
+ * JPEG is read (the watched folder is read/index only). Missing recipes
+ * are synthesized in memory and never written beside the original.
  */
-function getOrGenerateScript(id: string, source: string, galleryDir: string): string {
+function loadGalleryScript(id: string, source: string, galleryDir: string): string {
   const robbyPath = join(galleryDir, `${id}.robby`);
   if (existsSync(robbyPath)) {
     try {
       return readFileSync(robbyPath, "utf-8");
     } catch {
-      // Fall through to default
+      // Fall through to an in-memory default. Never rewrite the sidecar.
     }
   }
-  const script = buildDefaultGalleryScript(source);
-  try {
-    writeFileSync(robbyPath, script, "utf-8");
-  } catch {
-    // Non-fatal — the script still works in memory
-  }
-  return script;
+  return buildDefaultGalleryScript(source);
 }
 
 /**
@@ -133,7 +127,7 @@ export async function scanGallery(galleryDir = configuredGalleryDirectory()): Pr
     const dimensions = width && height ? `${width} × ${height}` : "unknown";
     const ratio = width && height ? computeRatio(width, height) : "four-three";
     const date = filename.match(/^MS(\d{4})/)?.[1] ?? "unknown";
-    const script = getOrGenerateScript(id, filename, root);
+    const script = loadGalleryScript(id, filename, root);
     const { paletteK, reverseMode } = parseGalleryScriptSettings(script);
 
     return {
