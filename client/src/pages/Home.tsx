@@ -13,7 +13,8 @@ import { compileActions } from "@/lib/compileActions";
 import { browserCompileController } from "@/lib/compileBrowser";
 import type { CompileRun } from "@/lib/compileEvents";
 import { verifiedCompilerStatus } from "@/lib/compilerStatus";
-import { paletteKFromSource, replacePaletteK } from "@/lib/paletteSettings";
+import { paletteKFromSource } from "@/lib/paletteSettings";
+import { authoredRecipeForCompile, editPaletteInRecipe } from "@/lib/recipeAuthority";
 
 import {
   DropdownMenu,
@@ -130,7 +131,7 @@ export default function Home() {
   const displayedObverse = selected.obverse;
   const displayedInverse = compileRun?.galleryItemId === selected.id ? compileRun.result?.reverseObjectUrl : undefined;
   const activeRecipe = compiledEdit?.specimenId === selected.id ? compiledEdit.source : (recipeDraft || selected.script);
-  const recipeChanged = Boolean(compileRun?.result && compileRun.recipeSource !== replacePaletteK(activeRecipe, paletteK));
+  const recipeChanged = Boolean(compileRun?.result && compileRun.recipeSource !== activeRecipe);
   const actions = compileActions({
     run: compileRun?.galleryItemId === selected.id ? compileRun : null,
     recipeChanged,
@@ -142,12 +143,13 @@ export default function Home() {
   const trace = projectionUnavailable ? [] : liveIr ? traceFromIr(liveIr) : selected.trace;
 
   useEffect(() => {
+    const draft = draftStore.current.get(selected.id, selected.script);
     try {
-      setPaletteK(paletteKFromSource(selected.script));
+      setPaletteK(paletteKFromSource(draft));
     } catch {
       setPaletteK(8);
     }
-    setRecipeDraft(draftStore.current.get(selected.id, selected.script));
+    setRecipeDraft(draft);
     setCompileRun(current => current?.galleryItemId === selected.id ? current : null);
     setCredentialOverride(null);
   }, [selected.id, selected.script]);
@@ -220,7 +222,7 @@ export default function Home() {
 
   const compileOrio = async (force = false) => {
     if (isFlipping || isRenderingReverse) return;
-    const source = replacePaletteK(activeRecipe, paletteK);
+    const source = authoredRecipeForCompile(activeRecipe);
     setFailureMessage(null);
     setIsRenderingReverse(true);
     setProjectionState("compiling");
@@ -354,6 +356,11 @@ export default function Home() {
 
   const markDraftProjectionUnavailable = (draft: string) => {
     draftStore.current.set(selected.id, draft);
+    try {
+      setPaletteK(paletteKFromSource(draft));
+    } catch {
+      // Keep the last valid structured value while the source is invalid.
+    }
     setRecipeDraft(draft);
     setCompiledEdit(null);
     setProjectionState("draft");
@@ -537,7 +544,18 @@ export default function Home() {
                     disabled={isFlipping || isRenderingReverse}
                     onChange={(event) => {
                       const value = Number(event.target.value);
-                      if (Number.isInteger(value) && value >= 3 && value <= 16) setPaletteK(value);
+                      if (!Number.isInteger(value) || value < 3 || value > 16) return;
+                      try {
+                        const nextRecipe = editPaletteInRecipe(activeRecipe, value);
+                        draftStore.current.set(selected.id, nextRecipe);
+                        setRecipeDraft(nextRecipe);
+                        setPaletteK(value);
+                        setCompiledEdit(null);
+                        setProjectionState("draft");
+                        setFailureMessage(null);
+                      } catch (error) {
+                        setFailureMessage(error instanceof Error ? error.message : String(error));
+                      }
                     }}
                   />
                 </label>
