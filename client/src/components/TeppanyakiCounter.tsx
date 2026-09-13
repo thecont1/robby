@@ -45,6 +45,13 @@ export default function TeppanyakiCounter({
           </li>
         ))}
       </ol>
+      {run?.result?.disclosure && (
+        <p className="teppanyaki-audit" role="note">
+          {run.result.disclosure.safe
+            ? `Public-safe: omitted ${run.result.disclosure.omitted.join(" · ")}`
+            : `Disclosure warning: ${run.result.disclosure.warnings.join(" · ")}`}
+        </p>
+      )}
     </aside>
   );
 }

@@ -154,6 +154,8 @@ describe("CompileController", () => {
     ]);
     expect(first.status).toBe("completed");
     expect(first.result?.reverseObjectUrl).toBe("blob:3");
+    expect(first.result?.disclosure.safe).toBe(true);
+    expect(first.result?.disclosure.omitted).toEqual(expect.arrayContaining(["source pixels", "raw GPS", "filename"]));
   });
 
   it("does not start a second run while one is already running for the same selection", async () => {

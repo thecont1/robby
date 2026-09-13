@@ -12,6 +12,7 @@ import {
   type SessionOrio,
 } from "@/lib/compileEvents";
 import type { EpistemicClass } from "@/lib/evidence";
+import { auditPublicSafeProjection, publicSafeCandidateFromRun } from "@/lib/disclosureAudit";
 
 export type CompileDeps = {
   fetchSourceBytes: (sourceUrl: string, signal: AbortSignal) => Promise<Uint8Array>;
@@ -236,6 +237,16 @@ export function createCompileController(deps: CompileDeps) {
           };
         }
 
+        const colourSwatches = Array.isArray(rendered.colourSwatches) ? rendered.colourSwatches.map(String) : [];
+        const disclosure = auditPublicSafeProjection(publicSafeCandidateFromRun({
+          reverseMode: String(rendered.renderModule),
+          colourSwatches,
+          sourceByteSha256: String(sourceBytes.sourceByteSha256),
+          recipeHash: String(binding.canonicalRecipeHash),
+          reverseOutputSha256: String(rendered.outputSha256),
+          gps: String(credential.gps ?? "private"),
+          c2paStatus: String(credential.c2paStatus),
+        }));
         const orio: SessionOrio = {
           objectId: `orio-${run.id}`,
           compileRunId: run.id,
@@ -247,11 +258,12 @@ export function createCompileController(deps: CompileDeps) {
           reverseOutputSha256: String(rendered.outputSha256),
           renderModule: String(rendered.renderModule),
           derivedSeed: String(rendered.derivedSeed),
-          colourSwatches: Array.isArray(rendered.colourSwatches) ? rendered.colourSwatches.map(String) : [],
+          colourSwatches,
           compilerVersion: deps.compilerVersion,
           rendererVersion: deps.rendererVersion,
           events: run.events,
           createdAt: deps.now(),
+          disclosure,
         };
 
         await station(run, "marry", "derived", async () => ({

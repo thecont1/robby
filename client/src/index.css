@@ -311,6 +311,7 @@
 .compile-orio-control { align-items:center; background:#1c1a19; border:0; color:#f4efe1; display:inline-flex; font-family:"DM Mono",monospace; font-size:9px; font-weight:700; gap:7px; letter-spacing:.1em; min-height:38px; padding:0 12px; text-transform:uppercase; }
 .compile-orio-control:disabled { cursor:wait; opacity:.54; }
 .caption-turn { align-items:center; display:flex; gap:8px; }
+.teppanyaki-audit { color:#958d80; font-family:"DM Mono",monospace; font-size:8px; letter-spacing:.06em; line-height:1.4; margin:12px 0 0; text-transform:uppercase; }
 .image-only .teppanyaki-counter { pointer-events:none; visibility:hidden; }
 
 /* Colour signature swatch strip — horizontally scrollable for large palettes */

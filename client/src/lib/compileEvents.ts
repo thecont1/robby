@@ -51,6 +51,11 @@ export type SessionOrio = {
   rendererVersion: string;
   events: CompileEvent[];
   createdAt: string;
+  disclosure: {
+    safe: boolean;
+    warnings: string[];
+    omitted: string[];
+  };
 };
 
 export type CompileRun = {

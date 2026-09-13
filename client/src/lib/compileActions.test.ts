@@ -28,6 +28,7 @@ function run(status: CompileRun["status"], withResult = status === "completed"):
           rendererVersion: "0.1.0",
           events: [],
           createdAt: "2026-09-13T15:30:00.000Z",
+          disclosure: { safe: true, warnings: [], omitted: ["source pixels", "raw GPS"] },
         }
       : undefined,
   };
