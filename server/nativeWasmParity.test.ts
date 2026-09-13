@@ -108,10 +108,17 @@ describe("native/WASM render parity", () => {
     const wasmRecord = JSON.parse(bindWasm(requestJson));
     const requestPath = resolve(root, "tests", "fixtures", "binding-request.json");
     writeFileSync(requestPath, requestJson);
-    const native = spawnSync(nativeBinary, ["bind", requestPath], { cwd: root, encoding: "utf8" });
-    expect(native.status).toBe(0);
-    const nativeRecord = JSON.parse(native.stdout);
-    rmSync(requestPath);
+    let nativeRecord: unknown;
+    try {
+      const native = spawnSync(nativeBinary, ["bind", requestPath], { cwd: root, encoding: "utf8" });
+      expect(native.status).toBe(0);
+      nativeRecord = JSON.parse(native.stdout);
+    } finally {
+      // Always remove the generated fixture, including when spawnSync or the
+      // status assertion above throws — a leaked file pollutes the repo and
+      // the next run.
+      rmSync(requestPath, { force: true });
+    }
 
     expect(wasmRecord).toEqual(nativeRecord);
     expect(wasmRecord.schema_version).toBe("robby-binding-record-v1");

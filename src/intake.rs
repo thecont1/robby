@@ -169,9 +169,27 @@ pub fn inspect_image(original_name: &str, bytes: &[u8]) -> CompileResult<Ingredi
     })
 }
 
+/// A stable, non-sensitive stand-in for the submitted filename.
+///
+/// Derived from the content digest so it is deterministic and reproducible,
+/// while carrying none of the original name's identifying content.
+fn public_logical_name(obverse: &Obverse) -> String {
+    let extension = match obverse.mime_type.as_str() {
+        "image/jpeg" => "jpg",
+        "image/png" => "png",
+        _ => "bin",
+    };
+    let short: String = obverse.byte_sha256.chars().take(12).collect();
+    format!("source-{short}.{extension}")
+}
+
 impl IngredientManifest {
     pub fn sanitize_public(&self) -> Self {
         let mut public = self.clone();
+        // The submitted filename is user-identifying (it routinely carries
+        // names, locations and client references). The public manifest keeps
+        // only a stable logical identifier derived from the content digest.
+        public.obverse.original_name = public_logical_name(&self.obverse);
         public.evidence.gps = redact(public.evidence.gps, "GPS is private by default.");
         public.evidence.exif = redact(
             public.evidence.exif,
@@ -220,7 +238,12 @@ fn mime_type(format: ImageFormat) -> String {
     .to_string()
 }
 
-fn orient(mut image: DynamicImage, orientation: Option<u16>) -> DynamicImage {
+/// Apply the EXIF orientation so downstream pixels are canonical.
+///
+/// Shared with the renderer: intake and render must agree byte-for-byte on
+/// what "the canonical pixels" are, or pixel_sha256 and the rendered
+/// dimensions silently diverge for rotated sources.
+pub fn orient(mut image: DynamicImage, orientation: Option<u16>) -> DynamicImage {
     if let Some(value) = orientation {
         image.apply_orientation(match value {
             2 => image::metadata::Orientation::FlipHorizontal,
@@ -299,6 +322,102 @@ fn extract_marker_map(
     }
 }
 
+/// Locate the TIFF payload of a real JPEG APP1/Exif segment.
+///
+/// Walking the JPEG marker structure (rather than scanning the whole file for
+/// the `Exif\0\0` byte string) means compressed pixel data that happens to
+/// contain those bytes can never be mistaken for metadata.
+fn jpeg_exif_payload(bytes: &[u8]) -> Option<&[u8]> {
+    // SOI.
+    if bytes.len() < 4 || bytes[0] != 0xFF || bytes[1] != 0xD8 {
+        return None;
+    }
+    let marker = b"Exif\0\0";
+    let mut offset = 2usize;
+    while offset + 4 <= bytes.len() {
+        if bytes[offset] != 0xFF {
+            // Not on a marker boundary: the structure is not walkable.
+            return None;
+        }
+        // Skip any fill bytes.
+        let mut marker_start = offset;
+        while marker_start < bytes.len() && bytes[marker_start] == 0xFF {
+            marker_start += 1;
+        }
+        if marker_start >= bytes.len() {
+            return None;
+        }
+        let code = bytes[marker_start];
+        // Standalone markers carry no length payload.
+        if code == 0xD8 || (0xD0..=0xD7).contains(&code) || code == 0x01 {
+            offset = marker_start + 1;
+            continue;
+        }
+        // SOS: entropy-coded data follows; no metadata segment past here.
+        if code == 0xDA || code == 0xD9 {
+            return None;
+        }
+        let length_at = marker_start + 1;
+        if length_at + 2 > bytes.len() {
+            return None;
+        }
+        let length = u16::from_be_bytes([bytes[length_at], bytes[length_at + 1]]) as usize;
+        if length < 2 {
+            return None;
+        }
+        let payload_start = length_at + 2;
+        let payload_end = length_at + length;
+        if payload_end > bytes.len() {
+            return None;
+        }
+        if code == 0xE1 {
+            let payload = &bytes[payload_start..payload_end];
+            if payload.len() > marker.len() && payload.starts_with(marker) {
+                return Some(&payload[marker.len()..]);
+            }
+        }
+        offset = payload_end;
+    }
+    None
+}
+
+/// Locate the TIFF payload of a real PNG `eXIf` chunk.
+fn png_exif_payload(bytes: &[u8]) -> Option<&[u8]> {
+    const SIGNATURE: [u8; 8] = [0x89, b'P', b'N', b'G', 0x0D, 0x0A, 0x1A, 0x0A];
+    if bytes.len() < SIGNATURE.len() || bytes[..SIGNATURE.len()] != SIGNATURE {
+        return None;
+    }
+    let mut offset = SIGNATURE.len();
+    // Each chunk: 4-byte length, 4-byte type, payload, 4-byte CRC.
+    while offset + 12 <= bytes.len() {
+        let length = u32::from_be_bytes([
+            bytes[offset],
+            bytes[offset + 1],
+            bytes[offset + 2],
+            bytes[offset + 3],
+        ]) as usize;
+        let kind = &bytes[offset + 4..offset + 8];
+        let payload_start = offset + 8;
+        let payload_end = payload_start.checked_add(length)?;
+        if payload_end + 4 > bytes.len() {
+            return None;
+        }
+        if kind == b"eXIf" {
+            return Some(&bytes[payload_start..payload_end]);
+        }
+        if kind == b"IEND" {
+            return None;
+        }
+        offset = payload_end + 4;
+    }
+    None
+}
+
+/// Read the EXIF orientation from a real metadata segment, if present.
+pub fn exif_orientation(bytes: &[u8], format: ImageFormat) -> Option<u16> {
+    extract_exif(bytes, format).0
+}
+
 fn extract_exif(
     bytes: &[u8],
     format: ImageFormat,
@@ -307,22 +426,29 @@ fn extract_exif(
     ExtractionState,
     Option<BTreeMap<String, String>>,
 ) {
-    let marker = b"Exif\0\0";
-    let Some(index) = bytes
-        .windows(marker.len())
-        .position(|window| window == marker)
-    else {
-        return (None, ExtractionState::Absent, None);
+    // Only real, format-specific metadata segments are read. Arbitrary file
+    // bytes that merely contain "Exif\0\0" (compressed pixel data, trailing
+    // garbage) are not metadata and stay Absent.
+    let (tiff, supported) = match format {
+        ImageFormat::Jpeg => match jpeg_exif_payload(bytes) {
+            Some(payload) => (payload, true),
+            None => return (None, ExtractionState::Absent, None),
+        },
+        ImageFormat::Png => match png_exif_payload(bytes) {
+            Some(payload) => (payload, false),
+            None => return (None, ExtractionState::Absent, None),
+        },
+        // No validated metadata-segment reader for this format.
+        _ => return (None, ExtractionState::Absent, None),
     };
-    let tiff = &bytes[index + marker.len()..];
     let Some(orientation) = parse_orientation(tiff) else {
         return (None, ExtractionState::Corrupt, None);
     };
-    let mut map = BTreeMap::new();
-    map.insert("orientation".to_string(), orientation.to_string());
-    if format != ImageFormat::Jpeg {
+    if !supported {
         return (Some(orientation), ExtractionState::Unsupported, None);
     }
+    let mut map = BTreeMap::new();
+    map.insert("orientation".to_string(), orientation.to_string());
     (Some(orientation), ExtractionState::Present, Some(map))
 }
 

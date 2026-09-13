@@ -55,6 +55,12 @@ object "binding-test" {
 }
 "#;
 
+/// The authored digest for these fixtures: the exact submitted source bytes.
+fn authored_digest() -> String {
+    use sha2::Digest;
+    format!("{:x}", sha2::Sha256::digest(RECIPE.as_bytes()))
+}
+
 fn manifest() -> IngredientManifest {
     let mut gps = BTreeMap::new();
     gps.insert("latitude".into(), 12.9716);
@@ -133,6 +139,21 @@ fn public_evidence_serialization_excludes_private_gps_and_raw_private_metadata()
 }
 
 #[test]
+fn verified_c2pa_digest_requires_public_visibility() {
+    let public = manifest();
+    let options = BindingOptions::public_safe();
+    assert!(canonical_approved_evidence(&public, &options).contains("safe-claim-digest"));
+
+    for visibility in [Visibility::Private, Visibility::Redacted] {
+        let mut non_public = public.clone();
+        non_public.evidence.c2pa.visibility = visibility;
+        let serialized = canonical_approved_evidence(&non_public, &options);
+        assert!(!serialized.contains("safe-claim-digest"));
+        assert!(!serialized.contains("selected_evidence_digest"));
+    }
+}
+
+#[test]
 fn private_gps_enters_binding_only_when_explicitly_permitted() {
     let source = manifest();
     let denied = BindingOptions::public_safe();
@@ -161,8 +182,22 @@ fn binding_is_deterministic_and_exposes_reproducibility_components() {
     let recipe = compile_recipe_source(RECIPE).unwrap();
     let source = manifest();
     let options = BindingOptions::public_safe();
-    let first = build_binding(&source, &recipe, &options, "compiler-a", "renderer-a");
-    let second = build_binding(&source, &recipe, &options, "compiler-a", "renderer-a");
+    let first = build_binding(
+        &source,
+        &recipe,
+        &authored_digest(),
+        &options,
+        "compiler-a",
+        "renderer-a",
+    );
+    let second = build_binding(
+        &source,
+        &recipe,
+        &authored_digest(),
+        &options,
+        "compiler-a",
+        "renderer-a",
+    );
     assert_eq!(first, second);
     assert_eq!(first.object_binding.len(), 64);
     assert_eq!(first.render_seed.len(), 16);
@@ -176,12 +211,20 @@ fn every_binding_input_change_changes_object_binding() {
     let recipe = compile_recipe_source(RECIPE).unwrap();
     let source = manifest();
     let options = BindingOptions::public_safe();
-    let baseline = build_binding(&source, &recipe, &options, "compiler-a", "renderer-a");
+    let baseline = build_binding(
+        &source,
+        &recipe,
+        &authored_digest(),
+        &options,
+        "compiler-a",
+        "renderer-a",
+    );
     let mut changed_source = source.clone();
     changed_source.obverse.byte_sha256 = "33".repeat(32);
     let changed_bytes = build_binding(
         &changed_source,
         &recipe,
+        &authored_digest(),
         &options,
         "compiler-a",
         "renderer-a",
@@ -191,11 +234,19 @@ fn every_binding_input_change_changes_object_binding() {
     let changed_recipe_binding = build_binding(
         &source,
         &changed_recipe,
+        &authored_digest(),
         &options,
         "compiler-a",
         "renderer-a",
     );
-    let changed_runtime = build_binding(&source, &recipe, &options, "compiler-b", "renderer-a");
+    let changed_runtime = build_binding(
+        &source,
+        &recipe,
+        &authored_digest(),
+        &options,
+        "compiler-b",
+        "renderer-a",
+    );
     assert_ne!(baseline.object_binding, changed_bytes.object_binding);
     assert_ne!(
         baseline.object_binding,
@@ -210,6 +261,7 @@ fn display_identifier_is_a_short_binding_fingerprint() {
     let binding = build_binding(
         &manifest(),
         &recipe,
+        &authored_digest(),
         &BindingOptions::public_safe(),
         "compiler-a",
         "renderer-a",
@@ -235,8 +287,24 @@ fn evidence_none_excludes_verified_c2pa_and_changes_binding() {
     assert!(public_evidence.contains("safe-claim-digest"));
     assert!(!none_evidence.contains("safe-claim-digest"));
     assert_ne!(
-        build_binding(&source, &recipe, &public, "compiler-a", "renderer-a").object_binding,
-        build_binding(&source, &recipe, &none, "compiler-a", "renderer-a").object_binding
+        build_binding(
+            &source,
+            &recipe,
+            &authored_digest(),
+            &public,
+            "compiler-a",
+            "renderer-a"
+        )
+        .object_binding,
+        build_binding(
+            &source,
+            &recipe,
+            &authored_digest(),
+            &none,
+            "compiler-a",
+            "renderer-a"
+        )
+        .object_binding
     );
 }
 
@@ -265,8 +333,24 @@ fn metadata_only_private_gps_does_not_change_public_safe_binding() {
     without_gps.evidence.gps.state = ExtractionState::Absent;
     let options = BindingOptions::from_recipe(&recipe);
     assert_eq!(
-        build_binding(&source, &recipe, &options, "compiler-a", "renderer-a").object_binding,
-        build_binding(&without_gps, &recipe, &options, "compiler-a", "renderer-a").object_binding
+        build_binding(
+            &source,
+            &recipe,
+            &authored_digest(),
+            &options,
+            "compiler-a",
+            "renderer-a"
+        )
+        .object_binding,
+        build_binding(
+            &without_gps,
+            &recipe,
+            &authored_digest(),
+            &options,
+            "compiler-a",
+            "renderer-a"
+        )
+        .object_binding
     );
 }
 
@@ -281,6 +365,7 @@ fn recipe_evidence_none_changes_binding_through_from_recipe() {
         build_binding(
             &source,
             &verified,
+            &authored_digest(),
             &BindingOptions::from_recipe(&verified),
             "compiler-a",
             "renderer-a"
@@ -289,6 +374,7 @@ fn recipe_evidence_none_changes_binding_through_from_recipe() {
         build_binding(
             &source,
             &none,
+            &authored_digest(),
             &BindingOptions::from_recipe(&none),
             "compiler-a",
             "renderer-a"
@@ -302,16 +388,39 @@ fn pixel_hash_and_renderer_version_are_binding_inputs() {
     let recipe = compile_recipe_source(RECIPE).unwrap();
     let source = manifest();
     let options = BindingOptions::public_safe();
-    let baseline = build_binding(&source, &recipe, &options, "compiler-a", "renderer-a");
+    let baseline = build_binding(
+        &source,
+        &recipe,
+        &authored_digest(),
+        &options,
+        "compiler-a",
+        "renderer-a",
+    );
     let mut pixels = source.clone();
     pixels.obverse.pixel_sha256 = "44".repeat(32);
     assert_ne!(
         baseline.object_binding,
-        build_binding(&pixels, &recipe, &options, "compiler-a", "renderer-a").object_binding
+        build_binding(
+            &pixels,
+            &recipe,
+            &authored_digest(),
+            &options,
+            "compiler-a",
+            "renderer-a"
+        )
+        .object_binding
     );
     assert_ne!(
         baseline.object_binding,
-        build_binding(&source, &recipe, &options, "compiler-a", "renderer-b").object_binding
+        build_binding(
+            &source,
+            &recipe,
+            &authored_digest(),
+            &options,
+            "compiler-a",
+            "renderer-b"
+        )
+        .object_binding
     );
 }
 

@@ -141,4 +141,15 @@ fn manifest_is_complete_and_declares_no_cached_intermediate() {
     assert_eq!(result.manifest.derived_seed.len(), 64);
     assert_eq!(result.manifest.output_sha256.len(), 64);
     assert_eq!(result.manifest.cached_intermediate, None);
+    let descriptor = result
+        .manifest
+        .artifacts
+        .negative
+        .as_ref()
+        .expect("negative output descriptor");
+    assert_eq!(descriptor.media_type, "image/png");
+    assert_eq!(descriptor.sha256, result.manifest.output_sha256);
+    assert!(result.manifest.artifacts.quantised_obverse.is_none());
+    assert!(result.manifest.artifacts.palette_grid.is_none());
+    assert!(result.manifest.artifacts.observability_sheet.is_none());
 }

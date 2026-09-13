@@ -66,6 +66,12 @@ object "binding-test" {
 }
 "#;
 
+/// The authored digest of the exact submitted v2 source text.
+fn v2_authored_digest() -> String {
+    use sha2::Digest;
+    format!("{:x}", sha2::Sha256::digest(V2_RECIPE.as_bytes()))
+}
+
 fn fixture_manifest() -> IngredientManifest {
     // A metadata-free PNG intake; produced here through the public API so the
     // test does not depend on repository fixtures.
@@ -197,6 +203,7 @@ fn v1_and_v2_bindings_are_domain_separated() {
     let v2_request = binding_request_from_recipe_ir_v2(
         &intake,
         &recipe,
+        &v2_authored_digest(),
         &BindingOptions::from_recipe(&recipe),
         "compiler-a",
         "renderer-a",
@@ -212,9 +219,9 @@ fn v1_and_v2_bindings_are_domain_separated() {
 
 #[test]
 fn canonical_v1_identity_is_formatting_independent() {
-    let spaced = compile_source(&format!(
+    let spaced = compile_source(
         "base( \"source.jpg\" )\n\n\npalette( k: 8 )\nreverse( mode: \"observability_sheet\" )\noutput( obverse: \"source.jpg\" , reverse: \"transient\" , manifest: \"transient\" )\n"
-    ))
+    )
     .expect("spaced v1 compiles");
     let compact = compile_source(V1_SOURCE).expect("compact v1 compiles");
 
@@ -274,6 +281,7 @@ fn legacy_v2_build_binding_still_works_through_the_core() {
     let result = build_binding(
         &intake,
         &recipe,
+        &v2_authored_digest(),
         &BindingOptions::from_recipe(&recipe),
         "compiler-a",
         "renderer-a",
@@ -285,6 +293,7 @@ fn legacy_v2_build_binding_still_works_through_the_core() {
     let request = binding_request_from_recipe_ir_v2(
         &intake,
         &recipe,
+        &v2_authored_digest(),
         &BindingOptions::from_recipe(&recipe),
         "compiler-a",
         "renderer-a",

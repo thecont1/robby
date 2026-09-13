@@ -91,6 +91,7 @@ pub struct ArtifactDescriptor {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
 pub struct RenderArtifacts {
+    pub negative: Option<ArtifactDescriptor>,
     pub quantised_obverse: Option<ArtifactDescriptor>,
     pub palette_grid: Option<ArtifactDescriptor>,
     pub observability_sheet: Option<ArtifactDescriptor>,
@@ -326,6 +327,7 @@ fn draw_sheet(
     let identity_y = margin + 124;
     let source = display_digest(facts.source_sha256.as_deref());
     let pixels = display_digest(facts.pixel_sha256.as_deref());
+    let recipe = display_digest(facts.recipe_sha256.as_deref());
     let identity_lines = [
         ("RUN", facts.run_id.as_deref().unwrap_or("········")),
         (
@@ -334,6 +336,7 @@ fn draw_sheet(
         ),
         ("SOURCE", source.as_str()),
         ("PIXELS", pixels.as_str()),
+        ("RECIPE", recipe.as_str()),
         ("OUTPUT", output_stamp),
     ];
     for (index, (label, value)) in identity_lines.iter().enumerate() {
@@ -558,7 +561,15 @@ pub fn render_reverse(
     let derived = sha256(&seed_material);
     let seed = u64::from_be_bytes(derived[0..8].try_into().expect("eight-byte seed"));
 
+    // The renderer must see exactly the canonical pixels intake hashed.
+    // Applying the same EXIF orientation normalization here keeps
+    // pixel_sha256, dimensions and layout consistent across both paths;
+    // without it a rotated source renders transposed against its own manifest.
     let decoded = decode_source(source_bytes)?;
+    let orientation = image::guess_format(source_bytes)
+        .ok()
+        .and_then(|format| crate::intake::exif_orientation(source_bytes, format));
+    let decoded = crate::intake::orient(decoded, orientation);
     let rgb = decoded.to_rgb8();
     let source_width = rgb.width();
     let source_height = rgb.height();
@@ -585,6 +596,7 @@ pub fn render_reverse(
     };
     let mut artifacts = RenderArtifacts::default();
     match settings.mode.as_str() {
+        "negative" => artifacts.negative = Some(output_descriptor),
         "quantised_obverse" => artifacts.quantised_obverse = Some(output_descriptor),
         "palette_grid" => artifacts.palette_grid = Some(output_descriptor),
         "observability_sheet" => artifacts.observability_sheet = Some(output_descriptor),
@@ -676,7 +688,12 @@ fn median_cut_palette(pixels: &[[u8; 3]], k: usize) -> Result<Vec<PaletteEntry>,
         pixels: pixels.to_vec(),
         ordinal: 0,
     }];
-    for ordinal in 1..MAX_MEDIAN_CUT_ITERATIONS {
+    // One monotonically increasing creation ordinal across the whole split,
+    // incremented separately for each newly created child. A per-iteration
+    // counter (pushing `ordinal` and `ordinal + 1`) collides between
+    // consecutive iterations, which corrupts the oldest-box tie-break.
+    let mut next_ordinal = 1_usize;
+    for _ in 1..MAX_MEDIAN_CUT_ITERATIONS {
         if boxes.len() >= k {
             break;
         }
@@ -704,12 +721,14 @@ fn median_cut_palette(pixels: &[[u8; 3]], k: usize) -> Result<Vec<PaletteEntry>,
         let right = selected.pixels.split_off(midpoint);
         boxes.push(ColourBox {
             pixels: selected.pixels,
-            ordinal,
+            ordinal: next_ordinal,
         });
+        next_ordinal += 1;
         boxes.push(ColourBox {
             pixels: right,
-            ordinal: ordinal + 1,
+            ordinal: next_ordinal,
         });
+        next_ordinal += 1;
     }
     let mut palette = boxes
         .into_iter()

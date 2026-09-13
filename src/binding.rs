@@ -357,12 +357,14 @@ pub fn binding_request_from_ir_v1(
 /// Build a canonical binding request from the Phase-3 `robby-ir-v2` recipe IR.
 ///
 /// v2 recipes carry their own `bind`/`publish` clauses; policy and evidence
-/// serializations come from the validated recipe and options. The v2 pipeline
-/// currently has no separate authored-source input, so authored identity
-/// equals canonical identity until an authored source is plumbed through.
+/// serializations come from the validated recipe and options. As in v1, the
+/// authored identity is the digest of the exact submitted source bytes, so
+/// two sources that differ only in formatting stay distinguishable in the
+/// authored domain while sharing a canonical digest.
 pub fn binding_request_from_recipe_ir_v2(
     manifest: &IngredientManifest,
     recipe: &RecipeIr,
+    authored_recipe_sha256: &str,
     options: &BindingOptions,
     compiler_version: &str,
     renderer_version: &str,
@@ -374,7 +376,7 @@ pub fn binding_request_from_recipe_ir_v2(
         recipe_ir_schema: recipe.version.clone(),
         source_byte_sha256: manifest.obverse.byte_sha256.clone(),
         canonical_pixel_sha256: manifest.obverse.pixel_sha256.clone(),
-        authored_recipe_sha256: recipe.recipe_sha256.clone(),
+        authored_recipe_sha256: authored_recipe_sha256.to_string(),
         canonical_recipe_sha256: recipe.recipe_sha256.clone(),
         disclosure_policy_sha256: digest_string(policy_serialization.as_bytes()),
         selected_evidence_sha256: digest_string(evidence_serialization.as_bytes()),
@@ -384,9 +386,12 @@ pub fn binding_request_from_recipe_ir_v2(
 }
 
 /// Build all legacy v2 binding material through the canonical core.
+///
+/// `authored_recipe_sha256` is the digest of the exact submitted source text.
 pub fn build_binding(
     manifest: &IngredientManifest,
     recipe: &RecipeIr,
+    authored_recipe_sha256: &str,
     options: &BindingOptions,
     compiler_version: &str,
     renderer_version: &str,
@@ -394,6 +399,7 @@ pub fn build_binding(
     let request = binding_request_from_recipe_ir_v2(
         manifest,
         recipe,
+        authored_recipe_sha256,
         options,
         compiler_version,
         renderer_version,
@@ -451,6 +457,10 @@ pub fn canonical_approved_evidence(
     selected.insert("selection".to_string(), json!(options.evidence_selection));
     if options.evidence_selection == "verified_public"
         && manifest.evidence.c2pa.classification == EvidenceClass::Verified
+        // "verified_public" means exactly that: a verified field whose
+        // visibility is Public. A Private or Redacted field must never have
+        // its digest serialized into the binding preimage.
+        && manifest.evidence.c2pa.visibility == Visibility::Public
     {
         if let Some(c2pa) = manifest.evidence.c2pa.value.as_ref() {
             if c2pa.state == C2paState::Present {

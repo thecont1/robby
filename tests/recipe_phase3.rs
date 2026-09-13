@@ -142,3 +142,80 @@ output(obverse: "front.png", reverse: "transient", manifest: "transient")"#;
     let ir = compile_source(source).expect("sheet script");
     assert_eq!(ir.reverse.mode, "observability_sheet");
 }
+
+#[test]
+fn rejects_duplicate_and_surplus_authored_keys() {
+    // Duplicates previously overwrote silently via the HashMap collect.
+    let duplicate_palette = RECIPE.replace("colours: 12", "colours: 12\n    colours: 9");
+    let error = compile_recipe_source(&duplicate_palette).unwrap_err();
+    assert!(
+        error.message.contains("Duplicate"),
+        "duplicate palette key should be rejected, got {}",
+        error.message
+    );
+
+    let duplicate_reverse = RECIPE.replace("cell: 10", "cell: 10\n    cell: 12");
+    let error = compile_recipe_source(&duplicate_reverse).unwrap_err();
+    assert!(
+        error.message.contains("Duplicate"),
+        "duplicate reverse key should be rejected, got {}",
+        error.message
+    );
+
+    // Surplus keys were previously ignored rather than rejected.
+    let surplus = RECIPE.replace("cell: 10", "cell: 10\n    tilt: 3");
+    let error = compile_recipe_source(&surplus).unwrap_err();
+    assert!(
+        error.message.contains("Unsupported reverse directive"),
+        "surplus reverse key should be rejected, got {}",
+        error.message
+    );
+}
+
+#[test]
+fn rejects_out_of_range_and_non_integer_palette_grid_cells() {
+    for bad in ["cell: 0", "cell: -4", "cell: 2.5", "cell: 100000"] {
+        let changed = RECIPE.replace("cell: 10", bad);
+        let error = compile_recipe_source(&changed).unwrap_err();
+        assert!(
+            error.message.contains("between 1 and 4096"),
+            "{bad} should be rejected by range validation, got {}",
+            error.message
+        );
+    }
+    // A valid boundary value still compiles.
+    assert!(compile_recipe_source(&RECIPE.replace("cell: 10", "cell: 4096")).is_ok());
+    assert!(compile_recipe_source(&RECIPE.replace("cell: 10", "cell: 1")).is_ok());
+}
+
+#[test]
+fn rejects_calls_with_wrong_arity_or_argument_values() {
+    // `bands`/`grid` require the documented call for each measure and the
+    // exact supported value—not merely any positive numeric argument.
+    for (needle, bad) in [
+        ("luminance: bands(8)", "luminance: bands()"),
+        ("luminance: bands(8)", "luminance: bands(8, 9)"),
+        ("luminance: bands(8)", "luminance: bands(0)"),
+        ("luminance: bands(8)", "luminance: bands(7)"),
+        ("luminance: bands(8)", "luminance: grid(24)"),
+        ("texture: grid(24)", "texture: bands(8)"),
+        ("texture: grid(24)", "texture: grid(25)"),
+    ] {
+        let changed = RECIPE.replace(needle, bad);
+        assert!(
+            compile_recipe_source(&changed).is_err(),
+            "{bad} should be rejected"
+        );
+    }
+    // The documented privacy forms keep working.
+    assert!(compile_recipe_source(RECIPE).is_ok());
+    // But a wrong argument value to the same call name does not.
+    let wrong_argument = RECIPE.replace(
+        "source_capture_time: retain observed",
+        "source_capture_time: retain guessed",
+    );
+    assert!(
+        compile_recipe_source(&wrong_argument).is_err(),
+        "`retain guessed` should be rejected"
+    );
+}

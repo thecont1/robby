@@ -369,39 +369,31 @@ fn validate_entries(
 fn validate_context(recipe: &crate::ast::Recipe) -> CompileResult<()> {
     let clause = recipe_clause(recipe, "context");
     let allowed = ["place", "time", "era", "source_capture_time", "source_gps"];
+    validate_clause_keys(clause, &allowed, "context")?;
     for entry in &clause.entries {
         let key = entry.name.as_deref().unwrap_or_default();
-        if !allowed.contains(&key) {
-            return Err(CompilerError::at(
-                entry.span.line,
-                format!("Unsupported context directive `{key}`."),
-            ));
-        }
         match key {
-            "place" | "time" | "era" => {
-                if !matches!(entry.value, Value::Call { ref name, .. } if name == "set") {
-                    return Err(CompilerError::at(
-                        entry.span.line,
-                        "Context declarations must be tagged `set` and remain declared.",
-                    ));
-                }
-            }
-            "source_capture_time" => {
-                if !matches!(entry.value, Value::Call { ref name, .. } if name == "retain") {
-                    return Err(CompilerError::at(
-                        entry.span.line,
-                        "Unsupported context privacy directive; use `retain observed`.",
-                    ));
-                }
-            }
-            "source_gps" => {
-                if !matches!(entry.value, Value::Call { ref name, .. } if name == "keep") {
-                    return Err(CompilerError::at(
-                        entry.span.line,
-                        "Unsupported context privacy directive; use `keep private`.",
-                    ));
-                }
-            }
+            "place" | "time" | "era" => validate_call(
+                &entry.value,
+                "set",
+                None,
+                entry.span.line,
+                "Context declarations must be tagged `set` and remain declared.",
+            )?,
+            "source_capture_time" => validate_call(
+                &entry.value,
+                "retain",
+                Some("observed"),
+                entry.span.line,
+                "Unsupported context privacy directive; use `retain observed`.",
+            )?,
+            "source_gps" => validate_call(
+                &entry.value,
+                "keep",
+                Some("private"),
+                entry.span.line,
+                "Unsupported context privacy directive; use `keep private`.",
+            )?,
             _ => unreachable!(),
         }
     }
@@ -416,6 +408,7 @@ fn validate_split(recipe: &crate::ast::Recipe) -> CompileResult<()> {
             "Only `split palette` is supported.",
         ));
     }
+    validate_clause_keys(clause, &["method", "colours", "order"], "palette")?;
     let values = entry_map(clause);
     if value_identifier(
         values
@@ -454,13 +447,51 @@ fn validate_split(recipe: &crate::ast::Recipe) -> CompileResult<()> {
 
 fn validate_measure(recipe: &crate::ast::Recipe) -> CompileResult<()> {
     let clause = recipe_clause(recipe, "measure");
+    validate_clause_keys(clause, &["luminance", "texture"], "measure")?;
     for entry in &clause.entries {
-        if !["luminance", "texture"].contains(&entry.name.as_deref().unwrap_or_default())
-            || !matches!(entry.value, Value::Call { ref name, .. } if name == "bands" || name == "grid")
-        {
+        // `bands`/`grid` each take exactly one positive integer argument.
+        // Checking only the call name accepted `bands()`, `bands(1, 2)` and
+        // `bands(foo)`, all of which lowered to a silent default.
+        let Value::Call {
+            ref name,
+            ref arguments,
+        } = entry.value
+        else {
             return Err(CompilerError::at(
                 entry.span.line,
                 "Unsupported measure directive.",
+            ));
+        };
+        let (expected_name, expected_value) = match entry.name.as_deref() {
+            Some("luminance") => ("bands", 8.0),
+            Some("texture") => ("grid", 24.0),
+            _ => unreachable!("measure keys validated above"),
+        };
+        if name != expected_name {
+            return Err(CompilerError::at(
+                entry.span.line,
+                format!(
+                    "Unsupported measure directive; `{}` requires `{expected_name}({expected_value:.0})`.",
+                    entry.name.as_deref().unwrap_or_default()
+                ),
+            ));
+        }
+        if arguments.len() != 1 {
+            return Err(CompilerError::at(
+                entry.span.line,
+                format!("`{name}` takes exactly one argument."),
+            ));
+        }
+        let Some(count) = arguments[0].as_number() else {
+            return Err(CompilerError::at(
+                entry.span.line,
+                format!("`{name}` requires a numeric argument."),
+            ));
+        };
+        if count != expected_value {
+            return Err(CompilerError::at(
+                entry.span.line,
+                format!("`{name}` requires the value {expected_value:.0}."),
             ));
         }
     }
@@ -502,6 +533,14 @@ fn validate_reverse_recipe(recipe: &crate::ast::Recipe) -> CompileResult<()> {
     }
     let values = entry_map(clause);
     let mode = clause.variant.as_deref().unwrap();
+    // Every authored key is checked against the complete allowed set for this
+    // mode, with duplicates rejected, before anything is read out of the map.
+    let allowed: &[&str] = match mode {
+        "palette_grid" => &["arrange", "seed", "border", "cell"],
+        "observability_sheet" => &["seed", "palette"],
+        _ => &["palette", "dither"],
+    };
+    validate_clause_keys(clause, allowed, "reverse")?;
     let required: &[(&str, &str)] = match mode {
         "palette_grid" => &[
             ("arrange", "seeded_shuffle"),
@@ -532,16 +571,29 @@ fn validate_reverse_recipe(recipe: &crate::ast::Recipe) -> CompileResult<()> {
             ));
         }
     }
-    if mode == "palette_grid"
-        && values
-            .get("cell")
-            .and_then(|value| value.as_number())
-            .is_none()
-    {
-        return Err(CompilerError::at(
-            clause.span.line,
-            "Palette grid `cell` must be numeric.",
-        ));
+    if mode == "palette_grid" {
+        // `cell` is lowered with `as u32`, which silently wraps negatives and
+        // truncates fractions. Validate the authored value here, against the
+        // same bound the renderer enforces.
+        if let Some(value) = values.get("cell") {
+            let Some(cell) = value.as_number() else {
+                return Err(CompilerError::at(
+                    clause.span.line,
+                    "Palette grid `cell` must be numeric.",
+                ));
+            };
+            if cell.fract() != 0.0 || !(1.0..=4096.0).contains(&cell) {
+                return Err(CompilerError::at(
+                    clause.span.line,
+                    "Palette grid `cell` must be an integer between 1 and 4096.",
+                ));
+            }
+        } else {
+            return Err(CompilerError::at(
+                clause.span.line,
+                "Palette grid `cell` must be numeric.",
+            ));
+        }
     }
     Ok(())
 }
@@ -567,7 +619,77 @@ fn validate_publish(recipe: &crate::ast::Recipe) -> CompileResult<()> {
     Ok(())
 }
 
-fn entry_map<'a>(clause: &'a crate::ast::Clause) -> HashMap<&'a str, &'a Value> {
+/// Reject surplus and duplicate authored keys before lowering.
+///
+/// `entry_map` collapses a clause into a `HashMap`, so a duplicated key would
+/// silently overwrite its earlier occurrence and a surplus key would simply be
+/// ignored. Both are authoring errors: validate against the complete allowed
+/// set while every occurrence is still present.
+fn validate_clause_keys(
+    clause: &crate::ast::Clause,
+    allowed: &[&str],
+    what: &str,
+) -> CompileResult<()> {
+    let mut seen: Vec<&str> = Vec::with_capacity(clause.entries.len());
+    for entry in &clause.entries {
+        let key = entry.name.as_deref().unwrap_or_default();
+        if !allowed.contains(&key) {
+            return Err(CompilerError::at(
+                entry.span.line,
+                format!("Unsupported {what} directive `{key}`."),
+            ));
+        }
+        if seen.contains(&key) {
+            return Err(CompilerError::at(
+                entry.span.line,
+                format!("Duplicate {what} directive `{key}`."),
+            ));
+        }
+        seen.push(key);
+    }
+    Ok(())
+}
+
+/// Validate a `name(arg)` call exactly: name, argument count, argument type,
+/// and the required argument value.
+///
+/// Matching on the call name alone accepts `set()`, `set(a, b)` and
+/// `keep public` — all authoring errors that would otherwise lower silently.
+fn validate_call(
+    value: &Value,
+    name: &str,
+    expected_argument: Option<&str>,
+    line: usize,
+    message: &str,
+) -> CompileResult<()> {
+    let Value::Call {
+        name: actual,
+        arguments,
+    } = value
+    else {
+        return Err(CompilerError::at(line, message.to_string()));
+    };
+    if actual != name {
+        return Err(CompilerError::at(line, message.to_string()));
+    }
+    match expected_argument {
+        Some(expected) => {
+            if arguments.len() != 1 || value_identifier(&arguments[0]) != Some(expected) {
+                return Err(CompilerError::at(line, message.to_string()));
+            }
+        }
+        None => {
+            // `set(...)` carries the authored declaration value: exactly one
+            // argument, and it must be a string rather than a bare identifier.
+            if arguments.len() != 1 || !matches!(arguments[0], Value::String(_)) {
+                return Err(CompilerError::at(line, message.to_string()));
+            }
+        }
+    }
+    Ok(())
+}
+
+fn entry_map(clause: &crate::ast::Clause) -> HashMap<&str, &Value> {
     clause
         .entries
         .iter()

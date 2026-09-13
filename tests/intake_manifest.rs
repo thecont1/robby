@@ -98,11 +98,62 @@ fn manifest_contains_typed_robby_object_foundation() {
     assert_eq!(object.obverse.orientation, None);
 }
 
+/// Splice a real APP1/Exif segment carrying `tiff` into a JPEG right after SOI.
+fn jpeg_with_app1_exif(tiff: &[u8]) -> Vec<u8> {
+    let base = tiny_jpeg();
+    let mut payload = b"Exif\0\0".to_vec();
+    payload.extend_from_slice(tiff);
+    let length = (payload.len() + 2) as u16;
+    let mut out = Vec::new();
+    out.extend_from_slice(&base[..2]); // SOI
+    out.extend_from_slice(&[0xFF, 0xE1]);
+    out.extend_from_slice(&length.to_be_bytes());
+    out.extend_from_slice(&payload);
+    out.extend_from_slice(&base[2..]);
+    out
+}
+
+/// Splice a real `eXIf` chunk carrying `tiff` into a PNG after IHDR.
+fn png_with_exif_chunk(tiff: &[u8]) -> Vec<u8> {
+    let base = tiny_png();
+    // Signature (8) + IHDR length/type/payload(13)/CRC = 8 + 4 + 4 + 13 + 4.
+    let after_ihdr = 8 + 4 + 4 + 13 + 4;
+    let mut out = Vec::new();
+    out.extend_from_slice(&base[..after_ihdr]);
+    out.extend_from_slice(&(tiff.len() as u32).to_be_bytes());
+    out.extend_from_slice(b"eXIf");
+    out.extend_from_slice(tiff);
+    let mut crc_input = b"eXIf".to_vec();
+    crc_input.extend_from_slice(tiff);
+    out.extend_from_slice(&png_crc32(&crc_input).to_be_bytes());
+    out.extend_from_slice(&base[after_ihdr..]);
+    out
+}
+
+fn png_crc32(bytes: &[u8]) -> u32 {
+    let mut crc = 0xFFFF_FFFFu32;
+    for byte in bytes {
+        crc ^= *byte as u32;
+        for _ in 0..8 {
+            crc = if crc & 1 != 0 {
+                (crc >> 1) ^ 0xEDB8_8320
+            } else {
+                crc >> 1
+            };
+        }
+    }
+    !crc
+}
+
+/// A minimal little-endian TIFF header declaring Orientation = 6.
+const ORIENTATION_6_TIFF: [u8; 26] = [
+    b'I', b'I', 42, 0, 8, 0, 0, 0, 1, 0, 18, 1, 3, 0, 1, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0,
+];
+
 #[test]
 fn malformed_and_unsupported_metadata_are_localized_states() {
-    let mut corrupt = tiny_jpeg();
-    corrupt.extend_from_slice(&[b'E', b'x', b'i', b'f', 0, 0]);
-    corrupt.extend_from_slice(b"not-a-tiff");
+    // A real APP1/Exif segment whose TIFF payload is junk is Corrupt.
+    let corrupt = jpeg_with_app1_exif(b"not-a-tiff");
     let corrupt_manifest =
         inspect_image("corrupt.jpg", &corrupt).expect("corrupt metadata is non-fatal");
     assert_eq!(
@@ -111,11 +162,8 @@ fn malformed_and_unsupported_metadata_are_localized_states() {
     );
     assert!(corrupt_manifest.evidence.exif.value.is_none());
 
-    let mut unsupported = tiny_png();
-    unsupported.extend_from_slice(&[
-        b'E', b'x', b'i', b'f', 0, 0, b'I', b'I', 42, 0, 8, 0, 0, 0, 1, 0, 18, 1, 3, 0, 1, 0, 0, 0,
-        6, 0, 0, 0, 0, 0, 0, 0,
-    ]);
+    // A real PNG eXIf chunk is parsed but not a supported metadata surface.
+    let unsupported = png_with_exif_chunk(&ORIENTATION_6_TIFF);
     let unsupported_manifest = inspect_image("png-with-exif.png", &unsupported)
         .expect("unsupported metadata is non-fatal");
     assert_eq!(
@@ -123,4 +171,36 @@ fn malformed_and_unsupported_metadata_are_localized_states() {
         robby_compiler::intake::ExtractionState::Unsupported
     );
     assert_eq!(unsupported_manifest.obverse.orientation, Some(6));
+}
+
+#[test]
+fn exif_bytes_outside_a_metadata_segment_are_not_treated_as_metadata() {
+    // Trailing "Exif\0\0" garbage appended after the image is not a metadata
+    // segment: scanning arbitrary file bytes would misread pixel data too.
+    let mut trailing = tiny_jpeg();
+    trailing.extend_from_slice(&[b'E', b'x', b'i', b'f', 0, 0]);
+    trailing.extend_from_slice(&ORIENTATION_6_TIFF);
+    let manifest = inspect_image("trailing.jpg", &trailing).expect("intake succeeds");
+    assert_eq!(
+        manifest.evidence.exif.state,
+        robby_compiler::intake::ExtractionState::Absent
+    );
+    assert_eq!(manifest.obverse.orientation, None);
+}
+
+#[test]
+fn public_manifest_does_not_retain_the_submitted_filename() {
+    let manifest = inspect_image("client-name-location.jpg", &tiny_jpeg()).expect("intake");
+    let public = manifest.sanitize_public();
+    assert_eq!(manifest.obverse.original_name, "client-name-location.jpg");
+    assert!(!public
+        .obverse
+        .original_name
+        .contains("client-name-location"));
+    // Deterministic logical identifier, derived from the content digest.
+    assert!(public.obverse.original_name.starts_with("source-"));
+    assert_eq!(
+        public.obverse.original_name,
+        manifest.sanitize_public().obverse.original_name
+    );
 }
