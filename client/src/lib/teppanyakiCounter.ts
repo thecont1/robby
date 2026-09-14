@@ -93,7 +93,7 @@ export function stationViews(events: readonly CompileEvent[]): StationView[] {
       // as its own placeholder description. Real payloads replace this copy.
       label: latest ? stationSummary(stage, payload) : "Awaiting compile",
       classification: latest?.classification,
-      swatches: Array.isArray(payload.colourSwatches) ? payload.colourSwatches.map(String).slice(0, 16) : [],
+      swatches: Array.isArray(payload.colourSwatches) ? payload.colourSwatches.map(String).slice(0, 64) : [],
     };
   });
 }

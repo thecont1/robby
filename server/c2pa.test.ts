@@ -2,7 +2,7 @@ import { mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { credentialFromReaderSummary, inspectGalleryCredential } from "./c2pa";
+import { credentialFromReaderSummary, inspectGalleryCredential, unavailableCredentialInspection } from "./c2pa";
 
 const sha256 = "a".repeat(64);
 
@@ -72,5 +72,14 @@ describe("C2PA gallery source boundary", () => {
       rmSync(root, { recursive: true, force: true });
       rmSync(outside, { recursive: true, force: true });
     }
+  });
+});
+
+describe("optional C2PA inspection failures", () => {
+  it("classifies unsupported C2PA SDK errors as unavailable instead of throwing", () => {
+    const result = unavailableCredentialInspection("a".repeat(64), new Error("type is unsupported"));
+    expect(result.status).toBe("absent");
+    expect(result.note).toContain("type is unsupported");
+    expect(result.verificationMethod).toContain("C2PA Node SDK");
   });
 });

@@ -45,11 +45,30 @@ function visibleSource(store: ReturnType<typeof createRecipeDraftStore>, id: str
 describe("palette control and authored recipe stay synchronised", () => {
   it("wires the selected draft to both the editor and Compile Orio", () => {
     expect(HOME_SOURCE).toContain("const activeRecipe = selectedDraft;");
-    expect(HOME_SOURCE).toContain("source={selectedDraft}");
+    expect(HOME_SOURCE).toContain("source={activeRecipe}");
     expect(HOME_SOURCE).toContain("paletteK={paletteK}");
     const freshnessGuards = HOME_SOURCE.match(/if \(!isCompiledSourceCurrent\(compiledSpecimenId, source, currentAuthority\.specimenId, currentAuthority\.source\)\) return;/g) ?? [];
     expect(freshnessGuards).toHaveLength(2); // Compile Orio + Validate recipe persistence
     expect(HOME_SOURCE).not.toContain("source={selected.script}");
+  });
+
+  it("lets a later Compile Orio supersede an inflight reverse instead of dropping it", () => {
+    const compileBody = HOME_SOURCE.match(/const compileOrio = async \(force = false\) => \{([\s\S]*?)\n  \};/)?.[1] ?? "";
+    expect(compileBody).toContain("clearPaletteReprocessTimer()");
+    expect(compileBody).toContain("shouldStartCompileRequest({ isFlipping, isRendering: isRenderingReverse, supersedeInflight: true })");
+    expect(compileBody).not.toContain("if (isFlipping || isRenderingReverse) return;");
+    expect(compileBody).toContain("const generation = ++compileGeneration.current;");
+    expect(compileBody).toContain("if (generation !== compileGeneration.current) return;");
+  });
+
+  it("accepts a palette slider edit while a reverse is still rendering", () => {
+    // Regression: `editPaletteK` refused the edit on `isRenderingReverse`, but
+    // the slider is a controlled input, so the thumb snapped back and the
+    // authored recipe stayed on the previous k while the station showed another.
+    const editBody = HOME_SOURCE.match(/const editPaletteK = \(value: number\) => \{([\s\S]*?)\n  \};/)?.[1] ?? "";
+    expect(editBody).not.toBe("");
+    expect(editBody).toContain("shouldAcceptPaletteEdit(value)");
+    expect(editBody).not.toContain("isRenderingReverse");
   });
 
   it("re-seeds outside source changes before the browser paints", () => {

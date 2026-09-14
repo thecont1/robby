@@ -215,8 +215,8 @@ export function parseGalleryScriptSettings(script: string): { paletteK: number; 
   if (paletteDeclaration && paletteDeclaration.inner.trim()) {
     const kArgument = declarationArgument(paletteDeclaration.inner, "k");
     paletteK = Number(kArgument?.raw);
-    if (!kArgument || kArgument.quoted || kArgument.raw === "" || !Number.isInteger(paletteK) || paletteK < 3 || paletteK > 16) {
-      throw new Error("palette k must be an integer between 3 and 16");
+    if (!kArgument || kArgument.quoted || kArgument.raw === "" || !Number.isInteger(paletteK) || paletteK < 3 || paletteK > 64) {
+      throw new Error("palette k must be an integer between 3 and 64");
     }
   }
   const reverseDeclarations = declarations.filter(entry => entry.name === "reverse");

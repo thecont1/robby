@@ -106,7 +106,7 @@ fn rejects_unknown_modules_invalid_k_and_invalid_images() {
     assert!(render_reverse(&source, &settings(2))
         .unwrap_err()
         .to_string()
-        .contains("between 3 and 16"));
+        .contains("between 3 and 64"));
     assert!(render_reverse(b"not an image", &settings(8))
         .unwrap_err()
         .to_string()

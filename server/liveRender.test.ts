@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createEphemeralReverseHandler } from "./liveRender";
+import { createEphemeralReverseHandler, normalizeLiveSheetFacts } from "./liveRender";
 import { LiveRenderValidationError } from "./liveRenderer";
 
 function responseDouble() {
@@ -138,5 +138,23 @@ describe("ephemeral reverse HTTP handler", () => {
     expect(called).toBe(0);
     expect(response.code).toBe(500);
     expect(response.body).toEqual({ error: "Live reverse rendering was cancelled." });
+  });
+
+  it("accepts the supported maximum sheet palette_k of 64", () => {
+    expect(normalizeLiveSheetFacts({
+      palette_k: 64,
+      evidence: { exif: null, iptc: null, xmp: null, gps: null, c2pa: null },
+      included: [],
+      withheld: [],
+    })?.palette_k).toBe(64);
+  });
+
+  it.each([2, 2.5, 65])("rejects invalid sheet palette_k=%s", (paletteK) => {
+    expect(() => normalizeLiveSheetFacts({
+      palette_k: paletteK,
+      evidence: { exif: null, iptc: null, xmp: null, gps: null, c2pa: null },
+      included: [],
+      withheld: [],
+    })).toThrow("between 3 and 64");
   });
 });

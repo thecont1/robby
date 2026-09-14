@@ -31,8 +31,8 @@ describe("live image render configuration", () => {
     expect(() => normalizeLiveRenderableIr({ ...liveIr(), ...legacy })).toThrow();
   });
 
-  it.each([2, 2.5, 17])("rejects invalid palette k=%s", (k) => {
-    expect(() => normalizeLiveRenderableIr(liveIr(k))).toThrow("between 3 and 16");
+  it.each([2, 2.5, 65])("rejects invalid palette k=%s", (k) => {
+    expect(() => normalizeLiveRenderableIr(liveIr(k))).toThrow("between 3 and 64");
   });
 
   it("rejects extra undeclared fields", () => {

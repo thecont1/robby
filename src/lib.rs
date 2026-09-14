@@ -244,7 +244,7 @@ output(obverse: "front.png", reverse: "transient", manifest: "transient")
     fn rejects_invalid_palette_count() {
         let source = VALID.replace("palette(k: 8)", "palette(k: -3)");
         let error = compile_source(&source).unwrap_err();
-        assert!(error.message.contains("integer between 3 and 16"));
+        assert!(error.message.contains("integer between 3 and 64"));
     }
 
     #[test]

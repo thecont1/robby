@@ -28,7 +28,7 @@ const MUTED: Rgb<u8> = Rgb([88, 82, 74]);
 const RULE: Rgb<u8> = Rgb([216, 206, 188]);
 const OUTPUT_WIDTH: u32 = 1024;
 const OUTPUT_HEIGHT: u32 = 768;
-const MAX_MEDIAN_CUT_ITERATIONS: usize = 16;
+const MAX_MEDIAN_CUT_ITERATIONS: usize = 64;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
 #[serde(rename_all = "snake_case")]
@@ -522,9 +522,9 @@ pub fn render_reverse(
     source_bytes: &[u8],
     settings: &RenderSettings,
 ) -> Result<RenderResult, RenderError> {
-    if !(3..=16).contains(&settings.k) {
+    if !(3..=64).contains(&settings.k) {
         return Err(RenderError(
-            "palette k must be an integer between 3 and 16".into(),
+            "palette k must be an integer between 3 and 64".into(),
         ));
     }
     if settings

@@ -231,8 +231,8 @@ fn validate_palette_k(values: &HashMap<String, &Value>, command: &Command) -> Co
         let number = value
             .as_number()
             .ok_or_else(|| type_error(command, "k", value, "a number"))?;
-        if !(3.0..=16.0).contains(&number) || number.fract() != 0.0 {
-            return Err(error(command, "`k` must be an integer between 3 and 16."));
+        if !(3.0..=64.0).contains(&number) || number.fract() != 0.0 {
+            return Err(error(command, "`k` must be an integer between 3 and 64."));
         }
     }
     Ok(())

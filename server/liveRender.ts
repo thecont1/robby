@@ -131,8 +131,8 @@ export function normalizeLiveSheetFacts(value: unknown): LiveSheetFacts | undefi
   const paletteK = value.palette_k === undefined || value.palette_k === null
     ? null
     : Number(value.palette_k);
-  if (paletteK !== null && (!Number.isInteger(paletteK) || paletteK < 3 || paletteK > 16)) {
-    throw new LiveRenderValidationError("Sheet palette_k must be an integer between 3 and 16.");
+  if (paletteK !== null && (!Number.isInteger(paletteK) || paletteK < 3 || paletteK > 64)) {
+    throw new LiveRenderValidationError("Sheet palette_k must be an integer between 3 and 64.");
   }
 
   return {

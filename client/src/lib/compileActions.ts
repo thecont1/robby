@@ -11,6 +11,42 @@ export type CompileActions = {
   showCancel: boolean;
 };
 
+/**
+ * A newer compile request must reach the controller even while an older
+ * reverse is still rendering. The controller cancels the inflight run; Home
+ * must not drop the later request with `isRenderingReverse`.
+ */
+export function shouldStartCompileRequest(input: {
+  isFlipping: boolean;
+  isRendering: boolean;
+  supersedeInflight: boolean;
+}): boolean {
+  if (input.isFlipping) return false;
+  return !input.isRendering || input.supersedeInflight;
+}
+
+/**
+ * A palette edit is admissible on value alone. It must NOT be refused because a
+ * reverse is still rendering: the slider is a controlled input, so dropping the
+ * edit snaps the thumb back and strands the authored recipe at the old k while
+ * the compile station reports a different one. A later compile supersedes the
+ * inflight run (see `shouldStartCompileRequest`), so the edit is safe to accept.
+ */
+export function shouldAcceptPaletteEdit(value: number, min = 3, max = 64): boolean {
+  return Number.isInteger(value) && value >= min && value <= max;
+}
+
+/**
+ * A delayed palette recompile is current only while its captured specimen and
+ * authored source still match the live authority.
+ */
+export function isPaletteReprocessCurrent(
+  scheduled: { specimenId: string; source: string },
+  current: { specimenId: string; source: string },
+): boolean {
+  return scheduled.specimenId === current.specimenId && scheduled.source === current.source;
+}
+
 export function compileActions(input: {
   run: CompileRun | null;
   recipeChanged: boolean;

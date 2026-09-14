@@ -629,6 +629,21 @@ describe("CompileController", () => {
     expect(second.result?.identity.objectBinding).not.toBe(first.result?.identity.objectBinding);
     expect(environment.calls.filter(call => call === "renderReverse")).toHaveLength(2);
   });
+
+  it("continues compilation when optional C2PA inspection throws", async () => {
+    const environment = deps({
+      inspectC2pa: async () => {
+        environment.calls.push("inspectC2pa");
+        throw new Error("type is unsupported");
+      },
+    });
+    const run = await createCompileController(environment).compile(request());
+    expect(run.status, run.diagnostic).toBe("completed");
+    expect(run.result?.c2paEvidence.availability).toBe("unavailable");
+    expect(run.result?.c2paEvidence.note).toContain("type is unsupported");
+    expect(environment.calls).toContain("measureSourceBytes");
+    expect(environment.calls).toContain("renderReverse");
+  });
 });
 
 function COMPILE_STAGES_PRESENT(events: CompileEvent[]) {

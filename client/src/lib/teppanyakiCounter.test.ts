@@ -65,4 +65,26 @@ describe("Teppanyaki Counter derivation", () => {
       colourSwatches: ["#112233", "#445566", "#778899"],
     })).toBe("PALETTE median_cut · 3");
   });
+
+  it("preserves duplicate swatches rather than collapsing them", () => {
+    // Median cut averages each colour box independently, so two boxes can round
+    // to the same hex. The counter must report k entries, and the component's
+    // React keys must stay unique (see TeppanyakiCounter's `${index}-${swatch}`).
+    const swatches = ["#0B151F", "#0B151F", "#445566", "#0B151F"];
+    const views = stationViews([{ ...event("split", 1), payload: { method: "median_cut", colourSwatches: swatches } }]);
+    const split = views.find(view => view.stage === "split");
+
+    expect(split?.swatches).toEqual(swatches);
+    expect(split?.swatches).toHaveLength(4);
+    expect(stationSummary("split", { method: "median_cut", colourSwatches: swatches })).toBe("PALETTE median_cut · 4");
+
+    const keys = (split?.swatches ?? []).map((swatch, index) => `${index}-${swatch}`);
+    expect(new Set(keys).size).toBe(keys.length);
+  });
+
+  it("keeps a full 64-colour palette intact", () => {
+    const swatches = Array.from({ length: 64 }, (_, index) => `#${index.toString(16).padStart(6, "0")}`);
+    const views = stationViews([{ ...event("split", 1), payload: { method: "median_cut", colourSwatches: swatches } }]);
+    expect(views.find(view => view.stage === "split")?.swatches).toHaveLength(64);
+  });
 });

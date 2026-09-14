@@ -9,7 +9,7 @@ import SourceEditor from "@/components/SourceEditor";
 import TeppanyakiCounter from "@/components/TeppanyakiCounter";
 import { ProvenanceModule, type RuntimeRecord, type TraceMode } from "@/components/Build06Panels";
 import { loadCompileHistory, persistCompileSnapshot, type CompileSnapshot } from "@/lib/compileHistory";
-import { compileActions } from "@/lib/compileActions";
+import { compileActions, isPaletteReprocessCurrent, shouldAcceptPaletteEdit, shouldStartCompileRequest } from "@/lib/compileActions";
 import { browserCompileController } from "@/lib/compileBrowser";
 import type { CompileRun } from "@/lib/compileEvents";
 import { verifiedCompilerStatus } from "@/lib/compilerStatus";
@@ -128,8 +128,18 @@ export default function Home() {
   const compileHistory = useRef<Record<string, CompileSnapshot[]>>({});
   const selectedIdRef = useRef("");
   const selectedRecipeRef = useRef({ specimenId: "", source: "" });
+  const paletteReprocessTimer = useRef<number | null>(null);
+  const compileGeneration = useRef(0);
+  const mountedRef = useRef(true);
   const discardReverseAfterFlip = useRef(false);
   const { theme, toggleTheme } = useTheme();
+
+  const clearPaletteReprocessTimer = () => {
+    if (paletteReprocessTimer.current !== null) {
+      window.clearTimeout(paletteReprocessTimer.current);
+      paletteReprocessTimer.current = null;
+    }
+  };
 
   // Clamp selectedIndex when gallery changes (e.g. images added/removed)
   useEffect(() => {
@@ -220,7 +230,14 @@ export default function Home() {
 
   // Plan 9B: on unmount, cancel any running compile and revoke every session
   // Blob URL so nothing leaks across navigation.
-  useEffect(() => () => browserCompileController.dispose(), []);
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      clearPaletteReprocessTimer();
+      browserCompileController.dispose();
+    };
+  }, []);
 
   useEffect(() => {
     if (gallery.length === 0) return;
@@ -242,6 +259,7 @@ export default function Home() {
   }, [gallery.length > 0]);
 
   const commitSelection = (nextIndex: number) => {
+    clearPaletteReprocessTimer();
     discardSessionReverse();
     // Reject outgoing notifications immediately. The committed render's
     // layout effect installs the real incoming id/source; avoiding an indexed
@@ -275,9 +293,11 @@ export default function Home() {
   };
 
   const compileOrio = async (force = false) => {
-    if (isFlipping || isRenderingReverse) return;
+    clearPaletteReprocessTimer();
+    if (!shouldStartCompileRequest({ isFlipping, isRendering: isRenderingReverse, supersedeInflight: true })) return;
     const compiledSpecimenId = selected.id;
     const source = authoredRecipeForCompile(activeRecipe);
+    const generation = ++compileGeneration.current;
     setFailureMessage(null);
     setIsRenderingReverse(true);
     setProjectionState("compiling");
@@ -287,6 +307,7 @@ export default function Home() {
       sourceUrl: selected.obverse,
       recipeSource: source,
     }, { force });
+    if (generation !== compileGeneration.current) return;
     const currentAuthority = selectedRecipeRef.current;
     if (!isCompiledSourceCurrent(compiledSpecimenId, source, currentAuthority.specimenId, currentAuthority.source)) return;
     setCompileRun(run);
@@ -465,6 +486,7 @@ export default function Home() {
   };
 
   const clearLiveProjection = () => {
+    clearPaletteReprocessTimer();
     setCompiledEdit(null);
     setProjectionState("compiling");
     setFailureMessage(null);
@@ -477,6 +499,7 @@ export default function Home() {
   };
 
   const markDraftProjectionUnavailable = (draft: string) => {
+    clearPaletteReprocessTimer();
     draftStore.current.set(selected.id, draft);
     selectedRecipeRef.current = { specimenId: selected.id, source: draft };
     // No fallback: keep the last valid structured value while the source is
@@ -489,6 +512,7 @@ export default function Home() {
   };
 
   const resetLiveProjection = () => {
+    clearPaletteReprocessTimer();
     draftStore.current.clear(selected.id);
     selectedRecipeRef.current = { specimenId: selected.id, source: selected.script };
     setPaletteKFromDraft(selected.script, 8);
@@ -496,6 +520,36 @@ export default function Home() {
     setCompiledEdit(null);
     setProjectionState("gallery");
     setFailureMessage(null);
+  };
+
+  // The counter slider rewrites the authored recipe and recompiles after a
+  // short pause; direct recipe edits remain explicit via Compile Orio.
+  // The edit is admitted on value alone: refusing it while a reverse renders
+  // would snap this controlled slider back and leave the authored recipe on the
+  // old k. The delayed compile supersedes any inflight run.
+  const editPaletteK = (value: number) => {
+    if (!shouldAcceptPaletteEdit(value)) return;
+    try {
+      const nextRecipe = editPaletteInRecipe(activeRecipe, value);
+      draftStore.current.set(selected.id, nextRecipe);
+      selectedRecipeRef.current = { specimenId: selected.id, source: nextRecipe };
+      bumpDraftRevision();
+      setPaletteK(value);
+      setCompiledEdit(null);
+      setProjectionState("draft");
+      setFailureMessage(null);
+      clearPaletteReprocessTimer();
+      const scheduledAuthority = { specimenId: selected.id, source: nextRecipe };
+      paletteReprocessTimer.current = window.setTimeout(() => {
+        paletteReprocessTimer.current = null;
+        if (!mountedRef.current) return;
+        const currentAuthority = selectedRecipeRef.current;
+        if (!isPaletteReprocessCurrent(scheduledAuthority, currentAuthority)) return;
+        void compileOrio(true);
+      }, 320);
+    } catch (error) {
+      setFailureMessage(error instanceof Error ? error.message : String(error));
+    }
   };
 
   const focusReverseStep = () => {
@@ -668,34 +722,6 @@ export default function Home() {
                 </div>
               </div>
               <div className="caption-turn">
-                <label className="palette-k-control">
-                  <span>k</span>
-                  <input
-                    aria-label="Palette clusters k"
-                    type="number"
-                    min={3}
-                    max={16}
-                    step={1}
-                    value={paletteK}
-                    disabled={isFlipping || isRenderingReverse}
-                    onChange={(event) => {
-                      const value = Number(event.target.value);
-                      if (!Number.isInteger(value) || value < 3 || value > 16) return;
-                      try {
-                        const nextRecipe = editPaletteInRecipe(activeRecipe, value);
-                        draftStore.current.set(selected.id, nextRecipe);
-                        selectedRecipeRef.current = { specimenId: selected.id, source: nextRecipe };
-                        bumpDraftRevision();
-                        setPaletteK(value);
-                        setCompiledEdit(null);
-                        setProjectionState("draft");
-                        setFailureMessage(null);
-                      } catch (error) {
-                        setFailureMessage(error instanceof Error ? error.message : String(error));
-                      }
-                    }}
-                  />
-                </label>
                 <button type="button" className="compile-orio-control" onClick={() => void compileOrio(actions.compileForce)} disabled={!actions.compileEnabled || isFlipping} aria-label={`${actions.compileLabel} for ${selected.title}`}>
                   <CircleDotDashed size={16} /><span>{actions.compileLabel}</span>
                 </button>
@@ -736,14 +762,19 @@ export default function Home() {
 
         </section>
 
-        <div inert={imageOnly}>
-          <TeppanyakiCounter run={compileRun?.galleryItemId === selected.id ? compileRun : null} recipeChanged={recipeChanged} />
+        <div className="counter-column" inert={imageOnly}>
+          <TeppanyakiCounter
+            run={compileRun?.galleryItemId === selected.id ? compileRun : null}
+            recipeChanged={recipeChanged}
+            paletteK={paletteK}
+            onPaletteKChange={editPaletteK}
+          />
         </div>
         <div className="source-workbench-wrap" inert={imageOnly}>
           <SourceEditor
             specimenId={selected.id}
             title={selected.title}
-            source={selectedDraft}
+            source={activeRecipe}
             onCompiled={applyCompiledSource}
             onCompileStart={clearLiveProjection}
             onCompileError={markProjectionUnavailable}

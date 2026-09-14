@@ -16,8 +16,8 @@ describe("editable palette k", () => {
     expect(changed).toContain('reverse: "transient"');
   });
 
-  it.each([2, 17, 7.5])("rejects an invalid k value: %s", value => {
-    expect(() => replacePaletteK(source, value)).toThrow("integer between 3 and 16");
+  it.each([2, 65, 7.5])("rejects an invalid k value: %s", value => {
+    expect(() => replacePaletteK(source, value)).toThrow("integer between 3 and 64");
   });
 
   it("injects the optional palette declaration after base when absent", () => {
