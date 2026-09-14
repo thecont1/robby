@@ -46,14 +46,17 @@ describe("CDP audit scripts fail closed", () => {
     file => {
       const source = read(`audits/${file}`);
       expect(source).toMatch(/gallery|stage/i);
-      expect(source).toMatch(/throw new Error\([^)]*(gallery|stage)/i);
+      // Pin reachability, not mere presence: a bare /throw new Error/ match stays
+      // green if the guard is neutered to `if(false)`, which is the exact
+      // fall-through this test exists to prevent.
+      expect(source).toMatch(/if\s*\(\s*!\w+\s*\)\s*throw new Error\([^)]*(gallery|stage)/i);
     },
   );
 
   it("fails the happy-path capture when compilation never reaches a terminal state", () => {
     const source = read("audits/cdp-happy-path.mjs");
     expect(source).toMatch(/compileCompleted|terminalState/);
-    expect(source).toMatch(/throw new Error\([^)]*compil/i);
+    expect(source).toMatch(/if\s*\(\s*!\w+\s*\)\s*throw new Error\([^)]*compil/i);
   });
 
   it("captures disclosure collapse before opening details", () => {
