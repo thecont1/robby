@@ -2,3 +2,13 @@
 # --output=html are combined. Only the .report.* pair is the real artifact.
 plan10-lighthouse-*.json
 !plan10-lighthouse-*.report.json
+
+# Audit runs against the dev server (:3001) are not release evidence: dev-mode
+# Lighthouse perf is meaningless, and the early dom/interaction runs predate the
+# label-helper fix, so they report a false "unlabelled control". Only the
+# *-prod.json captures (production bundle on :3002) are archived.
+plan10-dom-audit.json
+plan10-interaction-audit.json
+
+# Transient stderr captures from audit scripts.
+*.err
