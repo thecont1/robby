@@ -26,6 +26,17 @@ export function shouldStartCompileRequest(input: {
 }
 
 /**
+ * A palette edit is admissible on value alone. It must NOT be refused because a
+ * reverse is still rendering: the slider is a controlled input, so dropping the
+ * edit snaps the thumb back and strands the authored recipe at the old k while
+ * the compile station reports a different one. A later compile supersedes the
+ * inflight run (see `shouldStartCompileRequest`), so the edit is safe to accept.
+ */
+export function shouldAcceptPaletteEdit(value: number, min = 3, max = 64): boolean {
+  return Number.isInteger(value) && value >= min && value <= max;
+}
+
+/**
  * A delayed palette recompile is current only while its captured specimen and
  * authored source still match the live authority.
  */

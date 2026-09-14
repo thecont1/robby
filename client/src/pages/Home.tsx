@@ -9,7 +9,7 @@ import SourceEditor from "@/components/SourceEditor";
 import TeppanyakiCounter from "@/components/TeppanyakiCounter";
 import { ProvenanceModule, type RuntimeRecord, type TraceMode } from "@/components/Build06Panels";
 import { loadCompileHistory, persistCompileSnapshot, type CompileSnapshot } from "@/lib/compileHistory";
-import { compileActions, isPaletteReprocessCurrent, shouldStartCompileRequest } from "@/lib/compileActions";
+import { compileActions, isPaletteReprocessCurrent, shouldAcceptPaletteEdit, shouldStartCompileRequest } from "@/lib/compileActions";
 import { browserCompileController } from "@/lib/compileBrowser";
 import type { CompileRun } from "@/lib/compileEvents";
 import { verifiedCompilerStatus } from "@/lib/compilerStatus";
@@ -524,8 +524,11 @@ export default function Home() {
 
   // The counter slider rewrites the authored recipe and recompiles after a
   // short pause; direct recipe edits remain explicit via Compile Orio.
+  // The edit is admitted on value alone: refusing it while a reverse renders
+  // would snap this controlled slider back and leave the authored recipe on the
+  // old k. The delayed compile supersedes any inflight run.
   const editPaletteK = (value: number) => {
-    if (!Number.isInteger(value) || value < 3 || value > 64 || isRenderingReverse) return;
+    if (!shouldAcceptPaletteEdit(value)) return;
     try {
       const nextRecipe = editPaletteInRecipe(activeRecipe, value);
       draftStore.current.set(selected.id, nextRecipe);

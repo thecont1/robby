@@ -61,6 +61,16 @@ describe("palette control and authored recipe stay synchronised", () => {
     expect(compileBody).toContain("if (generation !== compileGeneration.current) return;");
   });
 
+  it("accepts a palette slider edit while a reverse is still rendering", () => {
+    // Regression: `editPaletteK` refused the edit on `isRenderingReverse`, but
+    // the slider is a controlled input, so the thumb snapped back and the
+    // authored recipe stayed on the previous k while the station showed another.
+    const editBody = HOME_SOURCE.match(/const editPaletteK = \(value: number\) => \{([\s\S]*?)\n  \};/)?.[1] ?? "";
+    expect(editBody).not.toBe("");
+    expect(editBody).toContain("shouldAcceptPaletteEdit(value)");
+    expect(editBody).not.toContain("isRenderingReverse");
+  });
+
   it("re-seeds outside source changes before the browser paints", () => {
     expect(SOURCE_EDITOR_SOURCE).toContain("useLayoutEffect(() => {");
     expect(SOURCE_EDITOR_SOURCE).toContain("setDraft(source);");

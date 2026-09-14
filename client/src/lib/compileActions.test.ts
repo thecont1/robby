@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { CompileRun } from "./compileEvents";
-import { compileActions, isPaletteReprocessCurrent, shouldStartCompileRequest } from "./compileActions";
+import { compileActions, isPaletteReprocessCurrent, shouldAcceptPaletteEdit, shouldStartCompileRequest } from "./compileActions";
 
 function run(status: CompileRun["status"], withResult = status === "completed"): CompileRun {
   return {
@@ -97,5 +97,25 @@ describe("compileActions", () => {
     expect(isPaletteReprocessCurrent(scheduled, scheduled)).toBe(true);
     expect(isPaletteReprocessCurrent(scheduled, { ...scheduled, source: 'palette(k: 17)' })).toBe(false);
     expect(isPaletteReprocessCurrent(scheduled, { ...scheduled, specimenId: "other" })).toBe(false);
+  });
+
+  it("accepts a palette edit even while a reverse is still rendering", () => {
+    // Regression: the slider is controlled, so refusing the edit mid-compile
+    // snapped the thumb back and left the authored recipe on the old k.
+    for (const value of [3, 8, 12, 63, 64]) {
+      expect(shouldAcceptPaletteEdit(value)).toBe(true);
+    }
+  });
+
+  it("rejects palette values outside the 3..64 contract", () => {
+    for (const value of [2, 0, -3, 65, 100]) {
+      expect(shouldAcceptPaletteEdit(value)).toBe(false);
+    }
+  });
+
+  it("rejects non-integer and non-finite palette values", () => {
+    for (const value of [7.5, Number.NaN, Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY]) {
+      expect(shouldAcceptPaletteEdit(value)).toBe(false);
+    }
   });
 });

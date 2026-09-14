@@ -53,8 +53,11 @@ export default function TeppanyakiCounter({
       </div>
       {swatches.length > 0 && (
         <div className="palette-swatch-grid" role="img" aria-label={`${swatches.length} palette swatches in rows of 8`}>
-          {swatches.map(swatch => (
-            <i key={swatch} style={{ background: swatch }} title={swatch} />
+          {swatches.map((swatch, index) => (
+            // Median cut averages each colour box independently, so two boxes
+            // can round to the same hex. The index disambiguates those repeats;
+            // a bare hex key would collide and drop swatches from the grid.
+            <i key={`${index}-${swatch}`} style={{ background: swatch }} title={swatch} />
           ))}
         </div>
       )}
