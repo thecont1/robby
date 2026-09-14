@@ -118,13 +118,27 @@ export function CompilationTraceModes({ trace, activeMode, onModeChange, project
   </>;
 }
 
+/**
+ * Plan 10 §7.1 — pre-run C2PA correction.
+ *
+ * Before an explicit compile has bound a run to real inspected evidence, the
+ * panel must NOT claim a credential outcome. "checking" is the pre-run state
+ * (demoData maps both absent- and candidate-seeded gallery items onto it at
+ * mount), and rendering "C2PA CHECKING" — or worse "C2PA ABSENT" — asserts a
+ * finding that no inspection has produced. C2PA is only ever read from the
+ * untouched original source bytes during Read, so pre-run we render the fixed
+ * not-inspected copy and suppress the Content Credentials badge entirely.
+ *
+ * A genuine post-run "absent" is a real inspected outcome and is left intact.
+ */
 export function CredentialEvidence({ credential }: { credential: CredentialSignature }) {
   const status = credential.status?.trim().toLowerCase() || "unknown";
+  const notInspected = status === "checking";
   const showBadge = status === "present" || status === "candidate";
   return <dl aria-live="polite">
-    <div><dt>CREDENTIAL STATUS</dt><dd><strong>C2PA {status.toUpperCase()}</strong>{showBadge && <img src="/icons/content_credentials_logo.svg" alt="Content Credentials" className="c2pa-badge" />}</dd></div>
-    <div><dt>VERIFICATION</dt><dd>{credential.verificationMethod.trim() || "Not reported"}</dd></div>
-    <div><dt>VALIDATION NOTE</dt><dd>{credential.note.trim() || "No additional validation detail was returned."}</dd></div>
+    <div><dt>CREDENTIAL STATUS</dt><dd><strong>{notInspected ? "NOT INSPECTED" : `C2PA ${status.toUpperCase()}`}</strong>{showBadge && <img src="/icons/content_credentials_logo.svg" alt="Content Credentials" className="c2pa-badge" />}</dd></div>
+    <div><dt>VERIFICATION</dt><dd>{notInspected ? "Awaiting explicit compilation" : credential.verificationMethod.trim() || "Not reported"}</dd></div>
+    <div><dt>VALIDATION NOTE</dt><dd>{notInspected ? "C2PA is inspected only from untouched original source bytes." : credential.note.trim() || "No additional validation detail was returned."}</dd></div>
   </dl>;
 }
 
