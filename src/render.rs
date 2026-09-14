@@ -954,16 +954,60 @@ fn draw_weighted_swatches(
         // Adjacent palette entries may quantise to the same RGB. Preserve both
         // manifest facts and make their boundary countable instead of letting
         // equal colours merge into one apparent swatch.
+        //
+        // Choosing the first sheet colour that merely *differs* is not enough:
+        // a near-white duplicate ((241,241,241) occurs on real gallery images)
+        // would take RULE at 1.38:1, an invisible hairline that reproduces the
+        // "k=n, I count n-1" symptom. Pick the candidate with the greatest
+        // minimum WCAG contrast against BOTH neighbours, so the boundary is
+        // perceptible regardless of which colours surround it. Ties fall back to
+        // the fixed candidate order, keeping the choice deterministic.
         if index + 1 < palette.len() && span > 1 {
             let neighbours = [entry.rgb, palette[index + 1].rgb];
             let separator = [RULE, PAPER, INK, VERMILION]
                 .into_iter()
-                .find(|colour| !neighbours.contains(&colour.0))
+                .enumerate()
+                .filter(|(_, colour)| !neighbours.contains(&colour.0))
+                .max_by(|(left_rank, left), (right_rank, right)| {
+                    let score = |candidate: &Rgb<u8>| {
+                        neighbours
+                            .iter()
+                            .map(|neighbour| contrast_ratio(candidate.0, *neighbour))
+                            .fold(f64::INFINITY, f64::min)
+                    };
+                    score(left)
+                        .partial_cmp(&score(right))
+                        .unwrap_or(std::cmp::Ordering::Equal)
+                        // On an exact tie prefer the earlier candidate, so the
+                        // boundary colour stays stable across renders.
+                        .then_with(|| right_rank.cmp(left_rank))
+                })
+                .map(|(_, colour)| colour)
                 .expect("four sheet colours cannot all equal two neighbours");
             fill_rect(image, cursor - 1, y, 1, height, separator);
         }
     }
     debug_assert_eq!(cursor, x + width);
+}
+
+/// WCAG 2.x relative luminance. Used to choose swatch boundaries that are
+/// perceptible rather than merely different.
+fn relative_luminance(rgb: [u8; 3]) -> f64 {
+    let channel = |value: u8| {
+        let value = f64::from(value) / 255.0;
+        if value <= 0.03928 {
+            value / 12.92
+        } else {
+            ((value + 0.055) / 1.055).powf(2.4)
+        }
+    };
+    0.2126 * channel(rgb[0]) + 0.7152 * channel(rgb[1]) + 0.0722 * channel(rgb[2])
+}
+
+/// WCAG contrast ratio between two colours, in the range 1.0..=21.0.
+fn contrast_ratio(left: [u8; 3], right: [u8; 3]) -> f64 {
+    let (a, b) = (relative_luminance(left), relative_luminance(right));
+    (a.max(b) + 0.05) / (a.min(b) + 0.05)
 }
 
 fn draw_seeded_field(
@@ -1086,42 +1130,91 @@ impl SplitMix64 {
 
 #[cfg(test)]
 mod weighted_swatch_tests {
-    use super::{draw_weighted_swatches, PaletteEntry, PAPER};
+    use super::{contrast_ratio, draw_weighted_swatches, PaletteEntry, PAPER};
     use image::{ImageBuffer, Rgb};
 
+    fn entry(rgb: [u8; 3], weight: u64, rank: usize) -> PaletteEntry {
+        PaletteEntry {
+            hex: format!("#{:02X}{:02X}{:02X}", rgb[0], rgb[1], rgb[2]),
+            rgb,
+            weight,
+            rank,
+        }
+    }
+
+    /// A separator that merely *differs* from its neighbours is not necessarily
+    /// *visible*. Real gallery photographs produce adjacent palette entries that
+    /// quantise to the same near-white RGB (measured: 31 such boundaries across
+    /// 16 images x k=3..64, worst case (241,241,241) on MS201412-AddisAbaba0315
+    /// at k=34..45). Picking the first differing sheet colour selects RULE at
+    /// 1.38:1 against that duplicate — a near-invisible hairline, which reproduces
+    /// the original "k=n, I count n-1" symptom in a narrower case. The boundary
+    /// must be chosen for contrast, not for mere inequality.
+    #[test]
+    fn duplicate_adjacent_swatches_get_a_perceptible_boundary() {
+        // The exact worst case found on production images.
+        let duplicate = [241_u8, 241, 241];
+        let palette = vec![
+            entry(duplicate, 100, 0),
+            entry(duplicate, 100, 1),
+            entry([12, 40, 90], 100, 2),
+        ];
+        let mut image = ImageBuffer::from_pixel(90, 1, PAPER);
+
+        draw_weighted_swatches(&mut image, 0, 0, 90, 1, &palette);
+
+        let separator = image.get_pixel(29, 0).0;
+        assert_ne!(
+            separator, duplicate,
+            "the boundary between two identical swatches must not be the swatch colour"
+        );
+        let ratio = contrast_ratio(separator, duplicate);
+        assert!(
+            ratio >= 3.0,
+            "boundary {separator:?} against duplicate {duplicate:?} is only {ratio:.2}:1; \
+             a hairline needs real perceptual contrast to be countable"
+        );
+    }
+
+    /// The band must keep an 80/10/10 palette visibly weighted rather than
+    /// flattening toward uniform. Boundary pixels are asserted as a property
+    /// (a real contrast against both neighbours) rather than as a hardcoded
+    /// colour, so retuning the sheet palette cannot silently reintroduce an
+    /// invisible hairline — the earlier version of this test pinned RULE, which
+    /// sits at just 1.14:1 against saturated green.
     #[test]
     fn weighted_swatches_keep_dominant_colours_visibly_dominant() {
         let palette = vec![
-            PaletteEntry {
-                hex: "#FF0000".into(),
-                rgb: [255, 0, 0],
-                weight: 800,
-                rank: 0,
-            },
-            PaletteEntry {
-                hex: "#00FF00".into(),
-                rgb: [0, 255, 0],
-                weight: 100,
-                rank: 1,
-            },
-            PaletteEntry {
-                hex: "#0000FF".into(),
-                rgb: [0, 0, 255],
-                weight: 100,
-                rank: 2,
-            },
+            entry([255, 0, 0], 800, 0),
+            entry([0, 255, 0], 100, 1),
+            entry([0, 0, 255], 100, 2),
         ];
         let mut image = ImageBuffer::from_pixel(100, 1, PAPER);
 
         draw_weighted_swatches(&mut image, 0, 0, 100, 1, &palette);
 
+        // Proportions survive: the 80% colour still dominates the band.
         assert_eq!(image.get_pixel(0, 0), &Rgb([255, 0, 0]));
         assert_eq!(image.get_pixel(78, 0), &Rgb([255, 0, 0]));
-        assert_eq!(image.get_pixel(79, 0), &super::RULE);
         assert_eq!(image.get_pixel(80, 0), &Rgb([0, 255, 0]));
         assert_eq!(image.get_pixel(88, 0), &Rgb([0, 255, 0]));
-        assert_eq!(image.get_pixel(89, 0), &super::RULE);
         assert_eq!(image.get_pixel(90, 0), &Rgb([0, 0, 255]));
         assert_eq!(image.get_pixel(99, 0), &Rgb([0, 0, 255]));
+
+        // Boundaries are perceptible against the colours they separate.
+        for (boundary, left, right) in [
+            (79_u32, [255_u8, 0, 0], [0_u8, 255, 0]),
+            (89, [0, 255, 0], [0, 0, 255]),
+        ] {
+            let separator = image.get_pixel(boundary, 0).0;
+            assert_ne!(separator, left);
+            assert_ne!(separator, right);
+            let worst = contrast_ratio(separator, left).min(contrast_ratio(separator, right));
+            assert!(
+                worst >= 2.0,
+                "boundary at x={boundary} is {separator:?}, only {worst:.2}:1 against \
+                 its neighbours {left:?}/{right:?}"
+            );
+        }
     }
 }

@@ -334,6 +334,25 @@ fn rich_bmp(width: u32, height: u32) -> Vec<u8> {
     out
 }
 
+/// WCAG 2.x relative luminance, mirrored here because the renderer's copy is
+/// private. Kept local so the production API stays unchanged.
+fn relative_luminance(rgb: [u8; 3]) -> f64 {
+    let channel = |value: u8| {
+        let value = f64::from(value) / 255.0;
+        if value <= 0.03928 {
+            value / 12.92
+        } else {
+            ((value + 0.055) / 1.055).powf(2.4)
+        }
+    };
+    0.2126 * channel(rgb[0]) + 0.7152 * channel(rgb[1]) + 0.0722 * channel(rgb[2])
+}
+
+fn contrast_ratio(left: [u8; 3], right: [u8; 3]) -> f64 {
+    let (a, b) = (relative_luminance(left), relative_luminance(right));
+    (a.max(b) + 0.05) / (a.min(b) + 0.05)
+}
+
 fn sheet_with_k(k: u8) -> robby_compiler::render::RenderResult {
     let mut s = settings("observability_sheet");
     s.k = k;
@@ -384,6 +403,43 @@ fn observability_sheet_draws_every_declared_swatch_for_all_supported_k() {
             swatches, expected,
             "k={k}: swatch band must show every declared colour in palette order"
         );
+
+        // A boundary that merely *differs* from its neighbours is not
+        // necessarily *visible*. Median cut emits adjacent entries that
+        // quantise to the SAME near-white RGB on real photographs; there the
+        // hairline is the only thing separating two swatches, and picking the
+        // first differing sheet colour once selected a 1.38:1 line — which
+        // reproduces "k=n, I count n-1" even though the run-length check above
+        // passes. Where neighbours already differ from each other they
+        // self-separate, and no single colour can be high-contrast against
+        // both (for e.g. [24,22,20]/[142,186,153] the best colour in the whole
+        // RGB cube reaches only 2.88:1), so the strict bar applies to the
+        // duplicate case that actually needs it.
+        let mut cursor = 0_u32;
+        for (index, (colour, width)) in runs.iter().enumerate() {
+            cursor += width;
+            if *width != 1 || index == 0 || index + 1 >= runs.len() {
+                continue;
+            }
+            let (left, _) = runs[index - 1];
+            let (right, _) = runs[index + 1];
+            let worst = contrast_ratio(*colour, left).min(contrast_ratio(*colour, right));
+            if left == right {
+                assert!(
+                    worst >= 3.0,
+                    "k={k}: identical swatches {left:?} are separated only by \
+                     {colour:?} at {worst:.2}:1 — a viewer counts them as one"
+                );
+            } else {
+                // Distinct neighbours self-separate; the hairline must still
+                // not be one of them.
+                assert!(
+                    *colour != left && *colour != right,
+                    "k={k}: boundary at x={cursor} duplicates a neighbour"
+                );
+            }
+        }
+
         // This fixture has hundreds of distinct colours, so median cut must
         // satisfy every legal requested k rather than exercising the
         // low-colour-source exception.
