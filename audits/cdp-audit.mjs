@@ -59,24 +59,22 @@ const AUDIT = `(() => {
       || e.textContent
       || e.title
       || '';
-    return name.trim().replace(/\s+/g,' ').slice(0,70) || e.tagName;
+    return name.trim().replace(/\\s+/g,' ').slice(0,70) || e.tagName;
   };
 
-  // WCAG: computed bg lies for transparent elements — walk the parent chain.
-  const effBg = el => {
-    let c = el;
-    while (c) { const b = getComputedStyle(c).backgroundColor;
-      if (b && b !== 'rgba(0, 0, 0, 0)' && !/rgba\\(.*,\\s*0\\)$/.test(b)) return b;
-      c = c.parentElement; }
-    return getComputedStyle(document.body).backgroundColor;
-  };
-  const parse = s => { const m = s.match(/\\d+(\\.\\d+)?/g); return m ? m.slice(0,3).map(Number) : null; };
-  const lum = ([r,g,b]) => { const f = v => { v/=255; return v<=0.03928 ? v/12.92 : Math.pow((v+0.055)/1.055,2.4); };
+  const parse = s => { const m = (s||'').match(/[\\d.]+/g); if(!m) return null;
+    return { r:+m[0], g:+m[1], b:+m[2], a:m[3]===undefined?1:+m[3] }; };
+  const over = (front, back) => { const alpha=front.a+back.a*(1-front.a); if(alpha===0)return {r:0,g:0,b:0,a:0};
+    return {r:(front.r*front.a+back.r*back.a*(1-front.a))/alpha,g:(front.g*front.a+back.g*back.a*(1-front.a))/alpha,b:(front.b*front.a+back.b*back.a*(1-front.a))/alpha,a:alpha}; };
+  // Composite every translucent background from the canvas up to the element.
+  const effectiveBg = el => { const layers=[]; for(let c=el;c;c=c.parentElement){const p=parse(getComputedStyle(c).backgroundColor);if(p&&p.a>0)layers.push(p);}
+    let result={r:255,g:255,b:255,a:1}; while(layers.length)result=over(layers.pop(),result); return result; };
+  const lum = ({r,g,b}) => { const f = v => { v/=255; return v<=0.03928 ? v/12.92 : Math.pow((v+0.055)/1.055,2.4); };
     return 0.2126*f(r)+0.7152*f(g)+0.0722*f(b); };
-  const ratio = (fg,bg) => { const a=parse(fg), b=parse(bg); if(!a||!b) return null;
+  const ratio = (fg,bg) => { const front=parse(fg); if(!front||!bg) return null; const composited=front.a<1?over(front,bg):front;
     // Raw ratio: rounding before the threshold comparison can promote a failing
     // value (e.g. 2.9953 -> 3.00) into a pass. Round only when reporting.
-    const l1=Math.max(lum(a),lum(b)), l2=Math.min(lum(a),lum(b)); return (l1+0.05)/(l2+0.05); };
+    const l1=Math.max(lum(composited),lum(bg)), l2=Math.min(lum(composited),lum(bg)); return (l1+0.05)/(l2+0.05); };
 
   const interactive = [...document.querySelectorAll('button,a[href],input,textarea,select,summary,[role="button"],[role="tab"],[tabindex]:not([tabindex="-1"])')].filter(vis);
 
@@ -88,9 +86,10 @@ const AUDIT = `(() => {
     const size = parseFloat(cs.fontSize);
     const bold = parseInt(cs.fontWeight,10) >= 700;
     const large = size >= 24 || (size >= 18.66 && bold);
-    const r = ratio(cs.color, effBg(el));
+    const background = effectiveBg(el);
+    const r = ratio(cs.color, background);
     if (r !== null && r < (large ? 3 : 4.5)) {
-      contrast.push({ text: text.slice(0,45), size, ratio: +r.toFixed(2), need: large?3:4.5, color: cs.color, bg: effBg(el) });
+      contrast.push({ text: text.slice(0,45), size, ratio: +r.toFixed(2), need: large?3:4.5, color: cs.color, bg: [background.r,background.g,background.b].map(Math.round) });
     }
   }
 

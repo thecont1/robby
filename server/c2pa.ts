@@ -1,4 +1,4 @@
-import express, { type Express } from "express";
+import express, { type Express, type NextFunction, type Request, type Response } from "express";
 import { createHash } from "node:crypto";
 import { Reader } from "@contentauth/c2pa-node";
 import { basename } from "node:path";
@@ -195,12 +195,71 @@ export function createC2paByteInspectionHandler() {
   };
 }
 
+type C2paGuardOptions = {
+  maxConcurrent?: number;
+  maxPerWindow?: number;
+  windowMs?: number;
+  now?: () => number;
+};
+
+export function createC2paInspectionGuard({
+  maxConcurrent = 2,
+  maxPerWindow = 12,
+  windowMs = 60_000,
+  now = Date.now,
+}: C2paGuardOptions = {}) {
+  let active = 0;
+  const clients = new Map<string, { windowStartedAt: number; count: number }>();
+  let nextCleanupAt = 0;
+
+  return (req: Request, res: Response, next: NextFunction) => {
+    const time = now();
+    if (time >= nextCleanupAt) {
+      clients.forEach((rate, key) => {
+        if (time - rate.windowStartedAt >= windowMs) clients.delete(key);
+      });
+      nextCleanupAt = time + windowMs;
+    }
+    const client = req.ip || req.socket.remoteAddress || "unknown";
+    let rate = clients.get(client);
+    if (!rate || time - rate.windowStartedAt >= windowMs) {
+      rate = { windowStartedAt: time, count: 0 };
+      clients.set(client, rate);
+    }
+    rate.count += 1;
+    if (rate.count > maxPerWindow) {
+      const retryAfter = Math.max(1, Math.ceil((rate.windowStartedAt + windowMs - time) / 1000));
+      res.setHeader("Retry-After", String(retryAfter));
+      res.status(429).json({ error: "Too many C2PA inspection requests" });
+      return;
+    }
+    if (active >= maxConcurrent) {
+      res.setHeader("Retry-After", "1");
+      res.status(503).json({ error: "C2PA inspection capacity is busy" });
+      return;
+    }
+
+    active += 1;
+    let released = false;
+    const release = () => {
+      if (released) return;
+      released = true;
+      active = Math.max(0, active - 1);
+    };
+    res.once("finish", release);
+    res.once("close", release);
+    next();
+  };
+}
+
 /** Registers gallery-name GET inspection and byte-snapshot POST inspection. */
 export function registerC2paRoutes(app: Express) {
+  const inspectionGuard = createC2paInspectionGuard();
   app.get("/api/c2pa/:source", createC2paInspectionHandler());
   app.post(
     "/api/c2pa/:source",
-    express.raw({ type: "image/jpeg", limit: "64mb" }),
+    inspectionGuard,
+    express.raw({ type: "image/jpeg", limit: "8mb" }),
     createC2paByteInspectionHandler(),
   );
 }

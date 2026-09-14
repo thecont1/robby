@@ -51,7 +51,7 @@
       "nav:Mahesh Shantaram social links"
     ],
     "headings": [
-      "H1:Explainable image-objectcompiler in ru t.",
+      "H1:Explainable image-objectcompiler in rust.",
       "H2:Teppanyaki counter"
     ],
     "sectionOrder": [
@@ -82,7 +82,7 @@
         "disabled": false
       },
       {
-        "label": "Turn IMG_20200218_095220.jpg to it  inver e",
+        "label": "Turn IMG_20200218_095220.jpg to its inverse",
         "disabled": true
       }
     ],
@@ -92,21 +92,21 @@
     "tabOrder": [
       "Skip to gallery & compilation",
       "robby gallery",
-      " witch to light mode",
+      "switch to dark mode",
       "Enable image-only concentration mode",
-      "Open  ite menu",
+      "Open site menu",
       "Open IMG_20200218_095220.jpg in full-bleed artwork view",
       "Compile Orio for IMG_20200218_095220.jpg",
-      "Turn IMG_20200218_095220.jpg to it  inver e",
-      "Previou  image",
+      "Turn IMG_20200218_095220.jpg to its inverse",
+      "Previous image",
       "Next image",
       "Select IMG_20200218_095220.jpg",
-      "Select MS201306-Bipa haAa hi h0192.jpg",
-      "Select MS201412-Addi Ababa0315.jpg",
+      "Select MS201306-BipashaAashish0192.jpg",
+      "Select MS201412-AddisAbaba0315.jpg",
       "Select MS201508-Uganda0016.jpg",
       "Select MS201804-FIDHGuinea0264.jpg",
-      "Select MS201901-Murge hpalya0018.jpg",
-      "Select MS201904-Ka hmir0594.jpg",
+      "Select MS201901-Murgeshpalya0018.jpg",
+      "Select MS201904-Kashmir0594.jpg",
       "Select MS201907-Turkey0256.jpg",
       "Select MS201910-Ghana9243.jpg",
       "Select MS201912-Nagaland1300.jpg",
@@ -115,9 +115,9 @@
       "Select MS202309-HongKong0469-Enhanced-NR.jpg",
       "Select MS202401-Ayodhya0041.jpg",
       "Select MSC55186.jpg",
-      "robby  ource editor for IMG_20200218_095220.jpg",
+      "robby source editor for IMG_20200218_095220.jpg",
       "Validate recipe",
-      "Re et  pecimen  ource",
+      "Reset specimen source",
       "Palette k",
       "Object provenance"
     ],
@@ -130,13 +130,13 @@
         "tabIndex": 0
       },
       {
-        "label": "Runtime manife t",
+        "label": "Runtime manifest",
         "controls": "provenance-panel",
         "selected": "false",
         "tabIndex": -1
       },
       {
-        "label": "Rever e record",
+        "label": "Reverse record",
         "controls": "provenance-panel",
         "selected": "false",
         "tabIndex": -1
@@ -229,7 +229,7 @@
       "nav:Mahesh Shantaram social links"
     ],
     "headings": [
-      "H1:Explainable image-objectcompiler in ru t.",
+      "H1:Explainable image-objectcompiler in rust.",
       "H2:Teppanyaki counter"
     ],
     "sectionOrder": [
@@ -260,7 +260,7 @@
         "disabled": false
       },
       {
-        "label": "Turn IMG_20200218_095220.jpg to it  inver e",
+        "label": "Turn IMG_20200218_095220.jpg to its inverse",
         "disabled": true
       }
     ],
@@ -270,21 +270,21 @@
     "tabOrder": [
       "Skip to gallery & compilation",
       "robby gallery",
-      " witch to light mode",
+      "switch to dark mode",
       "Enable image-only concentration mode",
-      "Open  ite menu",
+      "Open site menu",
       "Open IMG_20200218_095220.jpg in full-bleed artwork view",
       "Compile Orio for IMG_20200218_095220.jpg",
-      "Turn IMG_20200218_095220.jpg to it  inver e",
-      "Previou  image",
+      "Turn IMG_20200218_095220.jpg to its inverse",
+      "Previous image",
       "Next image",
       "Select IMG_20200218_095220.jpg",
-      "Select MS201306-Bipa haAa hi h0192.jpg",
-      "Select MS201412-Addi Ababa0315.jpg",
+      "Select MS201306-BipashaAashish0192.jpg",
+      "Select MS201412-AddisAbaba0315.jpg",
       "Select MS201508-Uganda0016.jpg",
       "Select MS201804-FIDHGuinea0264.jpg",
-      "Select MS201901-Murge hpalya0018.jpg",
-      "Select MS201904-Ka hmir0594.jpg",
+      "Select MS201901-Murgeshpalya0018.jpg",
+      "Select MS201904-Kashmir0594.jpg",
       "Select MS201907-Turkey0256.jpg",
       "Select MS201910-Ghana9243.jpg",
       "Select MS201912-Nagaland1300.jpg",
@@ -293,9 +293,9 @@
       "Select MS202309-HongKong0469-Enhanced-NR.jpg",
       "Select MS202401-Ayodhya0041.jpg",
       "Select MSC55186.jpg",
-      "robby  ource editor for IMG_20200218_095220.jpg",
+      "robby source editor for IMG_20200218_095220.jpg",
       "Validate recipe",
-      "Re et  pecimen  ource",
+      "Reset specimen source",
       "Palette k",
       "Object provenance"
     ],
@@ -308,13 +308,13 @@
         "tabIndex": 0
       },
       {
-        "label": "Runtime manife t",
+        "label": "Runtime manifest",
         "controls": "provenance-panel",
         "selected": "false",
         "tabIndex": -1
       },
       {
-        "label": "Rever e record",
+        "label": "Reverse record",
         "controls": "provenance-panel",
         "selected": "false",
         "tabIndex": -1
@@ -407,7 +407,7 @@
       "nav:Mahesh Shantaram social links"
     ],
     "headings": [
-      "H1:Explainable image-objectcompiler in ru t.",
+      "H1:Explainable image-objectcompiler in rust.",
       "H2:Teppanyaki counter"
     ],
     "sectionOrder": [
@@ -438,7 +438,7 @@
         "disabled": false
       },
       {
-        "label": "Turn IMG_20200218_095220.jpg to it  inver e",
+        "label": "Turn IMG_20200218_095220.jpg to its inverse",
         "disabled": true
       }
     ],
@@ -448,21 +448,21 @@
     "tabOrder": [
       "Skip to gallery & compilation",
       "robby gallery",
-      " witch to light mode",
+      "switch to dark mode",
       "Enable image-only concentration mode",
-      "Open  ite menu",
+      "Open site menu",
       "Open IMG_20200218_095220.jpg in full-bleed artwork view",
       "Compile Orio for IMG_20200218_095220.jpg",
-      "Turn IMG_20200218_095220.jpg to it  inver e",
-      "Previou  image",
+      "Turn IMG_20200218_095220.jpg to its inverse",
+      "Previous image",
       "Next image",
       "Select IMG_20200218_095220.jpg",
-      "Select MS201306-Bipa haAa hi h0192.jpg",
-      "Select MS201412-Addi Ababa0315.jpg",
+      "Select MS201306-BipashaAashish0192.jpg",
+      "Select MS201412-AddisAbaba0315.jpg",
       "Select MS201508-Uganda0016.jpg",
       "Select MS201804-FIDHGuinea0264.jpg",
-      "Select MS201901-Murge hpalya0018.jpg",
-      "Select MS201904-Ka hmir0594.jpg",
+      "Select MS201901-Murgeshpalya0018.jpg",
+      "Select MS201904-Kashmir0594.jpg",
       "Select MS201907-Turkey0256.jpg",
       "Select MS201910-Ghana9243.jpg",
       "Select MS201912-Nagaland1300.jpg",
@@ -471,9 +471,9 @@
       "Select MS202309-HongKong0469-Enhanced-NR.jpg",
       "Select MS202401-Ayodhya0041.jpg",
       "Select MSC55186.jpg",
-      "robby  ource editor for IMG_20200218_095220.jpg",
+      "robby source editor for IMG_20200218_095220.jpg",
       "Validate recipe",
-      "Re et  pecimen  ource",
+      "Reset specimen source",
       "Palette k",
       "Object provenance"
     ],
@@ -486,13 +486,13 @@
         "tabIndex": 0
       },
       {
-        "label": "Runtime manife t",
+        "label": "Runtime manifest",
         "controls": "provenance-panel",
         "selected": "false",
         "tabIndex": -1
       },
       {
-        "label": "Rever e record",
+        "label": "Reverse record",
         "controls": "provenance-panel",
         "selected": "false",
         "tabIndex": -1

@@ -1,10 +1,11 @@
 import { createHash } from "node:crypto";
+import { EventEmitter } from "node:events";
 import { createServer, type Server } from "node:http";
 import { mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { credentialFromReaderSummary, inspectGalleryCredential, unavailableCredentialInspection } from "./c2pa";
+import { createC2paInspectionGuard, credentialFromReaderSummary, inspectGalleryCredential, unavailableCredentialInspection } from "./c2pa";
 import { createApp } from "./_core/index";
 
 const sha256 = "a".repeat(64);
@@ -116,6 +117,20 @@ describe("compile-run C2PA byte boundary", () => {
     expect(result.note.length).toBeGreaterThan(0);
   });
 
+  it("rejects JPEG bodies larger than 8 MiB before inspection", async () => {
+    const base = await testServer();
+    const bytes = Buffer.alloc(8 * 1024 * 1024 + 1, 0);
+    const response = await fetch(`${base}/api/c2pa/source.jpg`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "image/jpeg",
+        "X-Robby-Source-SHA256": createHash("sha256").update(bytes).digest("hex"),
+      },
+      body: bytes,
+    });
+    expect(response.status).toBe(413);
+  });
+
   it("rejects posted bytes whose digest differs from intake", async () => {
     const base = await testServer();
     const response = await fetch(`${base}/api/c2pa/source.jpg`, {
@@ -144,6 +159,72 @@ describe("compile-run C2PA byte boundary", () => {
       body: Buffer.from([0xff, 0xd8, 0xff, 0xd9]),
     });
     expect(response.status).toBe(400);
+  });
+});
+
+describe("C2PA byte inspection resource guard", () => {
+  function response() {
+    const res = new EventEmitter() as EventEmitter & {
+      status: (code: number) => typeof res;
+      json: (value: unknown) => typeof res;
+      setHeader: (name: string, value: string) => void;
+      statusCode?: number;
+      body?: unknown;
+      headers: Record<string, string>;
+    };
+    res.headers = {};
+    res.status = (code: number) => { res.statusCode = code; return res; };
+    res.json = (value: unknown) => { res.body = value; return res; };
+    res.setHeader = (name: string, value: string) => { res.headers[name] = value; };
+    return res;
+  }
+
+  it("limits concurrent inspections and releases a slot on finish", () => {
+    const guard = createC2paInspectionGuard({ maxConcurrent: 1, maxPerWindow: 10, windowMs: 60_000 });
+    const first = response();
+    const second = response();
+    const req = { ip: "127.0.0.1", socket: { remoteAddress: "127.0.0.1" } } as never;
+    let firstNext = false;
+    let secondNext = false;
+
+    guard(req, first as never, () => { firstNext = true; });
+    guard(req, second as never, () => { secondNext = true; });
+
+    expect(firstNext).toBe(true);
+    expect(secondNext).toBe(false);
+    expect(second.statusCode).toBe(503);
+    expect(second.headers["Retry-After"]).toBe("1");
+
+    first.emit("finish");
+    const third = response();
+    let thirdNext = false;
+    guard(req, third as never, () => { thirdNext = true; });
+    expect(thirdNext).toBe(true);
+  });
+
+  it("rate-limits each client within the configured window", () => {
+    let now = 1_000;
+    const guard = createC2paInspectionGuard({ maxConcurrent: 2, maxPerWindow: 2, windowMs: 60_000, now: () => now });
+    const req = { ip: "198.51.100.9", socket: { remoteAddress: "198.51.100.9" } } as never;
+
+    for (let i = 0; i < 2; i++) {
+      const res = response();
+      let next = false;
+      guard(req, res as never, () => { next = true; });
+      expect(next).toBe(true);
+      res.emit("finish");
+    }
+
+    const blocked = response();
+    guard(req, blocked as never, () => { throw new Error("rate-limited request reached parser"); });
+    expect(blocked.statusCode).toBe(429);
+    expect(blocked.headers["Retry-After"]).toBe("60");
+
+    now += 60_001;
+    const afterWindow = response();
+    let next = false;
+    guard(req, afterWindow as never, () => { next = true; });
+    expect(next).toBe(true);
   });
 });
 

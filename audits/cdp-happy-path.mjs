@@ -23,21 +23,23 @@ for(const source of specimens){
   const pre=await c.e(`({source:${JSON.stringify(source)},c2pa:[...document.querySelectorAll('.provenance-records strong')].map(e=>e.textContent),stations:document.querySelectorAll('.teppanyaki-station').length,action:document.querySelector('.caption-turn')?.dataset.primaryAction,buttons:[...document.querySelectorAll('.caption-turn button')].map(e=>({text:e.textContent.trim(),disabled:e.disabled}))})`);
   await c.e(`document.querySelector('.compile-orio-control').click()`);
   let state;
+  let terminalState=false;
   for(let i=0;i<600;i++){
-    state=await c.e(`({kicker:document.querySelector('.teppanyaki-counter .eyebrow')?.textContent||'',error:document.querySelector('.source-result.error')?.textContent||'',button:document.querySelector('.compile-orio-control')?.textContent||'',details:document.querySelector('.teppanyaki-station-details')!==null})`);
-    if(/resolved/i.test(state.kicker)||state.error||/Recompile/.test(state.button))break;
+    state=await c.e(`({kicker:document.querySelector('.teppanyaki-counter .eyebrow')?.textContent||'',error:document.querySelector('.source-result.error')?.textContent||'',button:document.querySelector('.compile-orio-control')?.textContent||''})`);
+    if(/resolved/i.test(state.kicker)||state.error||/Recompile/.test(state.button)){terminalState=true;break}
     await new Promise(r=>setTimeout(r,250));
   }
+  if(!terminalState)throw new Error('compilation did not reach a terminal state: '+source);
+  if(state.error)throw new Error('compilation failed for '+source+': '+state.error);
   const post=await c.e(`(() => {
     const details=document.querySelector('.teppanyaki-station-details');
+    const detailsInitiallyCollapsed=details? !details.open:null;
     if(details) details.open=true;
     const stations=[...document.querySelectorAll('.teppanyaki-station')].map(e=>({stage:e.dataset.stage,status:(e.className.match(/status-(\\w+)/)||[])[1],text:e.textContent.trim().replace(/\\s+/g,' ')}));
     const hashes=[...document.querySelectorAll('.teppanyaki-station')].flatMap(e=>(e.textContent.match(/[A-F0-9]{4}…[A-F0-9]{4}/g)||[]));
     const inverse=document.querySelector('.object-face-inverse img')?.src||document.querySelector('.object-face-inverse .object-image')?.getAttribute('src')||'';
-    return {kicker:document.querySelector('.teppanyaki-counter .eyebrow')?.textContent,body:document.querySelector('.teppanyaki-counter .counter-message')?.textContent,detailsPresent:!!details,detailsInitiallyCollapsed:details? !details.hasAttribute('open'):null,stations,hashes,primaryAction:document.querySelector('.caption-turn')?.dataset.primaryAction,buttons:[...document.querySelectorAll('.caption-turn button')].map(e=>({text:e.textContent.trim(),disabled:e.disabled})),c2pa:[...document.querySelectorAll('.provenance-records strong')].map(e=>e.textContent),inverseScheme:inverse.split(':')[0],turnEnabled:!document.querySelector('.flip-control')?.disabled};
+    return {kicker:document.querySelector('.teppanyaki-counter .eyebrow')?.textContent,body:document.querySelector('.teppanyaki-counter .counter-message')?.textContent,detailsPresent:!!details,detailsInitiallyCollapsed,stations,hashes,primaryAction:document.querySelector('.caption-turn')?.dataset.primaryAction,buttons:[...document.querySelectorAll('.caption-turn button')].map(e=>({text:e.textContent.trim(),disabled:e.disabled})),c2pa:[...document.querySelectorAll('.provenance-records strong')].map(e=>e.textContent),inverseScheme:inverse.split(':')[0],turnEnabled:!document.querySelector('.flip-control')?.disabled};
   })()`);
-  // We opened details only for inspection; derive default from the HTML attribute captured before opening.
-  post.detailsInitiallyCollapsed = state.details;
   results.push({source,pre,waitState:state,post});
 }
 console.log(JSON.stringify({specimens:results},null,2));await c.call('Page.close');

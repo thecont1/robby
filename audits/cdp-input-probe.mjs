@@ -9,7 +9,9 @@ class C{constructor(u){this.w=new WebSocket(u);this.n=0;this.p=new Map()}
  async e(x){const r=await this.call('Runtime.evaluate',{expression:x,awaitPromise:true,returnByValue:true});if(r.exceptionDetails)throw new Error(r.exceptionDetails.exception?.description||r.exceptionDetails.text);return r.result.value}}
 const t=await get('/json/new?'+encodeURIComponent(APP),'PUT'),c=new C(t.webSocketDebuggerUrl);
 await c.open();await c.call('Runtime.enable');await c.call('Page.enable');
-for(let i=0;i<80;i++){if(await c.e(`!!document.querySelector('.object-stage')`))break;await new Promise(r=>setTimeout(r,250))}
+let stageRendered=false;
+for(let i=0;i<80;i++){if(await c.e(`!!document.querySelector('.object-stage')`)){stageRendered=true;break}await new Promise(r=>setTimeout(r,250))}
+if(!stageRendered)throw new Error('gallery stage never rendered');
 console.log(JSON.stringify(await c.e(`(() => {
   const label = el => el.getAttribute('aria-label') || (el.labels&&el.labels[0]&&el.labels[0].textContent.trim()) || (el.getAttribute('aria-labelledby') && document.getElementById(el.getAttribute('aria-labelledby'))?.textContent.trim()) || el.title || '';
   return [...document.querySelectorAll('input')].map(el => {
