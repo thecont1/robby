@@ -346,8 +346,13 @@ fn draw_sheet(
         draw_text(&mut image, identity_x + label_width + 12, y, value, 2, INK);
     }
 
-    // Level 3 — declared recipe facts.
-    let recipe_y = identity_y + 5 * 26 + 16;
+    // Level 3 — declared recipe facts. Each level advances by its own line
+    // count (not count-1) plus a gutter; using `len - 1` left the first recipe
+    // line only 2px below the last identity line, so the blocks touched.
+    let identity_line_height = 26_u32;
+    let recipe_line_height = 20_u32;
+    let level_gap = 24_u32;
+    let recipe_y = identity_y + identity_lines.len() as u32 * identity_line_height + level_gap;
     let palette_k = facts
         .palette_k
         .map(|k| k.to_string())
@@ -379,7 +384,7 @@ fn draw_sheet(
         draw_text(
             &mut image,
             margin,
-            recipe_y + index as u32 * 20,
+            recipe_y + index as u32 * recipe_line_height,
             line,
             1,
             INK,
@@ -387,7 +392,7 @@ fn draw_sheet(
     }
 
     // Level 4 — evidence states (labels + state glyphs, not colour alone).
-    let evidence_y = recipe_y + recipe_lines.len() as u32 * 20 + 16;
+    let evidence_y = recipe_y + recipe_lines.len() as u32 * recipe_line_height + level_gap;
     let evidence = [
         ("EXIF", facts.evidence.exif.as_deref()),
         ("IPTC", facts.evidence.iptc.as_deref()),
@@ -396,7 +401,7 @@ fn draw_sheet(
         ("C2PA", facts.evidence.c2pa.as_deref()),
     ];
     for (index, (label, state)) in evidence.iter().enumerate() {
-        let y = evidence_y + index as u32 * 20;
+        let y = evidence_y + index as u32 * recipe_line_height;
         draw_text(&mut image, margin, y, label, 1, MUTED);
         let state_text = state.unwrap_or("UNAVAILABLE");
         let color = if state_text.contains("REDACTED") {
@@ -417,22 +422,26 @@ fn draw_sheet(
         }
     }
 
-    // Level 5 — disclosure audit.
-    let audit_y = evidence_y + evidence.len() as u32 * 20 + 20;
+    // Level 5 — disclosure audit. The INCLUDED/WITHHELD pairs are label+value
+    // couplets: the value hugs its own label, and a full gutter separates the
+    // two couplets so they do not read as one run-on block.
+    let audit_y = evidence_y + evidence.len() as u32 * recipe_line_height + level_gap;
+    let couplet_offset = 18_u32;
+    let withheld_y = audit_y + couplet_offset + level_gap;
     draw_text(&mut image, margin, audit_y, "INCLUDED", 1, MUTED);
     draw_text(
         &mut image,
         margin,
-        audit_y + 18,
+        audit_y + couplet_offset,
         &facts.included.join(" · ").to_uppercase(),
         1,
         INK,
     );
-    draw_text(&mut image, margin, audit_y + 44, "WITHHELD", 1, MUTED);
+    draw_text(&mut image, margin, withheld_y, "WITHHELD", 1, MUTED);
     draw_text(
         &mut image,
         margin,
-        audit_y + 62,
+        withheld_y + couplet_offset,
         &facts.withheld.join(" · ").to_uppercase(),
         1,
         MUTED,
@@ -887,13 +896,53 @@ fn draw_weighted_swatches(
         .map(|entry| entry.weight.max(1))
         .sum::<u64>()
         .max(1);
+    // Every declared colour must be visible: the sheet is an observability
+    // record, so a swatch the viewer cannot count is a missing fact. A fixed
+    // minimum span overruns the band once the palette is large (k*min > width),
+    // which silently clipped the tail entries. Derive the floor from the band
+    // instead, and give the remainder to the widest spans so the row still
+    // reads as weighted rather than uniform.
+    let count = palette.len() as u32;
+    let min_span = (width / count).max(1);
+    let mut spans: Vec<u32> = palette
+        .iter()
+        .map(|entry| {
+            (((entry.weight.max(1) * u64::from(width)) / weight_total) as u32).max(min_span)
+        })
+        .collect();
+
+    // Trim the overshoot from the largest spans first; never below min_span.
+    let mut total: u32 = spans.iter().sum();
+    while total > width {
+        let mut victim = 0usize;
+        for (index, span) in spans.iter().enumerate() {
+            if *span > spans[victim] {
+                victim = index;
+            }
+        }
+        if spans[victim] <= min_span {
+            break;
+        }
+        let take = (total - width).min(spans[victim] - min_span);
+        spans[victim] -= take;
+        total -= take;
+    }
+    // Distribute any shortfall so the band stays flush to its right edge.
+    if total < width {
+        let mut index = 0usize;
+        while total < width {
+            spans[index] += 1;
+            total += 1;
+            index = (index + 1) % spans.len();
+        }
+    }
+
     let mut cursor = x;
     for (index, entry) in palette.iter().enumerate() {
-        let remaining = palette.len() - index;
-        let span = if remaining == 1 {
-            x + width - cursor
+        let span = if index + 1 == palette.len() {
+            (x + width).saturating_sub(cursor)
         } else {
-            ((entry.weight.max(1) * u64::from(width)) / weight_total).max(8) as u32
+            spans[index]
         };
         fill_rect(image, cursor, y, span, height, Rgb(entry.rgb));
         cursor = (cursor + span).min(x + width);

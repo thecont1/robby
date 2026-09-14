@@ -282,3 +282,161 @@ fn absent_sheet_facts_do_not_change_quantised_obverse_settings_hash() {
         second.manifest.script_settings_sha256
     );
 }
+
+/// Decode a PNG into (width, height, RGB rows). Minimal inflate-free path is
+/// impossible, so lean on the `image` crate already in the dependency graph.
+fn decode_png(bytes: &[u8]) -> (u32, u32, Vec<[u8; 3]>) {
+    let img = image::load_from_memory(bytes)
+        .expect("decode png")
+        .to_rgb8();
+    let (w, h) = img.dimensions();
+    let pixels = img.pixels().map(|p| [p[0], p[1], p[2]]).collect();
+    (w, h, pixels)
+}
+
+/// A source with a heavily skewed colour distribution: one dominant colour
+/// plus many rare ones. This is what real photographs look like, and it is
+/// what triggers the swatch-clipping bug — uniform gradients give every
+/// entry a large span and hide it.
+fn rich_bmp(width: u32, height: u32) -> Vec<u8> {
+    let row_size = (width * 3).div_ceil(4) * 4;
+    let pixel_bytes = row_size * height;
+    let file_size = 54 + pixel_bytes;
+    let mut out = vec![0_u8; file_size as usize];
+    out[0..2].copy_from_slice(b"BM");
+    out[2..6].copy_from_slice(&file_size.to_le_bytes());
+    out[10..14].copy_from_slice(&54_u32.to_le_bytes());
+    out[14..18].copy_from_slice(&40_u32.to_le_bytes());
+    out[18..22].copy_from_slice(&width.to_le_bytes());
+    out[22..26].copy_from_slice(&height.to_le_bytes());
+    out[26..28].copy_from_slice(&1_u16.to_le_bytes());
+    out[28..30].copy_from_slice(&24_u16.to_le_bytes());
+    out[34..38].copy_from_slice(&pixel_bytes.to_le_bytes());
+    for y in 0..height {
+        for x in 0..width {
+            let offset = 54 + (y * row_size + x * 3) as usize;
+            // ~80% of the frame is one near-uniform dark tone; the remainder
+            // is a scatter of distinct rare colours.
+            let index = y * width + x;
+            let pixel = if !index.is_multiple_of(5) {
+                [20_u8, 22, 24]
+            } else {
+                let n = index / 5;
+                [
+                    ((n * 37) % 256) as u8,
+                    ((n * 91) % 256) as u8,
+                    ((n * 151) % 256) as u8,
+                ]
+            };
+            out[offset..offset + 3].copy_from_slice(&pixel);
+        }
+    }
+    out
+}
+
+fn sheet_with_k(k: u8) -> robby_compiler::render::RenderResult {
+    let mut s = settings("observability_sheet");
+    s.k = k;
+    render_reverse(&rich_bmp(96, 72), &s).expect("sheet")
+}
+
+/// Every declared palette colour must be countable in the swatch band. A
+/// fixed minimum span used to overrun the band for k >= 26, clipping the
+/// tail entries so the viewer saw fewer swatches than k.
+#[test]
+fn observability_sheet_draws_every_declared_swatch_for_all_supported_k() {
+    for k in [3_u8, 8, 16, 20, 25, 26, 32, 48, 64] {
+        let out = sheet_with_k(k);
+        let declared = out.manifest.palette.len();
+        let (w, _h, px) = decode_png(&out.png);
+
+        // Sample the middle scanline of the swatch band (y = 48 + 64 .. + 40).
+        let y = 48 + 64 + 20;
+        let mut runs: Vec<[u8; 3]> = Vec::new();
+        for x in 48..(w - 48) {
+            let c = px[(y * w + x) as usize];
+            if runs.last() != Some(&c) {
+                runs.push(c);
+            }
+        }
+
+        for (index, entry) in out.manifest.palette.iter().enumerate() {
+            assert!(
+                runs.contains(&entry.rgb),
+                "k={k}: palette entry {index} {:?} was never drawn in the swatch band",
+                entry.rgb
+            );
+        }
+        // Median cut cannot invent colours the source lacks, so the palette
+        // may legitimately be smaller than k. The invariant under test is that
+        // every colour it DOES declare is drawn — no silent clipping.
+        assert!(
+            declared > 0 && declared <= k as usize,
+            "k={k}: declared {declared} colours, expected 1..={k}"
+        );
+    }
+}
+
+/// The swatch band must stay flush to its margins: no gap on the right and
+/// no overrun past the drawable width.
+#[test]
+fn observability_sheet_swatch_band_fills_its_full_width() {
+    for k in [3_u8, 20, 64] {
+        let out = sheet_with_k(k);
+        let (w, _h, px) = decode_png(&out.png);
+        let y = 48 + 64 + 20;
+        let paper = [28_u8, 26, 25];
+        assert_ne!(
+            px[(y * w + (w - 49)) as usize],
+            paper,
+            "k={k}: right edge of the swatch band is unpainted"
+        );
+        assert_ne!(
+            px[(y * w + 48) as usize],
+            paper,
+            "k={k}: left edge of the swatch band is unpainted"
+        );
+    }
+}
+
+/// Editorial levels must not collide. Identity previously advanced by
+/// `len - 1` lines, leaving only 2px before the recipe block so the two
+/// ran together. Assert a real gutter between every pair of text bands.
+#[test]
+fn observability_sheet_separates_its_editorial_levels() {
+    let out = sheet_with_k(8);
+    let (w, h, px) = decode_png(&out.png);
+    let paper = [28_u8, 26, 25];
+
+    // Ink profile of the left text column, below the swatch band.
+    let mut bands: Vec<(u32, u32)> = Vec::new();
+    let mut start: Option<u32> = None;
+    for y in 160..(h - 60) {
+        let inked = (48..640).any(|x| px[(y * w + x) as usize] != paper);
+        match (inked, start) {
+            (true, None) => start = Some(y),
+            (false, Some(s)) => {
+                bands.push((s, y - 1));
+                start = None;
+            }
+            _ => {}
+        }
+    }
+    if let Some(s) = start {
+        bands.push((s, h - 61));
+    }
+
+    assert!(
+        bands.len() > 8,
+        "expected the sheet's text levels to render"
+    );
+    for pair in bands.windows(2) {
+        let gap = pair[1].0 - pair[0].1 - 1;
+        assert!(
+            gap >= 6,
+            "text bands {:?} and {:?} are only {gap}px apart — blocks are sticking together",
+            pair[0],
+            pair[1]
+        );
+    }
+}
