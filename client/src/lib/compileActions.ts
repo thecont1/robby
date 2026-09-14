@@ -1,6 +1,12 @@
 import type { CompileRun } from "@/lib/compileEvents";
 
 export type ObjectFace = "obverse" | "inverse";
+export type CompileActionName = "compile" | "turn";
+
+/** Plan 10 §13.2 visual action hierarchy. */
+export function compileActionOrder(input: { completed: boolean; recipeChanged: boolean }): [CompileActionName, CompileActionName] {
+  return input.completed && !input.recipeChanged ? ["turn", "compile"] : ["compile", "turn"];
+}
 
 export type CompileActions = {
   compileLabel: string;

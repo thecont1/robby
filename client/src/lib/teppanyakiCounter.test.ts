@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { CompileEvent, CompileRun } from "./compileEvents";
-import { counterCopy, deriveCounterState, stationSummary, stationViews } from "./teppanyakiCounter";
+import { counterCopy, counterPresentation, deriveCounterState, stationSummary, stationViews } from "./teppanyakiCounter";
 
 const event = (stage: CompileEvent["stage"], sequence: number, status: CompileEvent["status"] = "completed"): CompileEvent => ({
   compileRunId: "run-1",
@@ -16,6 +16,28 @@ describe("Teppanyaki Counter derivation", () => {
   it("stays dormant with no run", () => {
     expect(deriveCounterState(null, false)).toBe("dormant");
     expect(counterCopy("dormant").kicker.toLowerCase()).toContain("resting");
+  });
+
+  it("uses progressive disclosure instead of eight empty dormant stations", () => {
+    expect(counterPresentation("dormant")).toEqual({
+      showStations: false,
+      stationsExpandable: false,
+      defaultStationsExpanded: false,
+    });
+    expect(counterPresentation("primed").showStations).toBe(false);
+    expect(counterPresentation("running")).toEqual({
+      showStations: true,
+      stationsExpandable: false,
+      defaultStationsExpanded: true,
+    });
+    expect(counterPresentation("failed").defaultStationsExpanded).toBe(true);
+    for (const state of ["resolved", "stale"] as const) {
+      expect(counterPresentation(state)).toEqual({
+        showStations: true,
+        stationsExpandable: true,
+        defaultStationsExpanded: false,
+      });
+    }
   });
 
   it("marks a completed run stale after the recipe changes", () => {

@@ -1,0 +1,68 @@
+{
+  "skipFocused": {
+    "tag": "A",
+    "cls": "skip-link skip-link-focus",
+    "label": "Skip to gallery & compilation",
+    "href": "#gallery"
+  },
+  "skipDestination": {
+    "tag": "SECTION",
+    "cls": "gallery-workspace",
+    "label": "robby image-object gallery",
+    "href": null
+  },
+  "editorIsolation": {
+    "before": "01 / 15",
+    "after": "01 / 15",
+    "active": true
+  },
+  "tabArrow": {
+    "active": "provenance-tab-runtime",
+    "selected": [
+      "provenance-tab-runtime"
+    ],
+    "panelLabel": "provenance-tab-runtime"
+  },
+  "modalOpen": {
+    "dialog": true,
+    "active": "Close full-bleed artwork view",
+    "backgroundInert": true
+  },
+  "modalFocusables": [
+    "Close full-bleed artwork view"
+  ],
+  "modalTabWrap": {
+    "tag": "BUTTON",
+    "cls": "",
+    "label": "Close full-bleed artwork view",
+    "href": null
+  },
+  "modalShiftTabWrap": {
+    "tag": "BUTTON",
+    "cls": "",
+    "label": "Close full-bleed artwork view",
+    "href": null
+  },
+  "modalClosed": {
+    "dialog": false,
+    "active": "Open IMG_20200218_095220.jpg in full-bleed artwork view",
+    "anyInert": false
+  },
+  "dark": {
+    "htmlClass": "dark",
+    "failures": [],
+    "bodyBg": "rgb(0, 0, 0)"
+  },
+  "sliderAX": [
+    {
+      "name": "PALETTE K",
+      "value": 8,
+      "properties": {
+        "focusable": true,
+        "valuemin": 3,
+        "valuemax": 64,
+        "valuetext": "8"
+      }
+    }
+  ]
+}

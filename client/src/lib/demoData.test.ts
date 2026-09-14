@@ -1,7 +1,7 @@
 import React, { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeAll, describe, expect, it } from "vitest";
-import { CredentialEvidence } from "@/components/Build06Panels";
+import { CredentialEvidence, ProvenanceModule } from "@/components/Build06Panels";
 import { gallery, galleryOrder, type CredentialSignature } from "./demoData";
 
 beforeAll(() => {
@@ -55,6 +55,21 @@ const renderCredential = (over: Partial<CredentialSignature> = {}) =>
   renderToStaticMarkup(createElement(CredentialEvidence, { credential: credential(over) }));
 
 describe("credential evidence in object provenance", () => {
+  it("keeps catalogue C2PA hints uninspected at the pre-run provenance boundary", () => {
+    const base = gallery[0];
+    expect(base).toBeDefined();
+    const item = { ...base!, credentialSignature: credential({ status: "absent" }) };
+    const html = renderToStaticMarkup(createElement(ProvenanceModule, {
+      item,
+      runtime: null,
+      onFocusReverse: () => undefined,
+      reverseMode: item.reverseMode,
+      paletteK: 8,
+    }));
+    expect(html).toContain("NOT INSPECTED");
+    expect(html).not.toContain("C2PA ABSENT");
+  });
+
   it("renders visible status, verification, and validation-note rows", () => {
     const html = renderCredential();
     expect(html).toContain("CREDENTIAL STATUS");

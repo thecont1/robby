@@ -1,6 +1,23 @@
 import { CircleDotDashed } from "lucide-react";
 import type { CompileRun } from "@/lib/compileEvents";
-import { counterCopy, deriveCounterState, stationViews } from "@/lib/teppanyakiCounter";
+import { counterCopy, counterPresentation, deriveCounterState, stationViews, type StationView } from "@/lib/teppanyakiCounter";
+
+function StationList({ stations }: { stations: StationView[] }) {
+  return (
+    <ol className="teppanyaki-stations" aria-label="Compilation stations">
+      {stations.map(station => (
+        <li key={station.stage} className={`teppanyaki-station status-${station.status}`} data-stage={station.stage}>
+          <span className="trace-number">{station.index}</span>
+          <div>
+            <strong>{station.name}</strong>
+            <p>{station.label}</p>
+            {station.classification && <em>{station.classification}</em>}
+          </div>
+        </li>
+      ))}
+    </ol>
+  );
+}
 
 const PALETTE_MIN = 3;
 const PALETTE_MAX = 64;
@@ -18,6 +35,7 @@ export default function TeppanyakiCounter({
 }) {
   const state = deriveCounterState(run, recipeChanged);
   const copy = counterCopy(state);
+  const presentation = counterPresentation(state);
   const stations = stationViews(run?.events ?? []);
   const splitStation = stations.find(station => station.stage === "split");
   const swatches = splitStation?.swatches ?? [];
@@ -61,18 +79,14 @@ export default function TeppanyakiCounter({
           ))}
         </div>
       )}
-      <ol className="teppanyaki-stations" aria-label="Compilation stations">
-        {stations.map(station => (
-          <li key={station.stage} className={`teppanyaki-station status-${station.status}`} data-stage={station.stage}>
-            <span className="trace-number">{station.index}</span>
-            <div>
-              <strong>{station.name}</strong>
-              <p>{station.label}</p>
-              {station.classification && <em>{station.classification}</em>}
-            </div>
-          </li>
-        ))}
-      </ol>
+      {presentation.showStations && (presentation.stationsExpandable ? (
+        <details className="teppanyaki-station-details" open={presentation.defaultStationsExpanded}>
+          <summary>Inspect all eight stations</summary>
+          <StationList stations={stations} />
+        </details>
+      ) : (
+        <StationList stations={stations} />
+      ))}
       {run?.result?.disclosure && (
         <p className="teppanyaki-audit" role="note">
           {run.result.disclosure.safe

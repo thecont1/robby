@@ -1,0 +1,4 @@
+# Lighthouse writes both <name>.json and <name>.report.json when --output=json
+# --output=html are combined. Only the .report.* pair is the real artifact.
+plan10-lighthouse-*.json
+!plan10-lighthouse-*.report.json

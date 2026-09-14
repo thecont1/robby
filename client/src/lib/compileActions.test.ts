@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { CompileRun } from "./compileEvents";
-import { compileActions, isPaletteReprocessCurrent, shouldAcceptPaletteEdit, shouldStartCompileRequest } from "./compileActions";
+import { compileActions, compileActionOrder, isPaletteReprocessCurrent, shouldAcceptPaletteEdit, shouldStartCompileRequest } from "./compileActions";
 
 function run(status: CompileRun["status"], withResult = status === "completed"): CompileRun {
   return {
@@ -35,6 +35,14 @@ function run(status: CompileRun["status"], withResult = status === "completed"):
 }
 
 describe("compileActions", () => {
+  it("makes compile primary before success and Turn primary after a current success", () => {
+    expect(compileActionOrder({ completed: false, recipeChanged: false })).toEqual(["compile", "turn"]);
+    expect(compileActionOrder({ completed: true, recipeChanged: false })).toEqual(["turn", "compile"]);
+    // Once the recipe changes the previous reverse is stale; compiling the
+    // revised Orio becomes primary again, while the old reverse remains viewable.
+    expect(compileActionOrder({ completed: true, recipeChanged: true })).toEqual(["compile", "turn"]);
+  });
+
   it("keeps Turn to Inverse from starting a reverse when no orio exists", () => {
     const actions = compileActions({
       run: null,
