@@ -9,7 +9,7 @@ import SourceEditor from "@/components/SourceEditor";
 import TeppanyakiCounter from "@/components/TeppanyakiCounter";
 import { ProvenanceModule, type RuntimeRecord, type TraceMode } from "@/components/Build06Panels";
 import { loadCompileHistory, persistCompileSnapshot, type CompileSnapshot } from "@/lib/compileHistory";
-import { compileActions } from "@/lib/compileActions";
+import { compileActions, isPaletteReprocessCurrent, shouldStartCompileRequest } from "@/lib/compileActions";
 import { browserCompileController } from "@/lib/compileBrowser";
 import type { CompileRun } from "@/lib/compileEvents";
 import { verifiedCompilerStatus } from "@/lib/compilerStatus";
@@ -129,6 +129,7 @@ export default function Home() {
   const selectedIdRef = useRef("");
   const selectedRecipeRef = useRef({ specimenId: "", source: "" });
   const paletteReprocessTimer = useRef<number | null>(null);
+  const compileGeneration = useRef(0);
   const mountedRef = useRef(true);
   const discardReverseAfterFlip = useRef(false);
   const { theme, toggleTheme } = useTheme();
@@ -293,9 +294,10 @@ export default function Home() {
 
   const compileOrio = async (force = false) => {
     clearPaletteReprocessTimer();
-    if (isFlipping || isRenderingReverse) return;
+    if (!shouldStartCompileRequest({ isFlipping, isRendering: isRenderingReverse, supersedeInflight: true })) return;
     const compiledSpecimenId = selected.id;
     const source = authoredRecipeForCompile(activeRecipe);
+    const generation = ++compileGeneration.current;
     setFailureMessage(null);
     setIsRenderingReverse(true);
     setProjectionState("compiling");
@@ -305,6 +307,7 @@ export default function Home() {
       sourceUrl: selected.obverse,
       recipeSource: source,
     }, { force });
+    if (generation !== compileGeneration.current) return;
     const currentAuthority = selectedRecipeRef.current;
     if (!isCompiledSourceCurrent(compiledSpecimenId, source, currentAuthority.specimenId, currentAuthority.source)) return;
     setCompileRun(run);
@@ -538,7 +541,7 @@ export default function Home() {
         paletteReprocessTimer.current = null;
         if (!mountedRef.current) return;
         const currentAuthority = selectedRecipeRef.current;
-        if (currentAuthority.specimenId !== scheduledAuthority.specimenId || currentAuthority.source !== scheduledAuthority.source) return;
+        if (!isPaletteReprocessCurrent(scheduledAuthority, currentAuthority)) return;
         void compileOrio(true);
       }, 320);
     } catch (error) {

@@ -52,6 +52,15 @@ describe("palette control and authored recipe stay synchronised", () => {
     expect(HOME_SOURCE).not.toContain("source={selected.script}");
   });
 
+  it("lets a later Compile Orio supersede an inflight reverse instead of dropping it", () => {
+    const compileBody = HOME_SOURCE.match(/const compileOrio = async \(force = false\) => \{([\s\S]*?)\n  \};/)?.[1] ?? "";
+    expect(compileBody).toContain("clearPaletteReprocessTimer()");
+    expect(compileBody).toContain("shouldStartCompileRequest({ isFlipping, isRendering: isRenderingReverse, supersedeInflight: true })");
+    expect(compileBody).not.toContain("if (isFlipping || isRenderingReverse) return;");
+    expect(compileBody).toContain("const generation = ++compileGeneration.current;");
+    expect(compileBody).toContain("if (generation !== compileGeneration.current) return;");
+  });
+
   it("re-seeds outside source changes before the browser paints", () => {
     expect(SOURCE_EDITOR_SOURCE).toContain("useLayoutEffect(() => {");
     expect(SOURCE_EDITOR_SOURCE).toContain("setDraft(source);");
