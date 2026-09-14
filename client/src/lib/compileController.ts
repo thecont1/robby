@@ -67,6 +67,21 @@ export type CompileOptions = {
   force?: boolean;
 };
 
+async function inspectOptionalC2pa(deps: CompileDeps, sourceName: string, signal: AbortSignal): Promise<CredentialSignature> {
+  try {
+    return await deps.inspectC2pa(sourceName, signal);
+  } catch (error) {
+    if (signal.aborted || (error instanceof DOMException && error.name === "AbortError")) throw error;
+    const message = error instanceof Error ? error.message : String(error);
+    return {
+      status: "absent",
+      sourceSha256: "",
+      verificationMethod: "Official CAI C2PA Node SDK validation of exact local JPEG bytes",
+      note: `The official C2PA reader could not inspect this JPEG. Compilation continues without C2PA evidence. ${message}`,
+    };
+  }
+}
+
 type CachedOrio = {
   key: string;
   orio: SessionOrio;
@@ -223,7 +238,7 @@ export function createCompileController(deps: CompileDeps) {
           };
         });
 
-        const inspected = await deps.inspectC2pa(request.sourceName, signal);
+        const inspected = await inspectOptionalC2pa(deps, request.sourceName, signal);
         const c2paEvidence = c2paEvidenceFromCredential(inspected, deps.now());
         const readClass = inspected.status === "present" ? "verified" : "unavailable";
         const credential = await station(run, "read", readClass, async () => ({

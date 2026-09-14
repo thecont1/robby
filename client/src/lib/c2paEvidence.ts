@@ -37,7 +37,11 @@ export function c2paEvidenceFromCredential(credential: CredentialSignature, insp
     presence,
     validation,
     signerTrust,
-    availability: status === "checking" ? "not_inspected" : "inspected",
+    availability: status === "checking"
+      ? "not_inspected"
+      : /could not inspect/i.test(note)
+        ? "unavailable"
+        : "inspected",
     warnings: untrusted ? ["signing credential untrusted"] : [],
     inspectedAt,
     sourceSha256: credential.sourceSha256,

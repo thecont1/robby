@@ -25,4 +25,16 @@ describe("run-bound C2PA evidence", () => {
     expect(evidence.availability).toBe("inspected");
     expect(c2paEvidenceLabel(evidence)).toBe("C2PA ABSENT · UNAVAILABLE · SIGNER NOT ASSESSED");
   });
+
+  it("marks a failed C2PA reader as unavailable, not inspected", () => {
+    const evidence = c2paEvidenceFromCredential({
+      status: "absent",
+      sourceSha256: "c".repeat(64),
+      verificationMethod: "Official CAI C2PA Node SDK validation",
+      note: "The official C2PA reader could not inspect this JPEG. Compilation continues without C2PA evidence. type is unsupported",
+    }, "2026-09-13T22:00:00.000Z");
+    expect(evidence.presence).toBe("absent");
+    expect(evidence.availability).toBe("unavailable");
+    expect(evidence.note).toContain("type is unsupported");
+  });
 });

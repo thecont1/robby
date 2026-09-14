@@ -78,6 +78,16 @@ export function credentialFromReaderSummary(
   };
 }
 
+export function unavailableCredentialInspection(sourceSha256: string, error: unknown): C2paCredentialInspection {
+  const message = error instanceof Error ? error.message : String(error);
+  return {
+    status: "absent",
+    sourceSha256,
+    verificationMethod,
+    note: `The official C2PA reader could not inspect this JPEG. Compilation continues without C2PA evidence. ${message}`,
+  };
+}
+
 export async function inspectGalleryCredential(sourceName: string): Promise<C2paCredentialInspection> {
   const safeName = validateSourceName(sourceName);
   const source = await readLocalGallerySource(safeName);
@@ -87,14 +97,19 @@ export async function inspectGalleryCredential(sourceName: string): Promise<C2pa
     return cached.result;
   }
 
-  const reader = await Reader.fromAsset({ buffer: source.bytes, mimeType: "image/jpeg" });
-  const manifestStore = reader?.json();
-  const result = credentialFromReaderSummary(source.sha256, {
-    embedded: Boolean(reader?.isEmbedded()),
-    active: reader?.getActive(),
-    validationState: manifestStore?.validation_state,
-    validationStatus: manifestStore?.validation_status,
-  });
+  let result: C2paCredentialInspection;
+  try {
+    const reader = await Reader.fromAsset({ buffer: source.bytes, mimeType: "image/jpeg" });
+    const manifestStore = reader?.json();
+    result = credentialFromReaderSummary(source.sha256, {
+      embedded: Boolean(reader?.isEmbedded()),
+      active: reader?.getActive(),
+      validationState: manifestStore?.validation_state,
+      validationStatus: manifestStore?.validation_status,
+    });
+  } catch (error) {
+    result = unavailableCredentialInspection(source.sha256, error);
+  }
   cache.set(cacheKey, { expiresAt: Date.now() + CACHE_TTL_MS, result });
   return result;
 }
@@ -119,8 +134,15 @@ export function createC2paInspectionHandler() {
       res.json(await inspectGalleryCredential(safeName));
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unable to inspect C2PA credentials";
-      const status = message.includes("not found") ? 404 : message.includes("symlink") || message.includes("escapes") ? 400 : 500;
-      res.status(status).json({ error: message });
+      if (message.includes("not found")) {
+        res.status(404).json({ error: message });
+        return;
+      }
+      if (message.includes("symlink") || message.includes("escapes") || message.includes("Invalid")) {
+        res.status(400).json({ error: message });
+        return;
+      }
+      res.json(unavailableCredentialInspection("", error));
     }
   };
 }
