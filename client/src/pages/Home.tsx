@@ -129,8 +129,16 @@ export default function Home() {
   const selectedIdRef = useRef("");
   const selectedRecipeRef = useRef({ specimenId: "", source: "" });
   const paletteReprocessTimer = useRef<number | null>(null);
+  const mountedRef = useRef(true);
   const discardReverseAfterFlip = useRef(false);
   const { theme, toggleTheme } = useTheme();
+
+  const clearPaletteReprocessTimer = () => {
+    if (paletteReprocessTimer.current !== null) {
+      window.clearTimeout(paletteReprocessTimer.current);
+      paletteReprocessTimer.current = null;
+    }
+  };
 
   // Clamp selectedIndex when gallery changes (e.g. images added/removed)
   useEffect(() => {
@@ -221,7 +229,14 @@ export default function Home() {
 
   // Plan 9B: on unmount, cancel any running compile and revoke every session
   // Blob URL so nothing leaks across navigation.
-  useEffect(() => () => browserCompileController.dispose(), []);
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      clearPaletteReprocessTimer();
+      browserCompileController.dispose();
+    };
+  }, []);
 
   useEffect(() => {
     if (gallery.length === 0) return;
@@ -243,6 +258,7 @@ export default function Home() {
   }, [gallery.length > 0]);
 
   const commitSelection = (nextIndex: number) => {
+    clearPaletteReprocessTimer();
     discardSessionReverse();
     // Reject outgoing notifications immediately. The committed render's
     // layout effect installs the real incoming id/source; avoiding an indexed
@@ -276,6 +292,7 @@ export default function Home() {
   };
 
   const compileOrio = async (force = false) => {
+    clearPaletteReprocessTimer();
     if (isFlipping || isRenderingReverse) return;
     const compiledSpecimenId = selected.id;
     const source = authoredRecipeForCompile(activeRecipe);
@@ -466,6 +483,7 @@ export default function Home() {
   };
 
   const clearLiveProjection = () => {
+    clearPaletteReprocessTimer();
     setCompiledEdit(null);
     setProjectionState("compiling");
     setFailureMessage(null);
@@ -478,6 +496,7 @@ export default function Home() {
   };
 
   const markDraftProjectionUnavailable = (draft: string) => {
+    clearPaletteReprocessTimer();
     draftStore.current.set(selected.id, draft);
     selectedRecipeRef.current = { specimenId: selected.id, source: draft };
     // No fallback: keep the last valid structured value while the source is
@@ -490,6 +509,7 @@ export default function Home() {
   };
 
   const resetLiveProjection = () => {
+    clearPaletteReprocessTimer();
     draftStore.current.clear(selected.id);
     selectedRecipeRef.current = { specimenId: selected.id, source: selected.script };
     setPaletteKFromDraft(selected.script, 8);
@@ -512,8 +532,15 @@ export default function Home() {
       setCompiledEdit(null);
       setProjectionState("draft");
       setFailureMessage(null);
-      if (paletteReprocessTimer.current !== null) window.clearTimeout(paletteReprocessTimer.current);
-      paletteReprocessTimer.current = window.setTimeout(() => void compileOrio(true), 320);
+      clearPaletteReprocessTimer();
+      const scheduledAuthority = { specimenId: selected.id, source: nextRecipe };
+      paletteReprocessTimer.current = window.setTimeout(() => {
+        paletteReprocessTimer.current = null;
+        if (!mountedRef.current) return;
+        const currentAuthority = selectedRecipeRef.current;
+        if (currentAuthority.specimenId !== scheduledAuthority.specimenId || currentAuthority.source !== scheduledAuthority.source) return;
+        void compileOrio(true);
+      }, 320);
     } catch (error) {
       setFailureMessage(error instanceof Error ? error.message : String(error));
     }
