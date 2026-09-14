@@ -403,6 +403,44 @@ describe("CompileController", () => {
     expect(changedRun.result?.identity.canonicalPixelSha256).toBe(pixelSha256);
     expect(changedRun.result?.reverseObjectUrl).not.toBe(firstRun.result?.reverseObjectUrl);
     expect(environment.calls.filter(call => call === "renderReverse")).toHaveLength(2);
+
+    const afterPixel = await controller.compile(request());
+    expect(afterPixel.result?.reverseObjectUrl).toBe(changedRun.result?.reverseObjectUrl);
+    expect(environment.calls.filter(call => call === "renderReverse")).toHaveLength(2);
+
+    const recipeRun = await controller.compile(request({
+      recipeSource: 'base("source.jpg")\npalette(k: 5)\nreverse(mode: "negative")\noutput(obverse: "front.jpg", reverse: "transient", manifest: "transient")',
+    }));
+    expect(recipeRun.status).toBe("completed");
+    expect(recipeRun.result?.reverseObjectUrl).not.toBe(changedRun.result?.reverseObjectUrl);
+    expect(environment.calls.filter(call => call === "renderReverse")).toHaveLength(3);
+
+    const presentThenAbsent = deps();
+    let present = true;
+    presentThenAbsent.inspectC2pa = async () => {
+      presentThenAbsent.calls.push("inspectC2pa");
+      return present
+        ? { status: "present" as const, sourceSha256: "sourcebytes".padEnd(64, "a"), verificationMethod: "c2pa-node", note: "Signed" }
+        : { status: "absent" as const, sourceSha256: "sourcebytes".padEnd(64, "a"), verificationMethod: "c2pa-node", note: "No credential" };
+    };
+    const evidenceController = createCompileController(presentThenAbsent);
+    const signed = await evidenceController.compile(request());
+    present = false;
+    const unsigned = await evidenceController.compile(request());
+    expect(unsigned.result?.reverseObjectUrl).not.toBe(signed.result?.reverseObjectUrl);
+    expect(presentThenAbsent.calls.filter(call => call === "renderReverse")).toHaveLength(2);
+
+    const versioned = deps();
+    const versionController = createCompileController(versioned);
+    const versionFirst = await versionController.compile(request());
+    versioned.compilerVersion = "compiler-changed";
+    const versionSecond = await versionController.compile(request());
+    expect(versionSecond.result?.reverseObjectUrl).not.toBe(versionFirst.result?.reverseObjectUrl);
+    expect(versioned.calls.filter(call => call === "renderReverse")).toHaveLength(2);
+    versioned.rendererVersion = "renderer-changed";
+    const versionThird = await versionController.compile(request());
+    expect(versionThird.result?.reverseObjectUrl).not.toBe(versionSecond.result?.reverseObjectUrl);
+    expect(versioned.calls.filter(call => call === "renderReverse")).toHaveLength(3);
   });
 
   it("revokes the reverse Blob URL when a cancelled run created one mid-flight", async () => {
@@ -449,8 +487,8 @@ describe("CompileController", () => {
   it("dispose() cancels the active run, revokes every cached Blob URL, and clears the cache", async () => {
     const environment = deps();
     const controller = createCompileController(environment);
-    const first = await controller.compile(request({ galleryItemId: "item-a", recipeSource: 'base("source.jpg")\npalette(k: 3)\nreverse(mode: "negative")\noutput(obverse: "front.jpg", reverse: "transient", manifest: "transient")' }));
-    const second = await controller.compile(request({ galleryItemId: "item-b", sourceName: "other.jpg", sourceUrl: "/gallery/other.jpg", recipeSource: 'base("source.jpg")\npalette(k: 5)\nreverse(mode: "negative")\noutput(obverse: "front.jpg", reverse: "transient", manifest: "transient")' }));
+    const first = await controller.compile(request({ recipeSource: 'base("source.jpg")\npalette(k: 3)\nreverse(mode: "negative")\noutput(obverse: "front.jpg", reverse: "transient", manifest: "transient")' }));
+    const second = await controller.compile(request({ recipeSource: 'base("source.jpg")\npalette(k: 5)\nreverse(mode: "negative")\noutput(obverse: "front.jpg", reverse: "transient", manifest: "transient")' }));
     expect(first.status).toBe("completed");
     expect(second.status).toBe("completed");
     const urlsAtPeak = environment.calls.filter(call => call === "createObjectUrl").length;
