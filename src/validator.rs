@@ -523,8 +523,13 @@ fn validate_bind(recipe: &crate::ast::Recipe) -> CompileResult<()> {
 
 fn validate_reverse_recipe(recipe: &crate::ast::Recipe) -> CompileResult<()> {
     let clause = recipe_clause(recipe, "reverse");
-    if !["quantised_obverse", "palette_grid", "observability_sheet"]
-        .contains(&clause.variant.as_deref().unwrap_or_default())
+    if ![
+        "negative",
+        "quantised_obverse",
+        "palette_grid",
+        "observability_sheet",
+    ]
+    .contains(&clause.variant.as_deref().unwrap_or_default())
     {
         return Err(CompilerError::at(
             clause.span.line,

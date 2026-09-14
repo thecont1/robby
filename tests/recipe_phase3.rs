@@ -144,6 +144,13 @@ output(obverse: "front.png", reverse: "transient", manifest: "transient")"#;
 }
 
 #[test]
+fn v2_negative_reverse_is_accepted_with_default_palette_directives() {
+    let source = RECIPE.replace("reverse palette_grid {", "reverse negative {")
+        .replace("    cell: 10\n    arrange: seeded_shuffle\n    seed: object_binding\n    border: source_palette", "    palette: active\n    dither: none");
+    compile_recipe_source(&source).expect("v2 negative reverse");
+}
+
+#[test]
 fn rejects_duplicate_and_surplus_authored_keys() {
     // Duplicates previously overwrote silently via the HashMap collect.
     let duplicate_palette = RECIPE.replace("colours: 12", "colours: 12\n    colours: 9");

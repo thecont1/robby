@@ -395,7 +395,7 @@ pub fn build_binding(
     options: &BindingOptions,
     compiler_version: &str,
     renderer_version: &str,
-) -> BindingResult {
+) -> Result<BindingResult, String> {
     let request = binding_request_from_recipe_ir_v2(
         manifest,
         recipe,
@@ -404,7 +404,7 @@ pub fn build_binding(
         compiler_version,
         renderer_version,
     );
-    let record = build_binding_record(&request).expect("v2 adapter produces a valid request");
+    let record = build_binding_record(&request)?;
     let evidence_serialization = canonical_approved_evidence(manifest, options);
     let policy_serialization = canonical_visibility_context_policy(recipe, options);
     let components = BindingComponents::from_request(&request);
@@ -431,7 +431,7 @@ pub fn build_binding(
         ),
         ("runtime_hash".into(), components.runtime_hash.clone()),
     ]);
-    BindingResult {
+    Ok(BindingResult {
         object_binding: record.binding_sha256.clone(),
         render_seed: record.binding_sha256[..16].to_string(),
         display_identifier: record.short_id.clone(),
@@ -442,7 +442,7 @@ pub fn build_binding(
         compiler_version: compiler_version.to_string(),
         renderer_version: renderer_version.to_string(),
         statement: BINDING_STATEMENT.to_string(),
-    }
+    })
 }
 
 /// Serialize only evidence explicitly approved by the binding policy.

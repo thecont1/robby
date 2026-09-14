@@ -285,7 +285,8 @@ fn legacy_v2_build_binding_still_works_through_the_core() {
         &BindingOptions::from_recipe(&recipe),
         "compiler-a",
         "renderer-a",
-    );
+    )
+    .expect("valid binding");
     assert_eq!(result.object_binding.len(), 64);
     assert_eq!(result.render_seed.len(), 16);
     assert!(result.display_identifier.starts_with("RB-"));

@@ -484,6 +484,13 @@ fn parse_orientation(bytes: &[u8]) -> Option<u16> {
     for entry in 0..count {
         let at = ifd + 2 + entry * 12;
         if u16_at(at)? == 0x0112 {
+            // TIFF Orientation is SHORT (type 3) with count 1. Any other
+            // type or count is malformed metadata, not a usable orientation.
+            let field_type = u16_at(at + 2)?;
+            let count = u32_at(at + 4)?;
+            if field_type != 3 || count != 1 {
+                continue;
+            }
             return u16_at(at + 8).filter(|value| (1..=8).contains(value));
         }
     }

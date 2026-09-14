@@ -189,6 +189,21 @@ fn exif_bytes_outside_a_metadata_segment_are_not_treated_as_metadata() {
 }
 
 #[test]
+fn malformed_tiff_orientation_type_is_corrupt_and_does_not_reorient() {
+    // Orientation tag present, but type LONG (4) instead of SHORT (3).
+    let tiff: [u8; 26] = [
+        b'I', b'I', 42, 0, 8, 0, 0, 0, 1, 0, 18, 1, 4, 0, 1, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0,
+    ];
+    let jpeg = jpeg_with_app1_exif(&tiff);
+    let manifest = inspect_image("bad-orientation.jpg", &jpeg).expect("intake succeeds");
+    assert_eq!(
+        manifest.evidence.exif.state,
+        robby_compiler::intake::ExtractionState::Corrupt
+    );
+    assert_eq!(manifest.obverse.orientation, None);
+}
+
+#[test]
 fn public_manifest_does_not_retain_the_submitted_filename() {
     let manifest = inspect_image("client-name-location.jpg", &tiny_jpeg()).expect("intake");
     let public = manifest.sanitize_public();

@@ -189,7 +189,8 @@ fn binding_is_deterministic_and_exposes_reproducibility_components() {
         &options,
         "compiler-a",
         "renderer-a",
-    );
+    )
+    .expect("valid binding");
     let second = build_binding(
         &source,
         &recipe,
@@ -197,7 +198,8 @@ fn binding_is_deterministic_and_exposes_reproducibility_components() {
         &options,
         "compiler-a",
         "renderer-a",
-    );
+    )
+    .expect("valid binding");
     assert_eq!(first, second);
     assert_eq!(first.object_binding.len(), 64);
     assert_eq!(first.render_seed.len(), 16);
@@ -218,7 +220,8 @@ fn every_binding_input_change_changes_object_binding() {
         &options,
         "compiler-a",
         "renderer-a",
-    );
+    )
+    .expect("valid binding");
     let mut changed_source = source.clone();
     changed_source.obverse.byte_sha256 = "33".repeat(32);
     let changed_bytes = build_binding(
@@ -228,7 +231,8 @@ fn every_binding_input_change_changes_object_binding() {
         &options,
         "compiler-a",
         "renderer-a",
-    );
+    )
+    .expect("valid binding");
     let changed_recipe =
         compile_recipe_source(&RECIPE.replace("colours: 8", "colours: 9")).unwrap();
     let changed_recipe_binding = build_binding(
@@ -238,7 +242,8 @@ fn every_binding_input_change_changes_object_binding() {
         &options,
         "compiler-a",
         "renderer-a",
-    );
+    )
+    .expect("valid binding");
     let changed_runtime = build_binding(
         &source,
         &recipe,
@@ -246,7 +251,8 @@ fn every_binding_input_change_changes_object_binding() {
         &options,
         "compiler-b",
         "renderer-a",
-    );
+    )
+    .expect("valid binding");
     assert_ne!(baseline.object_binding, changed_bytes.object_binding);
     assert_ne!(
         baseline.object_binding,
@@ -265,7 +271,8 @@ fn display_identifier_is_a_short_binding_fingerprint() {
         &BindingOptions::public_safe(),
         "compiler-a",
         "renderer-a",
-    );
+    )
+    .expect("valid binding");
     assert_eq!(
         binding.display_identifier,
         format!(
@@ -295,6 +302,7 @@ fn evidence_none_excludes_verified_c2pa_and_changes_binding() {
             "compiler-a",
             "renderer-a"
         )
+        .expect("valid binding")
         .object_binding,
         build_binding(
             &source,
@@ -304,6 +312,7 @@ fn evidence_none_excludes_verified_c2pa_and_changes_binding() {
             "compiler-a",
             "renderer-a"
         )
+        .expect("valid binding")
         .object_binding
     );
 }
@@ -341,6 +350,7 @@ fn metadata_only_private_gps_does_not_change_public_safe_binding() {
             "compiler-a",
             "renderer-a"
         )
+        .expect("valid binding")
         .object_binding,
         build_binding(
             &without_gps,
@@ -350,6 +360,7 @@ fn metadata_only_private_gps_does_not_change_public_safe_binding() {
             "compiler-a",
             "renderer-a"
         )
+        .expect("valid binding")
         .object_binding
     );
 }
@@ -370,6 +381,7 @@ fn recipe_evidence_none_changes_binding_through_from_recipe() {
             "compiler-a",
             "renderer-a"
         )
+        .expect("valid binding")
         .object_binding,
         build_binding(
             &source,
@@ -379,6 +391,7 @@ fn recipe_evidence_none_changes_binding_through_from_recipe() {
             "compiler-a",
             "renderer-a"
         )
+        .expect("valid binding")
         .object_binding
     );
 }
@@ -395,7 +408,8 @@ fn pixel_hash_and_renderer_version_are_binding_inputs() {
         &options,
         "compiler-a",
         "renderer-a",
-    );
+    )
+    .expect("valid binding");
     let mut pixels = source.clone();
     pixels.obverse.pixel_sha256 = "44".repeat(32);
     assert_ne!(
@@ -408,6 +422,7 @@ fn pixel_hash_and_renderer_version_are_binding_inputs() {
             "compiler-a",
             "renderer-a"
         )
+        .expect("valid binding")
         .object_binding
     );
     assert_ne!(
@@ -420,6 +435,7 @@ fn pixel_hash_and_renderer_version_are_binding_inputs() {
             "compiler-a",
             "renderer-b"
         )
+        .expect("valid binding")
         .object_binding
     );
 }
@@ -428,4 +444,19 @@ fn pixel_hash_and_renderer_version_are_binding_inputs() {
 fn public_safe_evidence_omits_c2pa_claim_generator() {
     let value = canonical_approved_evidence(&manifest(), &BindingOptions::public_safe());
     assert!(!value.contains("fixture-generator"));
+}
+
+#[test]
+fn build_binding_rejects_an_invalid_authored_recipe_digest() {
+    let recipe = compile_recipe_source(RECIPE).unwrap();
+    let error = build_binding(
+        &manifest(),
+        &recipe,
+        "not-a-digest",
+        &BindingOptions::public_safe(),
+        "compiler-a",
+        "renderer-a",
+    )
+    .expect_err("invalid authored digest");
+    assert!(error.contains("authored_recipe_sha256"));
 }
