@@ -73,11 +73,11 @@ Re-derived from the Phase 10 brief, not from the carried task list. Evidence pat
 | No fake timing/typewriter effects | event-backed station model |
 | Draft preserved exactly; diagnostics textual and line-associated | recipe-authority/editor tests |
 | Narrow order: obverse/actions → workbench → counter → provenance | real DOM at 390 and 360 |
-| Skip link, gallery/editor shortcut isolation, tablists, modal trap/Escape/restoration | CDP interaction audit |
-| Landmarks/headings/name/state/live regions/range semantics | DOM audit + Chrome AX tree |
-| 44×44 targets, zero 360px page overflow, zoom available, no hover-only critical control | computed DOM audit |
-| Light and dark contrast; reduced motion | composited contrast + emulated media audits |
-| Desktop/mobile Lighthouse package | must be regenerated against production server, not Vite/empty shell |
+| Skip link, gallery/editor shortcut isolation, tablists, modal trap/Escape/restoration | `audits/plan10-interaction-audit-prod.json` |
+| Landmarks/headings/name/state/live regions/range semantics | `audits/plan10-dom-audit-prod.json` + Chrome AX tree |
+| 44×44 targets, zero 360px page overflow, zoom available, no hover-only critical control | `audits/plan10-dom-audit-prod.json` |
+| Light and dark contrast; reduced motion | production DOM/interaction captures + composited contrast audit |
+| Desktop/mobile Lighthouse package | `audits/plan10-lighthouse-{desktop,mobile}.report.{json,html}` — captured from the production server on `:3002` |
 
 ## Fixture matrix
 
