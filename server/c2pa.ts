@@ -1,4 +1,5 @@
 import express, { type Express } from "express";
+import { createHash } from "node:crypto";
 import { Reader } from "@contentauth/c2pa-node";
 import { basename } from "node:path";
 import { readLocalGallerySource } from "./gallerySource";
@@ -88,6 +89,24 @@ export function unavailableCredentialInspection(sourceSha256: string, error: unk
   };
 }
 
+async function inspectCredentialBytes(
+  bytes: Buffer,
+  sourceSha256: string,
+): Promise<C2paCredentialInspection> {
+  try {
+    const reader = await Reader.fromAsset({ buffer: bytes, mimeType: "image/jpeg" });
+    const manifestStore = reader?.json();
+    return credentialFromReaderSummary(sourceSha256, {
+      embedded: Boolean(reader?.isEmbedded()),
+      active: reader?.getActive(),
+      validationState: manifestStore?.validation_state,
+      validationStatus: manifestStore?.validation_status,
+    });
+  } catch (error) {
+    return unavailableCredentialInspection(sourceSha256, error);
+  }
+}
+
 export async function inspectGalleryCredential(sourceName: string): Promise<C2paCredentialInspection> {
   const safeName = validateSourceName(sourceName);
   const source = await readLocalGallerySource(safeName);
@@ -97,19 +116,7 @@ export async function inspectGalleryCredential(sourceName: string): Promise<C2pa
     return cached.result;
   }
 
-  let result: C2paCredentialInspection;
-  try {
-    const reader = await Reader.fromAsset({ buffer: source.bytes, mimeType: "image/jpeg" });
-    const manifestStore = reader?.json();
-    result = credentialFromReaderSummary(source.sha256, {
-      embedded: Boolean(reader?.isEmbedded()),
-      active: reader?.getActive(),
-      validationState: manifestStore?.validation_state,
-      validationStatus: manifestStore?.validation_status,
-    });
-  } catch (error) {
-    result = unavailableCredentialInspection(source.sha256, error);
-  }
+  const result = await inspectCredentialBytes(source.bytes, source.sha256);
   cache.set(cacheKey, { expiresAt: Date.now() + CACHE_TTL_MS, result });
   return result;
 }
@@ -147,6 +154,38 @@ export function createC2paInspectionHandler() {
   };
 }
 
+export function createC2paByteInspectionHandler() {
+  return async (req: express.Request, res: express.Response) => {
+    try {
+      validateSourceName(req.params.source ?? "");
+      if (!Buffer.isBuffer(req.body) || req.body.length === 0) {
+        res.status(400).json({ error: "Missing JPEG source bytes" });
+        return;
+      }
+      const expectedSha256 = req.get("X-Robby-Source-SHA256") ?? "";
+      if (!/^[0-9a-f]{64}$/i.test(expectedSha256)) {
+        res.status(400).json({ error: "Missing or invalid source SHA-256" });
+        return;
+      }
+      const actualSha256 = createHash("sha256").update(req.body).digest("hex");
+      if (actualSha256.toLowerCase() !== expectedSha256.toLowerCase()) {
+        res.status(400).json({ error: "C2PA source bytes do not match the intake SHA-256" });
+        return;
+      }
+      res.setHeader("Cache-Control", "no-store, max-age=0");
+      res.json(await inspectCredentialBytes(req.body, actualSha256));
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unable to inspect C2PA credentials";
+      res.status(400).json({ error: message });
+    }
+  };
+}
+
 export function registerC2paRoutes(app: Express) {
   app.get("/api/c2pa/:source", createC2paInspectionHandler());
+  app.post(
+    "/api/c2pa/:source",
+    express.raw({ type: "image/jpeg", limit: "64mb" }),
+    createC2paByteInspectionHandler(),
+  );
 }

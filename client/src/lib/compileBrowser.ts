@@ -21,11 +21,14 @@ export function createBrowserCompileDeps(): CompileDeps {
       if (signal.aborted) throw new DOMException("Aborted", "AbortError");
       const manifest = await inspectWithRust(originalName, bytes);
       return {
+        sourceByteSha256: manifest.obverse.byte_sha256,
         pixelSha256: manifest.obverse.pixel_sha256,
         width: manifest.obverse.width,
         height: manifest.obverse.height,
+        orientation: manifest.obverse.orientation,
         mimeType: manifest.obverse.mime_type,
-        intakeManifestJson: JSON.stringify(manifest),
+        intakeVersion: manifest.schema_version,
+        manifest,
       };
     },
     buildBinding: async (intakeManifestJson, recipeSource, evidence, compilerVersion, rendererVersion) => {
@@ -63,9 +66,9 @@ export function createBrowserCompileDeps(): CompileDeps {
       if (signal.aborted) throw new DOMException("Aborted", "AbortError");
       return compileWithRust(recipeSource);
     },
-    inspectC2pa: async (sourceName, signal) => {
+    inspectC2pa: async (sourceName, bytes, sourceByteSha256, signal) => {
       if (signal.aborted) throw new DOMException("Aborted", "AbortError");
-      return inspectC2paCredential(sourceName);
+      return inspectC2paCredential(sourceName, bytes, sourceByteSha256, signal);
     },
     renderReverse: async (ir, signal, sheet) => {
       if (signal.aborted) throw new DOMException("Aborted", "AbortError");

@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createCompileController, type CompileDeps } from "./compileController";
 import type { CompileEvent, CompileRequest } from "./compileEvents";
-import type { RobbyIr } from "./robbyCompiler";
+import type { IntakeManifest, RobbyIr } from "./robbyCompiler";
 
 const ir: RobbyIr = {
   version: "robby-ir-v1",
@@ -11,6 +11,31 @@ const ir: RobbyIr = {
   output: { obverse: "front.jpg", reverse: "transient", manifest: "transient" },
   meta: { script_sha256: "recipehash".padEnd(64, "0") },
 };
+
+const intakeManifest = (
+  sourceByteSha256 = "sourcebytes".padEnd(64, "a"),
+  pixelSha256 = "pixels".padEnd(64, "a"),
+): IntakeManifest => ({
+  schema_version: "0.2",
+  obverse: {
+    original_name: "source.jpg",
+    mime_type: "image/jpeg",
+    byte_size: 3,
+    byte_sha256: sourceByteSha256,
+    pixel_sha256: pixelSha256,
+    width: 2,
+    height: 1,
+    orientation: 1,
+    colour_profile: null,
+  },
+  evidence: {
+    exif: { classification: "unavailable", value: null, visibility: "private", state: "absent" },
+    iptc: { classification: "unavailable", value: null, visibility: "private", state: "absent" },
+    xmp: { classification: "unavailable", value: null, visibility: "private", state: "absent" },
+    gps: { classification: "unavailable", value: null, visibility: "private", state: "absent" },
+    c2pa: { classification: "unavailable", value: null, visibility: "private", state: "absent" },
+  },
+});
 
 function request(overrides: Partial<CompileRequest> = {}): CompileRequest {
   return {
@@ -48,17 +73,14 @@ function deps(overrides: Partial<CompileDeps> = {}): CompileDeps & { calls: stri
     measureSourceBytes: async () => {
       calls.push("measureSourceBytes");
       return {
+        sourceByteSha256: "sourcebytes".padEnd(64, "a"),
         pixelSha256: "pixels".padEnd(64, "a"),
         width: 2,
         height: 1,
+        orientation: 1,
         mimeType: "image/jpeg",
-        intakeManifestJson: JSON.stringify({
-          schema_version: "0.2",
-          obverse: {
-            byte_sha256: "sourcebytes".padEnd(64, "a"),
-            pixel_sha256: "pixels".padEnd(64, "a"),
-          },
-        }),
+        intakeVersion: "0.2",
+        manifest: intakeManifest(),
       };
     },
     buildBinding: async (intakeJson, recipeSource, evidence, compilerVersion, rendererVersion) => {
@@ -170,6 +192,68 @@ describe("CompileController", () => {
     const environment = deps();
     createCompileController(environment);
     expect(environment.calls).toEqual([]);
+  });
+
+  it("passes the exact intake byte snapshot and digest to C2PA inspection", async () => {
+    const inspectedArguments: unknown[] = [];
+    const environment = deps({
+      inspectC2pa: async (...args: unknown[]) => {
+        inspectedArguments.push(...args);
+        return {
+          status: "absent",
+          sourceSha256: "sourcebytes".padEnd(64, "a"),
+          verificationMethod: "c2pa-node",
+          note: "No credential",
+        };
+      },
+    });
+
+    const run = await createCompileController(environment).compile(request());
+
+    expect(run.status).toBe("completed");
+    expect(inspectedArguments[0]).toBe("source.jpg");
+    expect(inspectedArguments[1]).toEqual(new Uint8Array([1, 2, 3]));
+    expect(inspectedArguments[2]).toBe("sourcebytes".padEnd(64, "a"));
+    expect(inspectedArguments[3]).toBeInstanceOf(AbortSignal);
+  });
+
+  it("preserves C2PA reader unavailability in the authoritative binding input", async () => {
+    let boundAvailability: string | undefined;
+    const base = deps();
+    const environment = deps({
+      inspectC2pa: async () => {
+        throw new Error("reader unavailable");
+      },
+      buildBinding: async (...args) => {
+        boundAvailability = args[2].c2pa.availability;
+        return base.buildBinding(...args);
+      },
+    });
+
+    const run = await createCompileController(environment).compile(request());
+
+    expect(run.status).toBe("completed");
+    expect(run.result?.c2paEvidence.availability).toBe("unavailable");
+    expect(run.result?.c2paEvidence.sourceSha256).toBe("sourcebytes".padEnd(64, "a"));
+    expect(boundAvailability).toBe("unavailable");
+  });
+
+  it("rejects C2PA evidence whose source digest differs from intake", async () => {
+    const environment = deps({
+      inspectC2pa: async () => ({
+        status: "present",
+        sourceSha256: "different".padEnd(64, "f"),
+        verificationMethod: "c2pa-node",
+        note: "Validation state: Valid.",
+      }),
+    });
+
+    const run = await createCompileController(environment).compile(request());
+
+    expect(run.status).toBe("completed");
+    expect(run.result?.c2paEvidence.availability).toBe("unavailable");
+    expect(run.result?.c2paEvidence.sourceSha256).toBe("sourcebytes".padEnd(64, "a"));
+    expect(run.result?.c2paEvidence.note).toContain("does not match the intake source");
   });
 
   it("notifies subscribers as stations complete, without waiting for the reverse", async () => {
@@ -426,14 +510,14 @@ describe("CompileController", () => {
       measureSourceBytes: async () => {
         environment.calls.push("measureSourceBytes");
         return {
+          sourceByteSha256: "sourcebytes".padEnd(64, "a"),
           pixelSha256,
           width: 2,
           height: 1,
+          orientation: 1,
           mimeType: "image/jpeg",
-          intakeManifestJson: JSON.stringify({
-            schema_version: "0.2",
-            obverse: { byte_sha256: "sourcebytes".padEnd(64, "a"), pixel_sha256: pixelSha256 },
-          }),
+          intakeVersion: "0.2",
+          manifest: intakeManifest("sourcebytes".padEnd(64, "a"), pixelSha256),
         };
       },
     });
@@ -640,14 +724,14 @@ describe("CompileController", () => {
         const pixelSha256 = `pix:${tag}`.padEnd(64, "a").slice(0, 64);
         const sourceByteSha256 = `src:${tag}`.padEnd(64, "a").slice(0, 64);
         return {
+          sourceByteSha256,
           pixelSha256,
           width: 2,
           height: 1,
+          orientation: 1,
           mimeType: "image/jpeg",
-          intakeManifestJson: JSON.stringify({
-            schema_version: "0.2",
-            obverse: { byte_sha256: sourceByteSha256, pixel_sha256: pixelSha256 },
-          }),
+          intakeVersion: "0.2",
+          manifest: intakeManifest(sourceByteSha256, pixelSha256),
         };
       },
       buildBinding: async (intakeJson) => {

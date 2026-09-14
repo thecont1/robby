@@ -19,11 +19,14 @@ import { c2paEvidenceFromCredential } from "@/lib/c2paEvidence";
 import { buildIdentityRecord } from "@/lib/identityRecord";
 
 export type SourceIntake = {
+  sourceByteSha256: string;
   pixelSha256: string;
   width: number;
   height: number;
+  orientation: number | null;
   mimeType: string;
-  intakeManifestJson: string;
+  intakeVersion: string;
+  manifest: IntakeManifest;
 };
 
 export type CanonicalBinding = {
@@ -53,7 +56,12 @@ export type CompileDeps = {
     rendererVersion: string,
   ) => Promise<CanonicalBinding>;
   compileRecipe: (recipeSource: string, signal: AbortSignal) => Promise<RobbyIr>;
-  inspectC2pa: (sourceName: string, signal: AbortSignal) => Promise<CredentialSignature>;
+  inspectC2pa: (
+    sourceName: string,
+    bytes: Uint8Array,
+    sourceByteSha256: string,
+    signal: AbortSignal,
+  ) => Promise<CredentialSignature>;
   renderReverse: (ir: RobbyIr, signal: AbortSignal, sheet?: ObservabilitySheetFacts) => Promise<EphemeralReverseResult>;
   now: () => string;
   createId: () => string;
@@ -67,15 +75,21 @@ export type CompileOptions = {
   force?: boolean;
 };
 
-async function inspectOptionalC2pa(deps: CompileDeps, sourceName: string, signal: AbortSignal): Promise<CredentialSignature> {
+async function inspectOptionalC2pa(
+  deps: CompileDeps,
+  sourceName: string,
+  bytes: Uint8Array,
+  sourceByteSha256: string,
+  signal: AbortSignal,
+): Promise<CredentialSignature> {
   try {
-    return await deps.inspectC2pa(sourceName, signal);
+    return await deps.inspectC2pa(sourceName, bytes, sourceByteSha256, signal);
   } catch (error) {
     if (signal.aborted || (error instanceof DOMException && error.name === "AbortError")) throw error;
     const message = error instanceof Error ? error.message : String(error);
     return {
       status: "absent",
-      sourceSha256: "",
+      sourceSha256: sourceByteSha256,
       verificationMethod: "Official CAI C2PA Node SDK validation of exact local JPEG bytes",
       note: `The official C2PA reader could not inspect this JPEG. Compilation continues without C2PA evidence. ${message}`,
     };
@@ -238,7 +252,22 @@ export function createCompileController(deps: CompileDeps) {
           };
         });
 
-        const inspected = await inspectOptionalC2pa(deps, request.sourceName, signal);
+        if (!sourceByteArray) throw new Error("Source bytes were not read during intake.");
+        const inspectedRaw = await inspectOptionalC2pa(
+          deps,
+          request.sourceName,
+          sourceByteArray,
+          String(sourceBytes.sourceByteSha256),
+          signal,
+        );
+        const inspected = inspectedRaw.sourceSha256.toLowerCase() === String(sourceBytes.sourceByteSha256).toLowerCase()
+          ? inspectedRaw
+          : {
+              status: "absent" as const,
+              sourceSha256: String(sourceBytes.sourceByteSha256),
+              verificationMethod: inspectedRaw.verificationMethod,
+              note: "The C2PA reader could not inspect a matching source: its result does not match the intake source. Compilation continues without C2PA evidence.",
+            };
         const c2paEvidence = c2paEvidenceFromCredential(inspected, deps.now());
         const readClass = inspected.status === "present" ? "verified" : "unavailable";
         const credential = await station(run, "read", readClass, async () => ({
@@ -252,14 +281,19 @@ export function createCompileController(deps: CompileDeps) {
         const intake = await station(run, "measure", "measured", async () => {
           if (!sourceByteArray) throw new Error("Source bytes were not read during intake.");
           const measurement = await deps.measureSourceBytes(request.sourceName, sourceByteArray, signal);
+          if (measurement.sourceByteSha256.toLowerCase() !== String(sourceBytes.sourceByteSha256).toLowerCase()) {
+            throw new Error("Rust intake source SHA-256 does not match the fetched source bytes.");
+          }
           return {
-            sourceByteSha256: sourceBytes.sourceByteSha256,
+            sourceByteSha256: measurement.sourceByteSha256,
             byteSize: sourceBytes.byteSize,
             pixelSha256: measurement.pixelSha256,
             width: measurement.width,
             height: measurement.height,
+            orientation: measurement.orientation,
             mimeType: measurement.mimeType,
-            intakeManifestJson: measurement.intakeManifestJson,
+            intakeVersion: measurement.intakeVersion,
+            intakeManifestJson: JSON.stringify(measurement.manifest),
           };
         });
 
@@ -289,7 +323,7 @@ export function createCompileController(deps: CompileDeps) {
                 presence: String(inspected.status === "present" || inspected.status === "candidate" ? inspected.status : "absent"),
                 validation: String(c2paEvidence.validation),
                 signerTrust: String(c2paEvidence.signerTrust),
-                availability: String(c2paEvidence.availability === "not_inspected" ? "not_inspected" : "inspected"),
+                availability: String(c2paEvidence.availability),
               },
             },
             deps.compilerVersion,
