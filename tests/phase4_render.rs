@@ -334,6 +334,52 @@ fn rich_bmp(width: u32, height: u32) -> Vec<u8> {
     out
 }
 
+/// A frame dominated by a dense near-white cluster, reproducing what real
+/// photographs with large blown-out regions do to median cut: several buckets
+/// round to the SAME 8-bit RGB, so the palette contains identical adjacent
+/// entries and only the hairline can separate them.
+///
+/// Distilled from `MS201412-AddisAbaba0315.jpg`, the one image in a 992-config
+/// sweep (16 sources x k=3..64) that produces duplicate adjacent entries — it
+/// does so for every k in 34..=64. This 64x48 synthetic hits the same state at
+/// k=10..=15 without committing a 2.8 MB photograph.
+fn near_white_cluster_bmp(width: u32, height: u32) -> Vec<u8> {
+    let row_size = (width * 3).div_ceil(4) * 4;
+    let pixel_bytes = row_size * height;
+    let file_size = 54 + pixel_bytes;
+    let mut out = vec![0_u8; file_size as usize];
+    out[0..2].copy_from_slice(b"BM");
+    out[2..6].copy_from_slice(&file_size.to_le_bytes());
+    out[10..14].copy_from_slice(&54_u32.to_le_bytes());
+    out[14..18].copy_from_slice(&40_u32.to_le_bytes());
+    out[18..22].copy_from_slice(&width.to_le_bytes());
+    out[22..26].copy_from_slice(&height.to_le_bytes());
+    out[26..28].copy_from_slice(&1_u16.to_le_bytes());
+    out[28..30].copy_from_slice(&24_u16.to_le_bytes());
+    out[34..38].copy_from_slice(&pixel_bytes.to_le_bytes());
+    for y in 0..height {
+        for x in 0..width {
+            let offset = 54 + (y * row_size + x * 3) as usize;
+            let pixel = if y < height * 3 / 4 {
+                // 236..=247: twelve near-white tones, far denser than the
+                // palette can resolve, so buckets collapse onto each other.
+                let v = 236 + ((x * 7 + y * 3) % 12) as u8;
+                [v, v, v]
+            } else {
+                // Saturated anchors so median cut still has to spend entries
+                // elsewhere rather than resolving the white band finely.
+                [
+                    ((x * 37) % 256) as u8,
+                    ((y * 53) % 256) as u8,
+                    ((x * y) % 256) as u8,
+                ]
+            };
+            out[offset..offset + 3].copy_from_slice(&pixel);
+        }
+    }
+    out
+}
+
 /// WCAG 2.x relative luminance, mirrored here because the renderer's copy is
 /// private. Kept local so the production API stays unchanged.
 fn relative_luminance(rgb: [u8; 3]) -> f64 {
@@ -512,4 +558,90 @@ fn observability_sheet_separates_its_editorial_levels() {
             pair[1]
         );
     }
+}
+
+/// The case the separator fix actually exists for.
+///
+/// `observability_sheet_draws_every_declared_swatch_for_all_supported_k` holds
+/// the strict >= 3:1 bar behind `left == right`, but its rich fixture has
+/// hundreds of distinct colours and never emits identical adjacent entries, so
+/// that branch never executed — the test passed without ever checking the
+/// thing it was written to check. A 992-config sweep over the real gallery
+/// found the state does occur (near-white collapse, 31 configs), so pin it
+/// with a fixture that reproduces it in-tree.
+///
+/// Choosing the first *differing* sheet colour once yielded a 1.38:1 hairline
+/// here: k entries declared, k-1 countable. Choosing for maximum contrast
+/// yields 15.35:1 on the real photograph.
+#[test]
+fn observability_sheet_separates_identical_adjacent_swatches() {
+    let source = near_white_cluster_bmp(64, 48);
+    let mut exercised = 0_u32;
+
+    for k in 10_u8..=15 {
+        let mut s = settings("observability_sheet");
+        s.k = k;
+        let out = render_reverse(&source, &s).expect("sheet");
+
+        let palette: Vec<[u8; 3]> = out.manifest.palette.iter().map(|e| e.rgb).collect();
+        let duplicates = palette.windows(2).filter(|pair| pair[0] == pair[1]).count();
+        if duplicates == 0 {
+            continue;
+        }
+        exercised += 1;
+
+        let (w, _h, px) = decode_png(&out.png);
+        let y = 48 + 64 + 20;
+        let mut runs: Vec<([u8; 3], u32)> = Vec::new();
+        for x in 48..(w - 48) {
+            let c = px[(y * w + x) as usize];
+            match runs.last_mut() {
+                Some((colour, width)) if *colour == c => *width += 1,
+                _ => runs.push((c, 1)),
+            }
+        }
+
+        // Every declared entry stays countable even when two are the same RGB.
+        let countable = runs.iter().filter(|(_, width)| *width > 1).count();
+        assert_eq!(
+            countable,
+            palette.len(),
+            "k={k}: {duplicates} duplicate adjacent entries collapsed — \
+             viewer counts {countable} of {} swatches",
+            palette.len()
+        );
+
+        // And the hairline between two identical swatches must be visible.
+        let mut checked = 0_u32;
+        for (index, (colour, width)) in runs.iter().enumerate() {
+            if *width != 1 || index == 0 || index + 1 >= runs.len() {
+                continue;
+            }
+            let (left, _) = runs[index - 1];
+            let (right, _) = runs[index + 1];
+            if left != right {
+                continue;
+            }
+            checked += 1;
+            let worst = contrast_ratio(*colour, left).min(contrast_ratio(*colour, right));
+            assert!(
+                worst >= 3.0,
+                "k={k}: identical swatches {left:?} separated only by {colour:?} \
+                 at {worst:.2}:1 — a viewer counts them as one"
+            );
+        }
+        assert!(
+            checked > 0,
+            "k={k}: palette has {duplicates} duplicate pairs but no hairline \
+             was measured between identical swatches"
+        );
+    }
+
+    // Guard against the vacuity this test was written to fix: if quantisation
+    // ever stops producing duplicates here, fail loudly rather than pass empty.
+    assert!(
+        exercised > 0,
+        "fixture no longer produces identical adjacent palette entries — \
+         the duplicate-separator path is unverified; rebuild the fixture"
+    );
 }
