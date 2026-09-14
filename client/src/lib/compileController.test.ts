@@ -366,6 +366,57 @@ describe("CompileController", () => {
     expect(environment.calls.filter(call => call === "renderReverse")).toHaveLength(2);
   });
 
+  // Plan 10 WP-C required test 6: two rapid compile requests for the same
+  // source. The latest run must win, and the superseded run must not be able
+  // to overwrite it when its slower work finally lands.
+  it("lets the latest run win when two compiles race for the same source", async () => {
+    const firstGate = deferred<void>();
+    let renders = 0;
+    const environment = deps({
+      renderReverse: async (_ir, signal) => {
+        environment.calls.push("renderReverse");
+        const mine = ++renders;
+        // The first (superseded) render finishes LAST, so if the controller
+        // were order-naive it would clobber the winner's result.
+        if (mine === 1) await firstGate.promise;
+        if (signal.aborted) throw new DOMException("Aborted", "AbortError");
+        return {
+          blob: new Blob([`png${mine}`], { type: "image/png" }),
+          manifest: {
+            version: "robby-render-manifest-v1",
+            source_obverse_sha256: "sourcebytes".padEnd(64, "a"),
+            script_settings_sha256: "settings".padEnd(64, "b"),
+            derived_seed: "seed".padEnd(64, "c"),
+            output_sha256: `output${mine}`.padEnd(64, "d"),
+            render_module: "negative",
+            colour_swatches: ["#112233"],
+            cached_intermediate: null,
+          },
+        };
+      },
+    });
+    const controller = createCompileController(environment);
+    const superseded = controller.compile(request());
+    await waitFor(() => environment.calls.includes("renderReverse"));
+    // force bypasses coalescing, producing a genuine second run for the same
+    // request key. compile() cancels and awaits the in-flight run first, so
+    // the gate must open for that cancellation to land — the abort signal is
+    // what stops run 1, not the gate.
+    const winnerPromise = controller.compile(request(), { force: true });
+    firstGate.resolve();
+    const winner = await winnerPromise;
+    const loser = await superseded.catch(() => null);
+
+    expect(winner.status).toBe("completed");
+    expect(winner.result?.reverseOutputSha256).toBe(`output2`.padEnd(64, "d"));
+    // The superseded run must never be reported as a completed current result.
+    expect(loser?.status).not.toBe("completed");
+    // And the controller's observable state still belongs to the winner: a
+    // subsequent compile serves the winner's cached orio, not run 1's.
+    const settled = await controller.compile(request());
+    expect(settled.result?.reverseOutputSha256).toBe(`output2`.padEnd(64, "d"));
+  });
+
   it("never reuses the session cache when any identity-domain input changes", async () => {
     // One controller and one session cache throughout: the point is that the
     // cache itself refuses to serve a stale orio, not that a fresh controller
