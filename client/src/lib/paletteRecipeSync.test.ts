@@ -45,7 +45,7 @@ function visibleSource(store: ReturnType<typeof createRecipeDraftStore>, id: str
 describe("palette control and authored recipe stay synchronised", () => {
   it("wires the selected draft to both the editor and Compile Orio", () => {
     expect(HOME_SOURCE).toContain("const activeRecipe = selectedDraft;");
-    expect(HOME_SOURCE).toContain("source={selectedDraft}");
+    expect(HOME_SOURCE).toContain("source={activeRecipe}");
     expect(HOME_SOURCE).toContain("paletteK={paletteK}");
     const freshnessGuards = HOME_SOURCE.match(/if \(!isCompiledSourceCurrent\(compiledSpecimenId, source, currentAuthority\.specimenId, currentAuthority\.source\)\) return;/g) ?? [];
     expect(freshnessGuards).toHaveLength(2); // Compile Orio + Validate recipe persistence
