@@ -89,6 +89,10 @@ export function unavailableCredentialInspection(sourceSha256: string, error: unk
   };
 }
 
+/**
+ * Inspects supplied JPEG bytes with the C2PA reader. Reader failures are
+ * returned as unavailable inspection records rather than rejected promises.
+ */
 async function inspectCredentialBytes(
   bytes: Buffer,
   sourceSha256: string,
@@ -107,6 +111,11 @@ async function inspectCredentialBytes(
   }
 }
 
+/**
+ * Inspects a JPEG from the configured gallery and caches the result by path and
+ * content digest for five minutes. Invalid names and gallery access failures
+ * reject the request.
+ */
 export async function inspectGalleryCredential(sourceName: string): Promise<C2paCredentialInspection> {
   const safeName = validateSourceName(sourceName);
   const source = await readLocalGallerySource(safeName);
@@ -154,6 +163,11 @@ export function createC2paInspectionHandler() {
   };
 }
 
+/**
+ * Creates a handler that verifies posted JPEG bytes against the intake SHA-256
+ * before C2PA inspection. Invalid filenames, bodies, or digests receive a 400;
+ * successful inspection responses disable HTTP caching.
+ */
 export function createC2paByteInspectionHandler() {
   return async (req: express.Request, res: express.Response) => {
     try {
@@ -181,6 +195,7 @@ export function createC2paByteInspectionHandler() {
   };
 }
 
+/** Registers gallery-name GET inspection and byte-snapshot POST inspection. */
 export function registerC2paRoutes(app: Express) {
   app.get("/api/c2pa/:source", createC2paInspectionHandler());
   app.post(

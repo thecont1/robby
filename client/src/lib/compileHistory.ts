@@ -28,6 +28,11 @@ export async function loadCompileHistory(specimenId: string) {
   return sortCompileHistory(sessionHistory.get(specimenId) ?? []);
 }
 
+/**
+ * Stores a snapshot for the current browser session, replacing the same ID and
+ * retaining the final 12 after ordering that specimen's snapshots by
+ * `compiledAt`. Returns a copy of the retained history.
+ */
 export async function persistCompileSnapshot(snapshot: CompileSnapshot) {
   const current = sessionHistory.get(snapshot.specimenId) ?? [];
   const withoutPriorId = current.filter(item => item.id !== snapshot.id);

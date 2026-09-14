@@ -1,5 +1,11 @@
 import type { CredentialSignature } from "./demoData";
 
+/**
+ * Requests C2PA inspection of the exact source-byte snapshot used for intake.
+ * The server verifies `sourceSha256` against `bytes`; rejected snapshots and
+ * other non-success responses are surfaced as errors, and `signal` can abort
+ * the request.
+ */
 export async function inspectC2paCredential(
   source: string,
   bytes: Uint8Array,

@@ -880,6 +880,9 @@ fn stroke_rect(image: &mut RgbImage, x: u32, y: u32, width: u32, height: u32, co
     fill_rect(image, x + width.saturating_sub(1), y, 1, height, color);
 }
 
+/// Draw a palette band using weighted spans with a countability floor. When a
+/// span is wide enough, its trailing hairline is chosen deterministically for
+/// contrast against both neighbours so equal RGB entries remain distinct.
 fn draw_weighted_swatches(
     image: &mut RgbImage,
     x: u32,

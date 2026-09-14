@@ -75,6 +75,11 @@ export type CompileOptions = {
   force?: boolean;
 };
 
+/**
+ * Inspects the intake byte snapshot without making C2PA availability a compile
+ * requirement. Cancellation errors propagate; other inspection failures become
+ * an unavailable credential record that retains the intake digest.
+ */
 async function inspectOptionalC2pa(
   deps: CompileDeps,
   sourceName: string,
@@ -112,6 +117,13 @@ type CachedOrio = {
   };
 };
 
+/**
+ * Creates a session-scoped compile pipeline with observable station updates.
+ * Unforced identical in-flight requests coalesce, superseding requests cancel
+ * prior work, and completed results are reused only when their canonical
+ * binding matches. Disposing the controller cancels active work and revokes
+ * cached object URLs.
+ */
 export function createCompileController(deps: CompileDeps) {
   let active: CompileRun | null = null;
   let activeRequestKey: string | null = null;

@@ -9,7 +9,11 @@ export type CounterPresentation = {
   defaultStationsExpanded: boolean;
 };
 
-/** Plan 10 §13.3 progressive-disclosure policy. */
+/**
+ * Hides stations before a run, shows them directly while running or failed,
+ * and makes completed or stale station details available in a collapsed
+ * disclosure.
+ */
 export function counterPresentation(state: CounterState): CounterPresentation {
   switch (state) {
     case "dormant":

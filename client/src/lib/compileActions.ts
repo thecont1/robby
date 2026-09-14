@@ -3,7 +3,10 @@ import type { CompileRun } from "@/lib/compileEvents";
 export type ObjectFace = "obverse" | "inverse";
 export type CompileActionName = "compile" | "turn";
 
-/** Plan 10 §13.2 visual action hierarchy. */
+/**
+ * Places Turn before Compile only for a completed result whose recipe is still
+ * current; otherwise Compile remains first.
+ */
 export function compileActionOrder(input: { completed: boolean; recipeChanged: boolean }): [CompileActionName, CompileActionName] {
   return input.completed && !input.recipeChanged ? ["turn", "compile"] : ["compile", "turn"];
 }

@@ -9,6 +9,11 @@ async function sha256Hex(value: string | Uint8Array) {
   return Array.from(new Uint8Array(digest)).map(byte => byte.toString(16).padStart(2, "0")).join("");
 }
 
+/**
+ * Adapts browser networking and the Rust/WASM compiler to the compile
+ * controller. Source measurement and C2PA inspection receive the same fetched
+ * byte snapshot, and fetch-backed work receives the controller's abort signal.
+ */
 export function createBrowserCompileDeps(): CompileDeps {
   return {
     fetchSourceBytes: async (sourceUrl, signal) => {
