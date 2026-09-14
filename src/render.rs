@@ -891,62 +891,79 @@ fn draw_weighted_swatches(
     if palette.is_empty() || width == 0 {
         return;
     }
-    let weight_total = palette
+    let weights: Vec<u64> = palette.iter().map(|entry| entry.weight.max(1)).collect();
+    let weight_total = weights
         .iter()
-        .map(|entry| entry.weight.max(1))
-        .sum::<u64>()
-        .max(1);
-    // Every declared colour must be visible: the sheet is an observability
-    // record, so a swatch the viewer cannot count is a missing fact. A fixed
-    // minimum span overruns the band once the palette is large (k*min > width),
-    // which silently clipped the tail entries. Derive the floor from the band
-    // instead, and give the remainder to the widest spans so the row still
-    // reads as weighted rather than uniform.
-    let count = palette.len() as u32;
-    let min_span = (width / count).max(1);
-    let mut spans: Vec<u32> = palette
-        .iter()
-        .map(|entry| {
-            (((entry.weight.max(1) * u64::from(width)) / weight_total) as u32).max(min_span)
-        })
-        .collect();
+        .map(|weight| u128::from(*weight))
+        .sum::<u128>();
 
-    // Trim the overshoot from the largest spans first; never below min_span.
-    let mut total: u32 = spans.iter().sum();
-    while total > width {
-        let mut victim = 0usize;
-        for (index, span) in spans.iter().enumerate() {
-            if *span > spans[victim] {
-                victim = index;
-            }
-        }
-        if spans[victim] <= min_span {
+    // Start from the true proportional allocation. Only colours whose ideal
+    // share is narrower than the countability floor are pinned to that floor;
+    // the remaining width is then re-apportioned among the unfrozen colours.
+    // This preserves 80/10/10 as 80/10/10 while still keeping rare high-k
+    // colours visible.
+    let count = palette.len() as u32;
+    let min_span = (width / count).min(8);
+    let mut spans = vec![0_u32; palette.len()];
+    let mut active: Vec<usize> = (0..palette.len()).collect();
+    let mut remaining_width = width;
+    let mut remaining_weight = weight_total;
+
+    loop {
+        let below_floor: Vec<usize> = active
+            .iter()
+            .copied()
+            .filter(|index| {
+                u128::from(weights[*index]) * u128::from(remaining_width)
+                    < u128::from(min_span) * remaining_weight
+            })
+            .collect();
+        if below_floor.is_empty() {
             break;
         }
-        let take = (total - width).min(spans[victim] - min_span);
-        spans[victim] -= take;
-        total -= take;
-    }
-    // Distribute any shortfall so the band stays flush to its right edge.
-    if total < width {
-        let mut index = 0usize;
-        while total < width {
-            spans[index] += 1;
-            total += 1;
-            index = (index + 1) % spans.len();
+        for index in &below_floor {
+            spans[*index] = min_span;
+            remaining_width -= min_span;
+            remaining_weight -= u128::from(weights[*index]);
         }
+        active.retain(|index| !below_floor.contains(index));
+    }
+
+    let mut remainders = Vec::with_capacity(active.len());
+    for index in active {
+        let scaled = u128::from(weights[index]) * u128::from(remaining_width);
+        spans[index] = (scaled / remaining_weight) as u32;
+        remainders.push((index, scaled % remaining_weight));
+    }
+
+    // Largest-remainder apportionment makes the integer spans sum exactly to
+    // the band width. Palette order breaks equal-remainder ties deterministically.
+    let assigned: u32 = spans.iter().sum();
+    let leftover = (width - assigned) as usize;
+    remainders.sort_by(|(left_index, left), (right_index, right)| {
+        right.cmp(left).then_with(|| left_index.cmp(right_index))
+    });
+    for (index, _) in remainders.into_iter().take(leftover) {
+        spans[index] += 1;
     }
 
     let mut cursor = x;
-    for (index, entry) in palette.iter().enumerate() {
-        let span = if index + 1 == palette.len() {
-            (x + width).saturating_sub(cursor)
-        } else {
-            spans[index]
-        };
+    for (index, (entry, span)) in palette.iter().zip(spans).enumerate() {
         fill_rect(image, cursor, y, span, height, Rgb(entry.rgb));
-        cursor = (cursor + span).min(x + width);
+        cursor += span;
+        // Adjacent palette entries may quantise to the same RGB. Preserve both
+        // manifest facts and make their boundary countable instead of letting
+        // equal colours merge into one apparent swatch.
+        if index + 1 < palette.len() && span > 1 {
+            let neighbours = [entry.rgb, palette[index + 1].rgb];
+            let separator = [RULE, PAPER, INK, VERMILION]
+                .into_iter()
+                .find(|colour| !neighbours.contains(&colour.0))
+                .expect("four sheet colours cannot all equal two neighbours");
+            fill_rect(image, cursor - 1, y, 1, height, separator);
+        }
     }
+    debug_assert_eq!(cursor, x + width);
 }
 
 fn draw_seeded_field(
@@ -1064,5 +1081,47 @@ impl SplitMix64 {
         value = (value ^ (value >> 30)).wrapping_mul(0xBF58_476D_1CE4_E5B9);
         value = (value ^ (value >> 27)).wrapping_mul(0x94D0_49BB_1331_11EB);
         value ^ (value >> 31)
+    }
+}
+
+#[cfg(test)]
+mod weighted_swatch_tests {
+    use super::{draw_weighted_swatches, PaletteEntry, PAPER};
+    use image::{ImageBuffer, Rgb};
+
+    #[test]
+    fn weighted_swatches_keep_dominant_colours_visibly_dominant() {
+        let palette = vec![
+            PaletteEntry {
+                hex: "#FF0000".into(),
+                rgb: [255, 0, 0],
+                weight: 800,
+                rank: 0,
+            },
+            PaletteEntry {
+                hex: "#00FF00".into(),
+                rgb: [0, 255, 0],
+                weight: 100,
+                rank: 1,
+            },
+            PaletteEntry {
+                hex: "#0000FF".into(),
+                rgb: [0, 0, 255],
+                weight: 100,
+                rank: 2,
+            },
+        ];
+        let mut image = ImageBuffer::from_pixel(100, 1, PAPER);
+
+        draw_weighted_swatches(&mut image, 0, 0, 100, 1, &palette);
+
+        assert_eq!(image.get_pixel(0, 0), &Rgb([255, 0, 0]));
+        assert_eq!(image.get_pixel(78, 0), &Rgb([255, 0, 0]));
+        assert_eq!(image.get_pixel(79, 0), &super::RULE);
+        assert_eq!(image.get_pixel(80, 0), &Rgb([0, 255, 0]));
+        assert_eq!(image.get_pixel(88, 0), &Rgb([0, 255, 0]));
+        assert_eq!(image.get_pixel(89, 0), &super::RULE);
+        assert_eq!(image.get_pixel(90, 0), &Rgb([0, 0, 255]));
+        assert_eq!(image.get_pixel(99, 0), &Rgb([0, 0, 255]));
     }
 }

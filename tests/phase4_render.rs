@@ -345,34 +345,51 @@ fn sheet_with_k(k: u8) -> robby_compiler::render::RenderResult {
 /// tail entries so the viewer saw fewer swatches than k.
 #[test]
 fn observability_sheet_draws_every_declared_swatch_for_all_supported_k() {
-    for k in [3_u8, 8, 16, 20, 25, 26, 32, 48, 64] {
+    for k in 3_u8..=64 {
         let out = sheet_with_k(k);
         let declared = out.manifest.palette.len();
         let (w, _h, px) = decode_png(&out.png);
 
-        // Sample the middle scanline of the swatch band (y = 48 + 64 .. + 40).
+        // Sample the middle scanline of the swatch band (y = 48 + 64 .. + 40),
+        // collecting run-length encoded colour regions.
         let y = 48 + 64 + 20;
-        let mut runs: Vec<[u8; 3]> = Vec::new();
+        let mut runs: Vec<([u8; 3], u32)> = Vec::new();
         for x in 48..(w - 48) {
             let c = px[(y * w + x) as usize];
-            if runs.last() != Some(&c) {
-                runs.push(c);
+            match runs.last_mut() {
+                Some((colour, width)) if *colour == c => *width += 1,
+                _ => runs.push((c, 1)),
             }
         }
 
-        for (index, entry) in out.manifest.palette.iter().enumerate() {
-            assert!(
-                runs.contains(&entry.rgb),
-                "k={k}: palette entry {index} {:?} was never drawn in the swatch band",
-                entry.rgb
-            );
-        }
-        // Median cut cannot invent colours the source lacks, so the palette
-        // may legitimately be smaller than k. The invariant under test is that
-        // every colour it DOES declare is drawn — no silent clipping.
-        assert!(
-            declared > 0 && declared <= k as usize,
-            "k={k}: declared {declared} colours, expected 1..={k}"
+        let expected: Vec<[u8; 3]> = out.manifest.palette.iter().map(|entry| entry.rgb).collect();
+
+        // Count what a viewer counts: contiguous regions wider than a hairline
+        // boundary. This stays true to the user-visible contract ("k=n must
+        // show n swatches") without asserting how separation is achieved, so
+        // the test still fails if spans are ever clipped again.
+        let swatches: Vec<[u8; 3]> = runs
+            .iter()
+            .filter(|(_, width)| *width > 1)
+            .map(|(colour, _)| *colour)
+            .collect();
+        assert_eq!(
+            swatches.len(),
+            expected.len(),
+            "k={k}: expected {} countable swatches, saw {}",
+            expected.len(),
+            swatches.len()
+        );
+        assert_eq!(
+            swatches, expected,
+            "k={k}: swatch band must show every declared colour in palette order"
+        );
+        // This fixture has hundreds of distinct colours, so median cut must
+        // satisfy every legal requested k rather than exercising the
+        // low-colour-source exception.
+        assert_eq!(
+            declared, k as usize,
+            "k={k}: rich source should declare exactly the requested palette size"
         );
     }
 }
