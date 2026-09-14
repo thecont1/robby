@@ -791,6 +791,7 @@ export default function Home() {
             recipeChanged={recipeChanged}
             paletteK={paletteK}
             onPaletteKChange={editPaletteK}
+            previewPalette={selected.palette}
           />
         </div>
       </section>

@@ -27,18 +27,31 @@ export default function TeppanyakiCounter({
   recipeChanged,
   paletteK,
   onPaletteKChange,
+  previewPalette = [],
 }: {
   run: CompileRun | null;
   recipeChanged: boolean;
   paletteK: number;
   onPaletteKChange: (value: number) => void;
+  /**
+   * The specimen's server-precomputed k=8 default palette (see
+   * `galleryWatcher.ts`). The swatch grid is a permanent fixture of the
+   * counter, not something that only appears after a compile — this is
+   * what it shows before the user has ever compiled this specimen, or after
+   * switching away from one they compiled a moment ago.
+   */
+  previewPalette?: readonly string[];
 }) {
   const state = deriveCounterState(run, recipeChanged);
   const copy = counterCopy(state);
   const presentation = counterPresentation(state);
   const stations = stationViews(run?.events ?? []);
   const splitStation = stations.find(station => station.stage === "split");
-  const swatches = splitStation?.swatches ?? [];
+  const compiledSwatches = splitStation?.swatches ?? [];
+  const swatches = compiledSwatches.length > 0 ? compiledSwatches : previewPalette;
+  const swatchGridLabel = compiledSwatches.length === 0
+    ? `${swatches.length} palette swatches in rows of 8 — default preview at k=8, compile to render this recipe`
+    : `${swatches.length} palette swatches in rows of 8`;
 
   return (
     <aside className={`teppanyaki-counter state-${state}`} data-state={state} aria-labelledby="teppanyaki-counter-title">
@@ -70,7 +83,7 @@ export default function TeppanyakiCounter({
         </div>
       </div>
       {swatches.length > 0 && (
-        <div className="palette-swatch-grid" role="img" aria-label={`${swatches.length} palette swatches in rows of 8`}>
+        <div className="palette-swatch-grid" role="img" aria-label={swatchGridLabel}>
           {swatches.map((swatch, index) => (
             // Median cut averages each colour box independently, so two boxes
             // can round to the same hex. The index disambiguates those repeats;
@@ -88,11 +101,13 @@ export default function TeppanyakiCounter({
         <StationList stations={stations} />
       ))}
       {run?.result?.disclosure && (
-        <p className="teppanyaki-audit" role="note">
-          {run.result.disclosure.safe
-            ? `Public-safe: omitted ${run.result.disclosure.omitted.join(" · ")}`
-            : `Disclosure warning: ${run.result.disclosure.warnings.join(" · ")}`}
-        </p>
+        <div className="teppanyaki-audit-window" tabIndex={0} aria-label="Disclosure audit, scrollable">
+          <p className="teppanyaki-audit" role="note">
+            {run.result.disclosure.safe
+              ? `Public-safe: omitted ${run.result.disclosure.omitted.join(" · ")}`
+              : `Disclosure warning: ${run.result.disclosure.warnings.join(" · ")}`}
+          </p>
+        </div>
       )}
     </aside>
   );

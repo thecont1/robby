@@ -1,6 +1,6 @@
 import express, { type Express } from "express";
 import { spawn } from "node:child_process";
-import { resolve } from "node:path";
+import { basename, resolve } from "node:path";
 import { readLocalGallerySource } from "./gallerySource";
 import {
   LiveRenderValidationError,
@@ -187,7 +187,7 @@ function rustBinary() {
   return process.env.ROBBY_BINARY ?? resolve(process.cwd(), "target", "release", "robby");
 }
 
-async function runRustRenderer(
+export async function runRustRenderer(
   sourcePath: string,
   ir: LiveRenderableIr,
   sheet?: LiveSheetFacts,
@@ -306,6 +306,27 @@ export async function renderEphemeralReverse(
   const result = await runRustRenderer(source.path, ir, sheet, signal);
   assertSheetMatchesSourceDigest(sheet, result.manifest.source_obverse_sha256);
   return result;
+}
+
+/**
+ * Compute just the k-swatch default palette for a gallery specimen, without
+ * a caller-supplied recipe. Used to precompute the permanent swatch grid the
+ * Teppanyaki Counter shows before any compile — the PNG the native renderer
+ * always produces alongside it is discarded, only `colour_swatches` matters.
+ * `ir.canvas.base` is not read by `runRustRenderer` (only `sourcePath` is),
+ * so a minimal synthetic IR is safe here.
+ */
+export async function computeDefaultPaletteSwatches(sourcePath: string, k = 8): Promise<string[]> {
+  const ir: LiveRenderableIr = {
+    version: "robby-ir-v1",
+    canvas: { base: basename(sourcePath), width: null, height: null },
+    palette: { k },
+    reverse: { mode: "observability_sheet" },
+    output: { obverse: "front.png", reverse: "transient", manifest: "transient" },
+    meta: { script_sha256: "0".repeat(64) },
+  };
+  const result = await runRustRenderer(sourcePath, ir);
+  return result.manifest.colour_swatches;
 }
 
 export function registerLiveRenderRoutes(app: Express) {

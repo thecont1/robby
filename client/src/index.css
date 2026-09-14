@@ -331,60 +331,70 @@
 .counter-column .teppanyaki-counter { flex: 1 1 auto; min-height: 0; }
 @media (max-width: 790px) { .counter-column { grid-column: auto; grid-row: auto; } }
 
-.teppanyaki-counter { background:transparent; border:1px solid rgba(28,26,25,.54); box-shadow:none; color:#1c1a19; display:flex; flex-direction:column; min-height:100%; opacity:1; padding:19px 19px 17px; transition:border-color .16s cubic-bezier(.23,1,.32,1), background-color .16s cubic-bezier(.23,1,.32,1); }
+/* The counter shares the recipe workbench's dark-panel background in both
+ * themes (light: #1c1a19, dark: #000, exactly matching .source-workbench-wrap)
+ * so the counter column and the workbench beneath it read as one continuous
+ * mirror-L silhouette rather than two enclosures that happen to be adjacent. */
+.teppanyaki-counter { background:#1c1a19; border:1px solid rgba(244,239,225,.3); box-shadow:none; color:#f4efe1; display:flex; flex-direction:column; min-height:100%; opacity:1; padding:19px 19px 17px; transition:border-color .16s cubic-bezier(.23,1,.32,1), background-color .16s cubic-bezier(.23,1,.32,1); }
 @media (prefers-reduced-motion: reduce) {
   .teppanyaki-counter { transition:none; }
 }
-.teppanyaki-counter.state-primed { border-color:#7c3024; }
+.teppanyaki-counter.state-primed { border-color:#e3442f; }
 .teppanyaki-counter.state-running,
 .teppanyaki-counter.state-resolved,
 .teppanyaki-counter.state-stale,
-.teppanyaki-counter.state-failed { border-color:#7c3024; }
-.teppanyaki-counter .trace-heading { border-bottom-color:rgba(28,26,25,.3); }
-.teppanyaki-counter .trace-heading > div { color:#1c1a19; }
-.teppanyaki-counter .trace-heading .mono-label { color:#1c1a19; font-size:10px; }
-.teppanyaki-counter .trace-heading > span { color:#7c3024; font-size:9px; }
+.teppanyaki-counter.state-failed { border-color:#e3442f; }
+.teppanyaki-counter .trace-heading { border-bottom-color:rgba(244,239,225,.3); }
+.teppanyaki-counter .trace-heading > div { color:#f4efe1; }
+.teppanyaki-counter .trace-heading .mono-label { color:#f4efe1; font-size:10px; }
+.teppanyaki-counter .trace-heading > span { color:#e8a394; font-size:9px; }
 .teppanyaki-counter .trace-title { padding:20px 0 17px; }
-.teppanyaki-counter .trace-title .eyebrow { color:#7c3024; font-size:10px; margin-bottom:8px; }
-.teppanyaki-counter .counter-message { color:#1c1a19; font-family:"Source Serif 4",Georgia,serif; font-size:18px; line-height:1.15; margin:0; max-width:31ch; }
+.teppanyaki-counter .trace-title .eyebrow { color:#e8a394; font-size:10px; margin-bottom:8px; }
+.teppanyaki-counter .counter-message { color:#f4efe1; font-family:"Source Serif 4",Georgia,serif; font-size:18px; line-height:1.15; margin:0; max-width:31ch; }
 .teppanyaki-stations { list-style:none; margin:0; padding:0; }
-.teppanyaki-station { border-bottom:1px solid rgba(28,26,25,.22); display:grid; gap:10px; grid-template-columns:28px minmax(0,1fr); min-height:62px; opacity:1; padding:11px 0; }
-.teppanyaki-station.status-idle { color:#514b43; }
+.teppanyaki-station { border-bottom:1px solid rgba(244,239,225,.18); display:grid; gap:10px; grid-template-columns:28px minmax(0,1fr); min-height:62px; opacity:1; padding:11px 0; }
+.teppanyaki-station.status-idle { color:#b8ada0; }
 .teppanyaki-station.status-started,
 .teppanyaki-station.status-artifact,
 .teppanyaki-station.status-completed,
-.teppanyaki-station.status-failed { color:#1c1a19; }
+.teppanyaki-station.status-failed { color:#f4efe1; }
 .teppanyaki-station strong { display:block; font-size:13px; }
-.teppanyaki-station p { color:#514b43; font-family:"DM Mono",monospace; font-size:11px; line-height:1.35; margin:4px 0 0; }
-.teppanyaki-station em { color:#7c3024; display:block; font-family:"DM Mono",monospace; font-size:10px; font-style:normal; letter-spacing:.08em; margin-top:4px; text-transform:uppercase; }
+.teppanyaki-station p { color:#b8ada0; font-family:"DM Mono",monospace; font-size:11px; line-height:1.35; margin:4px 0 0; }
+.teppanyaki-station em { color:#e8a394; display:block; font-family:"DM Mono",monospace; font-size:10px; font-style:normal; letter-spacing:.08em; margin-top:4px; text-transform:uppercase; }
 .teppanyaki-swatches { display:flex; flex-wrap:wrap; gap:3px; margin-top:7px; }
-.teppanyaki-swatches i { border:1px solid rgba(28,26,25,.55); display:block; height:11px; width:11px; }
+.teppanyaki-swatches i { border:1px solid rgba(244,239,225,.4); display:block; height:11px; width:11px; }
 .compile-orio-control { align-items:center; background:#7c3024; border:1px solid #7c3024; color:#fffaf0; display:inline-flex; font-family:"DM Mono",monospace; font-size:10px; font-weight:700; gap:7px; letter-spacing:.1em; min-height:44px; padding:0 12px; text-transform:uppercase; }
 .compile-orio-control:disabled { cursor:wait; opacity:.54; }
 .caption-turn { align-items:center; display:flex; gap:8px; }
-.teppanyaki-audit { color:#514b43; font-family:"DM Mono",monospace; font-size:10px; letter-spacing:.06em; line-height:1.4; margin:12px 0 0; text-transform:uppercase; }
-.dark .teppanyaki-counter { background:transparent; border-color:#e3442f; color:#f7efe0; }
+/* The disclosure bar is a window into the lab: text large enough to read at
+ * a glance, height frozen so it never pushes the counter's layout around,
+ * and internally scrollable so a long disclosure is still fully reachable. */
+.teppanyaki-audit-window { border-top:1px solid rgba(244,239,225,.22); margin-top:12px; max-height:92px; overflow-y:auto; padding-top:10px; }
+.teppanyaki-audit-window:focus-visible { outline:2px solid #e3442f; outline-offset:2px; }
+.teppanyaki-audit { color:#b8ada0; font-family:"DM Mono",monospace; font-size:13px; letter-spacing:.04em; line-height:1.5; margin:0; text-transform:uppercase; }
+.dark .teppanyaki-counter { background:#000; border-color:#e3442f; color:#f7efe0; }
 .dark .teppanyaki-counter .trace-heading { border-bottom-color:#e3442f; }
-.dark .teppanyaki-counter .trace-heading > div,.dark .teppanyaki-counter .trace-heading .mono-label,.dark .teppanyaki-counter .counter-message,.dark .teppanyaki-station.status-idle,.dark .teppanyaki-station.status-started,.dark .teppanyaki-station.status-artifact,.dark .teppanyaki-station.status-completed,.dark .teppanyaki-station.status-failed { color:#f7efe0; }
+.dark .teppanyaki-counter .trace-heading > div,.dark .teppanyaki-counter .trace-heading .mono-label,.dark .teppanyaki-counter .counter-message,.dark .teppanyaki-station.status-started,.dark .teppanyaki-station.status-artifact,.dark .teppanyaki-station.status-completed,.dark .teppanyaki-station.status-failed { color:#f7efe0; }
 .dark .teppanyaki-counter .trace-heading > span,.dark .teppanyaki-counter .trace-title .eyebrow,.dark .teppanyaki-station em { color:#e8a394; }
-.dark .teppanyaki-station { border-bottom-color:#e3442f; }.dark .teppanyaki-station p,.dark .teppanyaki-audit { color:#d79a8d; }.dark .teppanyaki-swatches i { border-color:#e3442f; }
+.dark .teppanyaki-station { border-bottom-color:#e3442f; }.dark .teppanyaki-station.status-idle,.dark .teppanyaki-station p,.dark .teppanyaki-audit { color:#d79a8d; }.dark .teppanyaki-swatches i { border-color:#e3442f; }
+.dark .teppanyaki-audit-window { border-top-color:#e3442f; }
 .image-only .teppanyaki-counter { pointer-events:none; visibility:hidden; }
 
 /* Palette slider sits inside the counter, mirroring the recipe's `palette(k:)`
- * setting without a numeric input under the gallery. */
-.palette-slider { border-top:1px solid rgba(28,26,25,.16); margin:14px 0 12px; padding-top:12px; }
-.palette-slider .mono-label { display:block; margin-bottom:8px; }
+ * setting without a numeric input under the gallery. The counter is now a
+ * dark panel in both themes, so these values are no longer split by `.dark`
+ * — they only ever render against #1c1a19 (light) or #000 (dark), both of
+ * which read the same accent/neutral family. */
+.palette-slider { border-top:1px solid rgba(244,239,225,.18); margin:14px 0 12px; padding-top:12px; }
+.palette-slider .mono-label { color:#d8cebc; display:block; margin-bottom:8px; }
 .palette-slider-row { align-items:center; display:flex; gap:10px; }
-.palette-slider-row input[type="range"] { accent-color:#7c3024; flex:1 1 auto; min-width:0; }
+.palette-slider-row input[type="range"] { accent-color:#e3442f; flex:1 1 auto; min-width:0; }
 .palette-k-value { background:#ede5d3; border:1px solid rgba(28,26,25,.22); border-radius:2px; color:#1c1a19; font-family:"DM Mono",monospace; font-size:11px; font-weight:700; min-width:30px; padding:3px 6px; text-align:center; }
-.dark .palette-slider { border-top-color:rgba(231,224,206,.18); }
-.dark .palette-slider-row input[type="range"] { accent-color:#e3442f; }
 .dark .palette-k-value { background:#1c1a19; border-color:rgba(231,224,206,.22); color:#f7efe0; }
 
 /* Colour swatches render in fixed rows of 8 so a 64-colour palette reads as a
  * tidy grid rather than a widening single strip. */
 .palette-swatch-grid { display:grid; grid-template-columns:repeat(8, 1fr); gap:3px; margin:4px 0 14px; }
-.palette-swatch-grid i { aspect-ratio:1 / 1; border:1px solid rgba(28,26,25,.55); display:block; min-width:0; }
-.dark .palette-swatch-grid i { border-color:#e3442f; }
+.palette-swatch-grid i { aspect-ratio:1 / 1; border:1px solid rgba(244,239,225,.4); display:block; min-width:0; }
 
 /* Colour signature swatch strip — horizontally scrollable for large palettes */

@@ -16,7 +16,13 @@ import { existsSync, lstatSync, readFileSync, readdirSync, realpathSync, statSyn
 import { basename, extname, join, resolve } from "node:path";
 import { watch, type FSWatcher } from "node:fs";
 import { buildDefaultGalleryScript, GALLERY_PALETTE_METHOD, parseGalleryScriptSettings, readJpegDimensions, reverseModuleDescription, scriptCodeOnly, type GalleryReverseMode } from "./galleryMetadata";
-import { galleryDirectory, validateGalleryFilename } from "./gallerySource";
+import { galleryDirectory, galleryMaxItems, validateGalleryFilename } from "./gallerySource";
+import { computeDefaultPaletteSwatches } from "./liveRender";
+
+/** The Teppanyaki Counter's permanent swatch grid is precomputed at this k. */
+const GALLERY_PREVIEW_PALETTE_K = 8;
+/** How many native-renderer processes the precompute pass may run at once. */
+const GALLERY_PREVIEW_CONCURRENCY = 4;
 
 export function configuredGalleryDirectory() {
   return galleryDirectory();
@@ -56,6 +62,50 @@ function measureImage(filePath: string): { width: number; height: number } {
 function computeRatio(width: number, height: number): "four-three" | "three-two" {
   const ratio = width / height;
   return Math.abs(ratio - 4 / 3) < Math.abs(ratio - 3 / 2) ? "four-three" : "three-two";
+}
+
+/**
+ * Default-palette cache, keyed by absolute file path and invalidated by
+ * mtime. A gallery scan is triggered by every fs watch event (including
+ * unrelated `.robby` edits), so without this the native renderer would be
+ * re-invoked for every unchanged specimen on every refresh.
+ */
+const paletteCache = new Map<string, { mtimeMs: number; swatches: string[] }>();
+
+/** Run `fn` over `items` with at most `limit` in flight at once. */
+async function withConcurrency<T, R>(items: T[], limit: number, fn: (item: T) => Promise<R>): Promise<R[]> {
+  const results: R[] = new Array(items.length);
+  let cursor = 0;
+  const workers = Array.from({ length: Math.min(limit, items.length) }, async () => {
+    while (cursor < items.length) {
+      const index = cursor++;
+      results[index] = await fn(items[index]);
+    }
+  });
+  await Promise.all(workers);
+  return results;
+}
+
+/**
+ * The permanent swatch grid the Teppanyaki Counter shows before any compile
+ * is beautiful enough to earn its keep on every page load — so every gallery
+ * specimen gets its k=8 default palette computed once per scan, cached by
+ * mtime, and refreshed only when a file actually changes or the server
+ * restarts. If the native renderer binary is unavailable, cataloguing must
+ * still succeed — an empty palette just means the Counter's default grid
+ * stays hidden for that specimen.
+ */
+async function defaultPaletteFor(filePath: string): Promise<string[]> {
+  try {
+    const mtimeMs = statSync(filePath).mtimeMs;
+    const cached = paletteCache.get(filePath);
+    if (cached && cached.mtimeMs === mtimeMs) return cached.swatches;
+    const swatches = await computeDefaultPaletteSwatches(filePath, GALLERY_PREVIEW_PALETTE_K);
+    paletteCache.set(filePath, { mtimeMs, swatches });
+    return swatches;
+  } catch {
+    return [];
+  }
 }
 
 
@@ -115,6 +165,15 @@ export async function scanGallery(galleryDir = configuredGalleryDirectory()): Pr
         }
       })
       .sort();
+    const maxItems = galleryMaxItems();
+    if (files.length > maxItems) {
+      console.warn(
+        `Gallery folder has ${files.length} specimens; cataloguing only the first ${maxItems} ` +
+        `(alphabetical). Robby is a compiler workbench, not a photo viewer — raise the ` +
+        `ROBBY_GALLERY_MAX_ITEMS environment variable to catalogue more.`,
+      );
+      files = files.slice(0, maxItems);
+    }
   } catch {
     return [];
   }
@@ -157,8 +216,12 @@ export async function scanGallery(galleryDir = configuredGalleryDirectory()): Pr
     }
   }));
   const items = candidates.filter((item): item is DynamicGalleryItem => item !== null);
+  const palettes = await withConcurrency(items, GALLERY_PREVIEW_CONCURRENCY, item =>
+    defaultPaletteFor(join(root, item.source)),
+  );
   return items.map((item, index) => ({
     ...item,
+    palette: palettes[index],
     serial: `${String(index + 1).padStart(2, "0")} / ${String(items.length).padStart(2, "0")}`,
   }));
 }

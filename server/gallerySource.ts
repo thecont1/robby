@@ -6,6 +6,22 @@ export function galleryDirectory() {
   return resolve(process.env.ROBBY_GALLERY_DIR ?? resolve(process.cwd(), "gallery"));
 }
 
+/**
+ * Robby is a compiler workbench, not a photo viewer. The watched folder is
+ * catalogued (and every specimen gets its default palette precomputed on
+ * scan — see `galleryWatcher.ts`), so an unbounded folder would mean
+ * unbounded native-render work on every refresh. Cap it.
+ */
+export const DEFAULT_GALLERY_MAX_ITEMS = 60;
+
+export function galleryMaxItems(): number {
+  const raw = process.env.ROBBY_GALLERY_MAX_ITEMS;
+  if (raw === undefined) return DEFAULT_GALLERY_MAX_ITEMS;
+  const parsed = Number.parseInt(raw, 10);
+  if (!Number.isInteger(parsed) || parsed <= 0) return DEFAULT_GALLERY_MAX_ITEMS;
+  return parsed;
+}
+
 export type LocalGallerySource = {
   filename: string;
   path: string;
