@@ -28,6 +28,44 @@ describe("local live-render source boundary", () => {
     })).rejects.toThrow(expected);
   });
 
+  // Plan 10 WP-D acceptance criterion 1: "same complete compile inputs produce
+  // the same reverse pixels". Determinism is what makes the observability sheet
+  // an auditable artifact rather than a screenshot, so it is pinned here.
+  it("renders byte-identical sheet pixels for identical inputs, and differs when inputs differ", async () => {
+    const root = mkdtempSync(join(tmpdir(), "robby-live-source-"));
+    const previous = process.env.ROBBY_GALLERY_DIR;
+    process.env.ROBBY_GALLERY_DIR = root;
+    try {
+      copyFileSync(resolve(process.cwd(), "tests", "fixtures", "render-source.jpg"), join(root, "safe.jpg"));
+      const facts = (palette_k: number) => ({
+        palette_k,
+        reverse_mode: "observability_sheet",
+        ir_schema: "robby-ir-v1",
+        evidence: { exif: null, iptc: null, xmp: null, gps: null, c2pa: null },
+        included: [],
+        withheld: [],
+      });
+      const render = async (k: number) =>
+        createHash("sha256")
+          .update(
+            (await renderEphemeralReverse(validIr("safe.jpg", k, "observability_sheet"), facts(k))).png,
+          )
+          .digest("hex");
+
+      const first = await render(20);
+      const second = await render(20);
+      // Identical inputs across separate executor invocations: same pixels.
+      expect(second).toBe(first);
+      // A changed palette_k must actually change the artifact, proving the
+      // determinism above is real rather than a constant image.
+      expect(await render(8)).not.toBe(first);
+    } finally {
+      if (previous === undefined) delete process.env.ROBBY_GALLERY_DIR;
+      else process.env.ROBBY_GALLERY_DIR = previous;
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
   it("rejects a JPEG that is not present in the watched gallery folder", async () => {
     const root = mkdtempSync(join(tmpdir(), "robby-live-source-"));
     const previous = process.env.ROBBY_GALLERY_DIR;

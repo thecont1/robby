@@ -3,6 +3,31 @@ import { COMPILE_STAGES, STATION_LABELS } from "@/lib/compileEvents";
 
 export type CounterState = "dormant" | "primed" | "running" | "resolved" | "stale" | "failed";
 
+export type CounterPresentation = {
+  showStations: boolean;
+  stationsExpandable: boolean;
+  defaultStationsExpanded: boolean;
+};
+
+/**
+ * Hides stations before a run, shows them directly while running or failed,
+ * and makes completed or stale station details available in a collapsed
+ * disclosure.
+ */
+export function counterPresentation(state: CounterState): CounterPresentation {
+  switch (state) {
+    case "dormant":
+    case "primed":
+      return { showStations: false, stationsExpandable: false, defaultStationsExpanded: false };
+    case "resolved":
+    case "stale":
+      return { showStations: true, stationsExpandable: true, defaultStationsExpanded: false };
+    case "running":
+    case "failed":
+      return { showStations: true, stationsExpandable: false, defaultStationsExpanded: true };
+  }
+}
+
 export type StationView = {
   stage: CompileStage;
   index: string;

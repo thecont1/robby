@@ -9,7 +9,7 @@ import SourceEditor from "@/components/SourceEditor";
 import TeppanyakiCounter from "@/components/TeppanyakiCounter";
 import { ProvenanceModule, type RuntimeRecord, type TraceMode } from "@/components/Build06Panels";
 import { loadCompileHistory, persistCompileSnapshot, type CompileSnapshot } from "@/lib/compileHistory";
-import { compileActions, isPaletteReprocessCurrent, shouldAcceptPaletteEdit, shouldStartCompileRequest } from "@/lib/compileActions";
+import { compileActions, compileActionOrder, isPaletteReprocessCurrent, shouldAcceptPaletteEdit, shouldStartCompileRequest } from "@/lib/compileActions";
 import { browserCompileController } from "@/lib/compileBrowser";
 import type { CompileRun } from "@/lib/compileEvents";
 import { verifiedCompilerStatus } from "@/lib/compilerStatus";
@@ -181,6 +181,10 @@ export default function Home() {
     recipeChanged,
     face,
     isRendering: isRenderingReverse,
+  });
+  const [firstStageAction] = compileActionOrder({
+    completed: compileRun?.galleryItemId === selected.id && compileRun.status === "completed" && Boolean(compileRun.result),
+    recipeChanged,
   });
   const projectionUnavailable = projectionState === "draft" || projectionState === "compiling" || projectionState === "error";
   const trace = projectionUnavailable ? [] : liveIr ? traceFromIr(liveIr) : selected.trace;
@@ -721,7 +725,12 @@ export default function Home() {
                   <button ref={artworkOpenerRef} type="button" className="artwork-view-control" onClick={() => setArtworkView(true)} aria-label={`Open ${selected.title} in full-bleed artwork view`} title="Open full-bleed artwork view"><Maximize2 size={15} /></button>
                 </div>
               </div>
-              <div className="caption-turn">
+              <div className="caption-turn" data-primary-action={firstStageAction}>
+                {firstStageAction === "turn" && (
+                  <button type="button" className="flip-control" onClick={() => void turnOver()} disabled={!actions.turnEnabled || isFlipping} aria-label={face === "inverse" ? `Return ${selected.title} to its obverse` : `Turn ${selected.title} to its inverse`}>
+                    {face === "inverse" ? <RotateCcw size={18} /> : <FlipHorizontal2 size={18} />}<span>{isFlipping ? "Turning object" : actions.turnLabel}</span><small>F</small>
+                  </button>
+                )}
                 <button type="button" className="compile-orio-control" onClick={() => void compileOrio(actions.compileForce)} disabled={!actions.compileEnabled || isFlipping} aria-label={`${actions.compileLabel} for ${selected.title}`}>
                   <CircleDotDashed size={16} /><span>{actions.compileLabel}</span>
                 </button>
@@ -730,9 +739,11 @@ export default function Home() {
                     <span>Cancel</span>
                   </button>
                 )}
-                <button type="button" className="flip-control" onClick={() => void turnOver()} disabled={!actions.turnEnabled || isFlipping} aria-label={face === "inverse" ? `Return ${selected.title} to its obverse` : `Turn ${selected.title} to its inverse`}>
-                  {face === "inverse" ? <RotateCcw size={18} /> : <FlipHorizontal2 size={18} />}<span>{isFlipping ? "Turning object" : actions.turnLabel}</span><small>F</small>
-                </button>
+                {firstStageAction === "compile" && (
+                  <button type="button" className="flip-control" onClick={() => void turnOver()} disabled={!actions.turnEnabled || isFlipping} aria-label={face === "inverse" ? `Return ${selected.title} to its obverse` : `Turn ${selected.title} to its inverse`}>
+                    {face === "inverse" ? <RotateCcw size={18} /> : <FlipHorizontal2 size={18} />}<span>{isFlipping ? "Turning object" : actions.turnLabel}</span><small>F</small>
+                  </button>
+                )}
               </div>
               <div className="caption-navigation">
                 <div className="object-navigation"><button type="button" onClick={() => selectImage(selectedIndex - 1)} disabled={isFlipping} aria-label="Previous image"><ChevronLeft size={17} /> Previous</button><span className="navigation-current">{selected.serial}</span><button type="button" onClick={() => selectImage(selectedIndex + 1)} disabled={isFlipping} aria-label="Next image">Next <ChevronRight size={17} /></button></div>
@@ -762,14 +773,6 @@ export default function Home() {
 
         </section>
 
-        <div className="counter-column" inert={imageOnly}>
-          <TeppanyakiCounter
-            run={compileRun?.galleryItemId === selected.id ? compileRun : null}
-            recipeChanged={recipeChanged}
-            paletteK={paletteK}
-            onPaletteKChange={editPaletteK}
-          />
-        </div>
         <div className="source-workbench-wrap" inert={imageOnly}>
           <SourceEditor
             specimenId={selected.id}
@@ -780,6 +783,14 @@ export default function Home() {
             onCompileError={markProjectionUnavailable}
             onDraftChange={markDraftProjectionUnavailable}
             onReset={resetLiveProjection}
+          />
+        </div>
+        <div className="counter-column" inert={imageOnly}>
+          <TeppanyakiCounter
+            run={compileRun?.galleryItemId === selected.id ? compileRun : null}
+            recipeChanged={recipeChanged}
+            paletteK={paletteK}
+            onPaletteKChange={editPaletteK}
           />
         </div>
       </section>

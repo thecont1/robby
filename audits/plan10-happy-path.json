@@ -1,0 +1,198 @@
+{
+  "specimens": [
+    {
+      "source": "IMG_20200218_095220.jpg",
+      "pre": {
+        "source": "IMG_20200218_095220.jpg",
+        "c2pa": [
+          "NOT INSPECTED"
+        ],
+        "stations": 0,
+        "action": "compile",
+        "buttons": [
+          {
+            "text": "Compile Orio",
+            "disabled": false
+          },
+          {
+            "text": "Turn to inverseF",
+            "disabled": true
+          }
+        ]
+      },
+      "waitState": {
+        "kicker": "Orio resolved",
+        "error": "",
+        "button": "Recompile Orio",
+        "details": true
+      },
+      "post": {
+        "kicker": "Orio resolved",
+        "body": "This reverse belongs to the active obverse, recipe, evidence policy, and compiler runtime.",
+        "detailsPresent": true,
+        "detailsInitiallyCollapsed": true,
+        "stations": [
+          {
+            "stage": "intake",
+            "status": "completed",
+            "text": "00IntakeSOURCE 2767…6CF9 · 4640680 Bmeasured"
+          },
+          {
+            "stage": "read",
+            "status": "completed",
+            "text": "01ReadC2PA PRESENT · VALID · UNTRUSTED SIGNER · GPS PRIVATEverified"
+          },
+          {
+            "stage": "measure",
+            "status": "completed",
+            "text": "02MeasurePIXELS C47A…E0AEmeasured"
+          },
+          {
+            "stage": "split",
+            "status": "completed",
+            "text": "03SplitPALETTE median_cut · 8derived"
+          },
+          {
+            "stage": "declare",
+            "status": "completed",
+            "text": "04DeclareMODE observability_sheet · k 8declared"
+          },
+          {
+            "stage": "bind",
+            "status": "completed",
+            "text": "05Bind3F06…3FD1 · reproducibility record, not ownershipderived"
+          },
+          {
+            "stage": "resolve",
+            "status": "completed",
+            "text": "06ResolveREVERSE 8B8E…6227 · observability_sheetderived"
+          },
+          {
+            "stage": "marry",
+            "status": "completed",
+            "text": "07Marryorio-5691864e-bd46-405c-b619-b90ff7080f73derived"
+          }
+        ],
+        "hashes": [
+          "2767…6CF9",
+          "C47A…E0AE",
+          "3F06…3FD1",
+          "8B8E…6227"
+        ],
+        "primaryAction": "turn",
+        "buttons": [
+          {
+            "text": "Turn to inverseF",
+            "disabled": false
+          },
+          {
+            "text": "Recompile Orio",
+            "disabled": false
+          }
+        ],
+        "c2pa": [
+          "C2PA PRESENT · VALID · UNTRUSTED SIGNER"
+        ],
+        "inverseScheme": "blob",
+        "turnEnabled": true
+      }
+    },
+    {
+      "source": "MS202401-Ayodhya0041.jpg",
+      "pre": {
+        "source": "MS202401-Ayodhya0041.jpg",
+        "c2pa": [
+          "NOT INSPECTED"
+        ],
+        "stations": 0,
+        "action": "compile",
+        "buttons": [
+          {
+            "text": "Compile Orio",
+            "disabled": false
+          },
+          {
+            "text": "Turn to inverseF",
+            "disabled": true
+          }
+        ]
+      },
+      "waitState": {
+        "kicker": "Orio resolved",
+        "error": "",
+        "button": "Recompile Orio",
+        "details": true
+      },
+      "post": {
+        "kicker": "Orio resolved",
+        "body": "This reverse belongs to the active obverse, recipe, evidence policy, and compiler runtime.",
+        "detailsPresent": true,
+        "detailsInitiallyCollapsed": true,
+        "stations": [
+          {
+            "stage": "intake",
+            "status": "completed",
+            "text": "00IntakeSOURCE 82BF…5E46 · 3547473 Bmeasured"
+          },
+          {
+            "stage": "read",
+            "status": "completed",
+            "text": "01ReadC2PA PRESENT · VALID · UNTRUSTED SIGNER · GPS PRIVATEverified"
+          },
+          {
+            "stage": "measure",
+            "status": "completed",
+            "text": "02MeasurePIXELS 8446…F9C6measured"
+          },
+          {
+            "stage": "split",
+            "status": "completed",
+            "text": "03SplitPALETTE median_cut · 8derived"
+          },
+          {
+            "stage": "declare",
+            "status": "completed",
+            "text": "04DeclareMODE observability_sheet · k 8declared"
+          },
+          {
+            "stage": "bind",
+            "status": "completed",
+            "text": "05Bind8C66…87C3 · reproducibility record, not ownershipderived"
+          },
+          {
+            "stage": "resolve",
+            "status": "completed",
+            "text": "06ResolveREVERSE F1E9…7215 · observability_sheetderived"
+          },
+          {
+            "stage": "marry",
+            "status": "completed",
+            "text": "07Marryorio-378e6b71-bcaa-4ae1-9a53-feb60c08e93bderived"
+          }
+        ],
+        "hashes": [
+          "82BF…5E46",
+          "8446…F9C6",
+          "8C66…87C3",
+          "F1E9…7215"
+        ],
+        "primaryAction": "turn",
+        "buttons": [
+          {
+            "text": "Turn to inverseF",
+            "disabled": false
+          },
+          {
+            "text": "Recompile Orio",
+            "disabled": false
+          }
+        ],
+        "c2pa": [
+          "C2PA PRESENT · VALID · UNTRUSTED SIGNER"
+        ],
+        "inverseScheme": "blob",
+        "turnEnabled": true
+      }
+    }
+  ]
+}

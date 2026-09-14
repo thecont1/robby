@@ -1,0 +1,104 @@
+{
+  "c2pa": [
+    {
+      "outer": "<strong>NOT INSPECTED</strong>",
+      "class": "",
+      "fg": "rgb(255, 248, 233)",
+      "bg": "rgba(0, 0, 0, 0)",
+      "height": "auto",
+      "minHeight": "0px",
+      "padding": "0px",
+      "rect": [
+        70.453125,
+        10
+      ],
+      "parent": "<dd><strong>NOT INSPECTED</strong></dd>"
+    }
+  ],
+  "turn": {
+    "outer": "<button type=\"button\" class=\"flip-control\" disabled=\"\" aria-label=\"Turn IMG_20200218_095220.jpg to its inverse\"><svg xmlns=\"http://www.w3.org/2000/svg\" width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" class=\"lucide lucide-flip-horizontal2\"><path d=\"m3 7 5 5-5 5V7\"></path><path d=\"m21 7-5 5 5 5V7\"></path><path d=\"M12 20v2\"></path><path d=\"M12 14v2\"></path><path d=\"M12 8v2\"></path><path d=\"M12 2v2\"></path><",
+    "class": "flip-control",
+    "fg": "rgb(0, 0, 0)",
+    "bg": "rgb(227, 68, 47)",
+    "height": "44px",
+    "minHeight": "44px",
+    "padding": "0px 12px",
+    "rect": [
+      175.9375,
+      44
+    ],
+    "parent": "<div class=\"caption-turn\" data-primary-action=\"compile\"><button type=\"button\" class=\"compile-orio-control\" aria-label=\"Compile Orio for IMG_20200218_095220.jpg\"><svg xmlns=\"http://www.w3.org/2000/svg\" width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" strok"
+  },
+  "turnSpan": {
+    "outer": "<span>Turn to inverse</span>",
+    "class": "",
+    "fg": "rgb(0, 0, 0)",
+    "bg": "rgba(0, 0, 0, 0)",
+    "height": "15px",
+    "minHeight": "auto",
+    "padding": "0px",
+    "rect": [
+      102.3125,
+      15
+    ],
+    "parent": "<button type=\"button\" class=\"flip-control\" disabled=\"\" aria-label=\"Turn IMG_20200218_095220.jpg to its inverse\"><svg xmlns=\"http://www.w3.org/2000/svg\" width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" class=\""
+  },
+  "turnSmall": {
+    "outer": "<small>F</small>",
+    "class": "",
+    "fg": "rgb(0, 0, 0)",
+    "bg": "rgba(0, 0, 0, 0)",
+    "height": "18px",
+    "minHeight": "auto",
+    "padding": "3px 5px",
+    "rect": [
+      15.625,
+      18
+    ],
+    "parent": "<button type=\"button\" class=\"flip-control\" disabled=\"\" aria-label=\"Turn IMG_20200218_095220.jpg to its inverse\"><svg xmlns=\"http://www.w3.org/2000/svg\" width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" class=\""
+  },
+  "status": {
+    "outer": "<span class=\"compile-status verified\">VALID IR · RUST 1.97.1</span>",
+    "class": "compile-status verified",
+    "fg": "rgb(124, 48, 36)",
+    "bg": "rgba(0, 0, 0, 0)",
+    "height": "6px",
+    "minHeight": "auto",
+    "padding": "0px",
+    "rect": [
+      90.03125,
+      6
+    ],
+    "parent": "<span class=\"brand-copy\"><span class=\"brand-title\">robby <span class=\"brand-slash\">/</span> <span class=\"brand-suffix\">v1</span></span><span class=\"compile-status verified\">VALID IR · RUST 1.97.1</span></span>"
+  },
+  "nav": {
+    "outer": "<span class=\"navigation-current\">01 / 15</span>",
+    "class": "navigation-current",
+    "fg": "rgb(124, 48, 36)",
+    "bg": "rgba(0, 0, 0, 0)",
+    "height": "45px",
+    "minHeight": "auto",
+    "padding": "0px",
+    "rect": [
+      14.84375,
+      45
+    ],
+    "parent": "<div class=\"object-navigation\"><button type=\"button\" aria-label=\"Previous image\"><svg xmlns=\"http://www.w3.org/2000/svg\" width=\"17\" height=\"17\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" class=\"lucide lucide-chevron-left\"><pa"
+  },
+  "range": {
+    "outer": "<input id=\"palette-k-slider\" min=\"3\" max=\"64\" step=\"1\" aria-valuetext=\"8 colour clusters\" type=\"range\" value=\"8\">",
+    "class": "",
+    "fg": "rgb(28, 26, 25)",
+    "bg": "rgba(0, 0, 0, 0)",
+    "height": "44px",
+    "minHeight": "44px",
+    "padding": "0px",
+    "rect": [
+      322.6875,
+      44
+    ],
+    "parent": "<div class=\"palette-slider-row\"><input id=\"palette-k-slider\" min=\"3\" max=\"64\" step=\"1\" aria-valuetext=\"8 colour clusters\" type=\"range\" value=\"8\"><output for=\"palette-k-slider\" class=\"palette-k-value\">8</output></div>"
+  },
+  "rangeLabel": "<label for=\"palette-k-slider\" class=\"mono-label\">Palette k</label>",
+  "dark": ""
+}

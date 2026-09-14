@@ -118,13 +118,27 @@ export function CompilationTraceModes({ trace, activeMode, onModeChange, project
   </>;
 }
 
+/**
+ * Plan 10 §7.1 — pre-run C2PA correction.
+ *
+ * Before an explicit compile has bound a run to real inspected evidence, the
+ * panel must NOT claim a credential outcome. "checking" is the pre-run state
+ * (demoData maps both absent- and candidate-seeded gallery items onto it at
+ * mount), and rendering "C2PA CHECKING" — or worse "C2PA ABSENT" — asserts a
+ * finding that no inspection has produced. C2PA is only ever read from the
+ * untouched original source bytes during Read, so pre-run we render the fixed
+ * not-inspected copy and suppress the Content Credentials badge entirely.
+ *
+ * A genuine post-run "absent" is a real inspected outcome and is left intact.
+ */
 export function CredentialEvidence({ credential }: { credential: CredentialSignature }) {
   const status = credential.status?.trim().toLowerCase() || "unknown";
+  const notInspected = status === "checking";
   const showBadge = status === "present" || status === "candidate";
   return <dl aria-live="polite">
-    <div><dt>CREDENTIAL STATUS</dt><dd><strong>C2PA {status.toUpperCase()}</strong>{showBadge && <img src="/icons/content_credentials_logo.svg" alt="Content Credentials" className="c2pa-badge" />}</dd></div>
-    <div><dt>VERIFICATION</dt><dd>{credential.verificationMethod.trim() || "Not reported"}</dd></div>
-    <div><dt>VALIDATION NOTE</dt><dd>{credential.note.trim() || "No additional validation detail was returned."}</dd></div>
+    <div><dt>CREDENTIAL STATUS</dt><dd><strong>{notInspected ? "NOT INSPECTED" : `C2PA ${status.toUpperCase()}`}</strong>{showBadge && <img src="/icons/content_credentials_logo.svg" alt="Content Credentials" className="c2pa-badge" />}</dd></div>
+    <div><dt>VERIFICATION</dt><dd>{notInspected ? "Awaiting explicit compilation" : credential.verificationMethod.trim() || "Not reported"}</dd></div>
+    <div><dt>VALIDATION NOTE</dt><dd>{notInspected ? "C2PA is inspected only from untouched original source bytes." : credential.note.trim() || "No additional validation detail was returned."}</dd></div>
   </dl>;
 }
 
@@ -144,6 +158,12 @@ export function reverseRecordFacts({ item, reverseMode, paletteK }: { item: Pick
 export function ProvenanceModule({ item, runtime, onFocusReverse, reverseMode, paletteK }: { item: GalleryItem; runtime: RuntimeRecord | null; onFocusReverse: () => void; reverseMode?: string; paletteK: number }) {
   const [tab, setTab] = useState<ProvenanceTab>("provenance");
   const c2paEvidence = runtime?.c2paEvidence;
+  // Catalogue credential fields are discovery hints, not a run-bound
+  // inspection. Until Read returns evidence for this run, §7.1 requires the
+  // provenance panel to say NOT INSPECTED regardless of any seeded status.
+  const displayedCredential: CredentialSignature = c2paEvidence
+    ? item.credentialSignature
+    : { ...item.credentialSignature, status: "checking" };
   // The displayed command must match the active recipe's reverse(mode), not a
   // hard-coded module name. Fall back to the item's own declared mode.
   const reverseFacts = reverseRecordFacts({ item, reverseMode, paletteK });
@@ -155,7 +175,7 @@ export function ProvenanceModule({ item, runtime, onFocusReverse, reverseMode, p
   return <section className="manifest-strip provenance-module" aria-label="Object provenance and runtime manifest">
     <div className="provenance-tablist" role="tablist" aria-label="Object provenance and runtime manifest views" onKeyDown={event => tablistKeyDown(event, tabs.map(next => next.id), tab, setTab, id => `provenance-tab-${id}`)}>{tabs.map(next => { const Icon = next.icon; return <button key={next.id} id={`provenance-tab-${next.id}`} type="button" role="tab" aria-controls="provenance-panel" aria-selected={tab === next.id} tabIndex={tab === next.id ? 0 : -1} className={tab === next.id ? "active" : ""} onClick={() => setTab(next.id)}><Icon size={16} aria-hidden="true" /><span>{next.label}</span></button>; })}</div>
     <div id="provenance-panel" className="provenance-content" role="tabpanel" aria-labelledby={`provenance-tab-${tab}`}>
-      {tab === "provenance" && <div className="provenance-records"><dl><div><dt>SOURCE</dt><dd>{item.source}</dd></div><div><dt>SOURCE SHA-256</dt><dd>{runtime?.transientReverse?.sourceSha256 ?? item.credentialSignature.sourceSha256}</dd></div></dl>{c2paEvidence ? <dl aria-live="polite"><div><dt>C2PA RECORD</dt><dd><strong>{c2paEvidenceLabel(c2paEvidence)}</strong></dd></div><div><dt>AVAILABILITY</dt><dd>{c2paEvidence.availability.toUpperCase()}</dd></div><div><dt>INSPECTED AT</dt><dd>{c2paEvidence.inspectedAt}</dd></div><div><dt>VERIFICATION</dt><dd>{c2paEvidence.verificationMethod}</dd></div><div><dt>WARNINGS</dt><dd>{c2paEvidence.warnings.length ? c2paEvidence.warnings.join(" · ") : "none"}</dd></div></dl> : <CredentialEvidence credential={item.credentialSignature} />}</div>}
+      {tab === "provenance" && <div className="provenance-records"><dl><div><dt>SOURCE</dt><dd>{item.source}</dd></div><div><dt>SOURCE SHA-256</dt><dd>{runtime?.transientReverse?.sourceSha256 ?? item.credentialSignature.sourceSha256}</dd></div></dl>{c2paEvidence ? <dl aria-live="polite"><div><dt>C2PA RECORD</dt><dd><strong>{c2paEvidenceLabel(c2paEvidence)}</strong></dd></div><div><dt>AVAILABILITY</dt><dd>{c2paEvidence.availability.toUpperCase()}</dd></div><div><dt>INSPECTED AT</dt><dd>{c2paEvidence.inspectedAt}</dd></div><div><dt>VERIFICATION</dt><dd>{c2paEvidence.verificationMethod}</dd></div><div><dt>WARNINGS</dt><dd>{c2paEvidence.warnings.length ? c2paEvidence.warnings.join(" · ") : "none"}</dd></div></dl> : <CredentialEvidence credential={displayedCredential} />}</div>}
       {tab === "runtime" && <dl className="provenance-list"><div><dt>MODULE</dt><dd>{runtime?.transientReverse?.mode ?? "ON REQUEST"}</dd></div><div><dt>SEED</dt><dd>{runtime?.transientReverse?.seed ?? "generated on next turn"}</dd></div><div><dt>SETTINGS SHA-256</dt><dd>{runtime?.transientReverse?.settingsSha256 ?? "generated on next turn"}</dd></div><div><dt>OUTPUT SHA-256</dt><dd>{runtime?.transientReverse?.outputSha256 ?? "generated on next turn"}</dd></div><div><dt>CACHED INTERMEDIATE</dt><dd>none</dd></div></dl>}
       {tab === "reverse" && <dl className="provenance-list"><div><dt>COMMAND</dt><dd><button type="button" onClick={onFocusReverse}>{reverseFacts.command}</button></dd></div><div><dt>PALETTE K</dt><dd>{reverseFacts.paletteK}</dd></div><div><dt>SWATCHES</dt><dd>{runtime?.transientReverse?.swatches.join(" · ") ?? "compiled on next turn"}</dd></div></dl>}
     </div>

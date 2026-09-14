@@ -1,6 +1,15 @@
 import type { CompileRun } from "@/lib/compileEvents";
 
 export type ObjectFace = "obverse" | "inverse";
+export type CompileActionName = "compile" | "turn";
+
+/**
+ * Places Turn before Compile only for a completed result whose recipe is still
+ * current; otherwise Compile remains first.
+ */
+export function compileActionOrder(input: { completed: boolean; recipeChanged: boolean }): [CompileActionName, CompileActionName] {
+  return input.completed && !input.recipeChanged ? ["turn", "compile"] : ["compile", "turn"];
+}
 
 export type CompileActions = {
   compileLabel: string;

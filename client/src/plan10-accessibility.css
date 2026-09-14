@@ -1,0 +1,139 @@
+/* Plan 10 §13.6 — final interaction and contrast contract.
+ * Imported after the historical stylesheet so later editorial refinements cannot
+ * silently shrink activation areas or re-use decorative vermilion as small text. */
+:root {
+  --plan10-text-accent: #7c3024;
+  --plan10-control-ink: #000;
+}
+
+/* WCAG 2.5.5 target boxes. Text links receive block padding; controls use a
+ * minimum box so their visual proportions can remain compact inside it. */
+.skip-link,
+.brand-lockup,
+.feature-control.icon-control,
+.menu-control,
+.artwork-view-control,
+.compile-orio-control,
+.flip-control,
+.object-navigation button,
+.compile-source,
+.reset-source,
+.palette-slider-row input[type="range"],
+.provenance-tablist button,
+.teppanyaki-station-details > summary,
+.footer-socials a,
+.footer-copyright a {
+  min-height: 44px;
+}
+
+.feature-control.icon-control,
+.menu-control,
+.artwork-view-control,
+.footer-socials a {
+  min-width: 44px;
+}
+
+.skip-link,
+.brand-lockup,
+.compile-source,
+.reset-source,
+.footer-copyright a {
+  align-items: center;
+  display: inline-flex;
+}
+
+.palette-slider-row input[type="range"] {
+  cursor: pointer;
+}
+
+/* The registration vermilion remains available for rules, marks and dark-mode
+ * accents; small text on archive paper uses the deeper oxide already present in
+ * the palette. */
+.brand-slash,
+.brand-suffix,
+.compile-status,
+.navigation-current,
+.site-footer .footer-observation {
+  color: var(--plan10-text-accent);
+}
+
+/* Primary controls on vermilion need dark ink; cream-on-vermilion only reaches
+ * 3.87:1 at this size. Lighthouse/axe measured .compile-source at 3.86:1
+ * (#fff8e9 on #e3442f, 9px bold) — black on vermilion is 5.13:1. */
+.caption-turn[data-primary-action="turn"] .flip-control,
+.source-editor-actions .compile-source,
+.compile-source,
+.provenance-tablist button,
+.provenance-tablist button:hover,
+.provenance-tablist button.active {
+  color: var(--plan10-control-ink);
+}
+
+.caption-turn[data-primary-action="turn"] .flip-control small {
+  background: transparent;
+  color: var(--plan10-control-ink);
+}
+
+.source-line-numbers {
+  color: #8b8377;
+}
+
+/* Selector specificity here intentionally exceeds historical component rules:
+ * this file is the final accessibility contract in the cascade. */
+.caption-turn .flip-control,
+.object-controls .flip-control {
+  min-height: 44px;
+  color: var(--plan10-control-ink);
+}
+
+.caption-turn .flip-control span,
+.caption-turn .flip-control small {
+  color: inherit;
+}
+
+.caption-turn .flip-control small {
+  background: transparent;
+}
+
+.brand-copy .compile-status,
+.stage-control-row .navigation-current {
+  color: var(--plan10-text-accent);
+}
+
+/* A uniform, high-contrast focus treatment for every native/custom control. */
+:where(a, button, input, textarea, select, summary, [tabindex]):focus-visible {
+  outline: 3px solid #005fcc;
+  outline-offset: 3px;
+}
+
+.dark .brand-slash,
+.dark .brand-suffix,
+.dark .compile-status,
+.dark .navigation-current,
+.dark .site-footer .footer-observation {
+  color: #e3442f;
+}
+
+.dark .caption-turn[data-primary-action="turn"] .flip-control {
+  color: #000;
+}
+
+.dark .stage-dimensions {
+  color: #d79a8d;
+}
+
+.dark .provenance-tablist button,
+.dark .provenance-tablist button:hover,
+.dark .provenance-tablist button.active {
+  color: #f7efe0;
+}
+
+@media (max-width: 560px) {
+  .skip-link,
+  .brand-lockup,
+  .compile-source,
+  .reset-source,
+  .footer-copyright a {
+    min-height: 44px;
+  }
+}

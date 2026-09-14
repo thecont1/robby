@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createCompileController, type CompileDeps } from "./compileController";
 import type { CompileEvent, CompileRequest } from "./compileEvents";
-import type { RobbyIr } from "./robbyCompiler";
+import type { IntakeManifest, RobbyIr } from "./robbyCompiler";
 
 const ir: RobbyIr = {
   version: "robby-ir-v1",
@@ -11,6 +11,31 @@ const ir: RobbyIr = {
   output: { obverse: "front.jpg", reverse: "transient", manifest: "transient" },
   meta: { script_sha256: "recipehash".padEnd(64, "0") },
 };
+
+const intakeManifest = (
+  sourceByteSha256 = "sourcebytes".padEnd(64, "a"),
+  pixelSha256 = "pixels".padEnd(64, "a"),
+): IntakeManifest => ({
+  schema_version: "0.2",
+  obverse: {
+    original_name: "source.jpg",
+    mime_type: "image/jpeg",
+    byte_size: 3,
+    byte_sha256: sourceByteSha256,
+    pixel_sha256: pixelSha256,
+    width: 2,
+    height: 1,
+    orientation: 1,
+    colour_profile: null,
+  },
+  evidence: {
+    exif: { classification: "unavailable", value: null, visibility: "private", state: "absent" },
+    iptc: { classification: "unavailable", value: null, visibility: "private", state: "absent" },
+    xmp: { classification: "unavailable", value: null, visibility: "private", state: "absent" },
+    gps: { classification: "unavailable", value: null, visibility: "private", state: "absent" },
+    c2pa: { classification: "unavailable", value: null, visibility: "private", state: "absent" },
+  },
+});
 
 function request(overrides: Partial<CompileRequest> = {}): CompileRequest {
   return {
@@ -48,17 +73,14 @@ function deps(overrides: Partial<CompileDeps> = {}): CompileDeps & { calls: stri
     measureSourceBytes: async () => {
       calls.push("measureSourceBytes");
       return {
+        sourceByteSha256: "sourcebytes".padEnd(64, "a"),
         pixelSha256: "pixels".padEnd(64, "a"),
         width: 2,
         height: 1,
+        orientation: 1,
         mimeType: "image/jpeg",
-        intakeManifestJson: JSON.stringify({
-          schema_version: "0.2",
-          obverse: {
-            byte_sha256: "sourcebytes".padEnd(64, "a"),
-            pixel_sha256: "pixels".padEnd(64, "a"),
-          },
-        }),
+        intakeVersion: "0.2",
+        manifest: intakeManifest(),
       };
     },
     buildBinding: async (intakeJson, recipeSource, evidence, compilerVersion, rendererVersion) => {
@@ -170,6 +192,68 @@ describe("CompileController", () => {
     const environment = deps();
     createCompileController(environment);
     expect(environment.calls).toEqual([]);
+  });
+
+  it("passes the exact intake byte snapshot and digest to C2PA inspection", async () => {
+    const inspectedArguments: unknown[] = [];
+    const environment = deps({
+      inspectC2pa: async (...args: unknown[]) => {
+        inspectedArguments.push(...args);
+        return {
+          status: "absent",
+          sourceSha256: "sourcebytes".padEnd(64, "a"),
+          verificationMethod: "c2pa-node",
+          note: "No credential",
+        };
+      },
+    });
+
+    const run = await createCompileController(environment).compile(request());
+
+    expect(run.status).toBe("completed");
+    expect(inspectedArguments[0]).toBe("source.jpg");
+    expect(inspectedArguments[1]).toEqual(new Uint8Array([1, 2, 3]));
+    expect(inspectedArguments[2]).toBe("sourcebytes".padEnd(64, "a"));
+    expect(inspectedArguments[3]).toBeInstanceOf(AbortSignal);
+  });
+
+  it("preserves C2PA reader unavailability in the authoritative binding input", async () => {
+    let boundAvailability: string | undefined;
+    const base = deps();
+    const environment = deps({
+      inspectC2pa: async () => {
+        throw new Error("reader unavailable");
+      },
+      buildBinding: async (...args) => {
+        boundAvailability = args[2].c2pa.availability;
+        return base.buildBinding(...args);
+      },
+    });
+
+    const run = await createCompileController(environment).compile(request());
+
+    expect(run.status).toBe("completed");
+    expect(run.result?.c2paEvidence.availability).toBe("unavailable");
+    expect(run.result?.c2paEvidence.sourceSha256).toBe("sourcebytes".padEnd(64, "a"));
+    expect(boundAvailability).toBe("unavailable");
+  });
+
+  it("rejects C2PA evidence whose source digest differs from intake", async () => {
+    const environment = deps({
+      inspectC2pa: async () => ({
+        status: "present",
+        sourceSha256: "different".padEnd(64, "f"),
+        verificationMethod: "c2pa-node",
+        note: "Validation state: Valid.",
+      }),
+    });
+
+    const run = await createCompileController(environment).compile(request());
+
+    expect(run.status).toBe("completed");
+    expect(run.result?.c2paEvidence.availability).toBe("unavailable");
+    expect(run.result?.c2paEvidence.sourceSha256).toBe("sourcebytes".padEnd(64, "a"));
+    expect(run.result?.c2paEvidence.note).toContain("does not match the intake source");
   });
 
   it("notifies subscribers as stations complete, without waiting for the reverse", async () => {
@@ -366,6 +450,57 @@ describe("CompileController", () => {
     expect(environment.calls.filter(call => call === "renderReverse")).toHaveLength(2);
   });
 
+  // Plan 10 WP-C required test 6: two rapid compile requests for the same
+  // source. The latest run must win, and the superseded run must not be able
+  // to overwrite it when its slower work finally lands.
+  it("lets the latest run win when two compiles race for the same source", async () => {
+    const firstGate = deferred<void>();
+    let renders = 0;
+    const environment = deps({
+      renderReverse: async (_ir, signal) => {
+        environment.calls.push("renderReverse");
+        const mine = ++renders;
+        // The first (superseded) render finishes LAST, so if the controller
+        // were order-naive it would clobber the winner's result.
+        if (mine === 1) await firstGate.promise;
+        if (signal.aborted) throw new DOMException("Aborted", "AbortError");
+        return {
+          blob: new Blob([`png${mine}`], { type: "image/png" }),
+          manifest: {
+            version: "robby-render-manifest-v1",
+            source_obverse_sha256: "sourcebytes".padEnd(64, "a"),
+            script_settings_sha256: "settings".padEnd(64, "b"),
+            derived_seed: "seed".padEnd(64, "c"),
+            output_sha256: `output${mine}`.padEnd(64, "d"),
+            render_module: "negative",
+            colour_swatches: ["#112233"],
+            cached_intermediate: null,
+          },
+        };
+      },
+    });
+    const controller = createCompileController(environment);
+    const superseded = controller.compile(request());
+    await waitFor(() => environment.calls.includes("renderReverse"));
+    // force bypasses coalescing, producing a genuine second run for the same
+    // request key. compile() cancels and awaits the in-flight run first, so
+    // the gate must open for that cancellation to land — the abort signal is
+    // what stops run 1, not the gate.
+    const winnerPromise = controller.compile(request(), { force: true });
+    firstGate.resolve();
+    const winner = await winnerPromise;
+    const loser = await superseded.catch(() => null);
+
+    expect(winner.status).toBe("completed");
+    expect(winner.result?.reverseOutputSha256).toBe(`output2`.padEnd(64, "d"));
+    // The superseded run must never be reported as a completed current result.
+    expect(loser?.status).not.toBe("completed");
+    // And the controller's observable state still belongs to the winner: a
+    // subsequent compile serves the winner's cached orio, not run 1's.
+    const settled = await controller.compile(request());
+    expect(settled.result?.reverseOutputSha256).toBe(`output2`.padEnd(64, "d"));
+  });
+
   it("never reuses the session cache when any identity-domain input changes", async () => {
     // One controller and one session cache throughout: the point is that the
     // cache itself refuses to serve a stale orio, not that a fresh controller
@@ -375,14 +510,14 @@ describe("CompileController", () => {
       measureSourceBytes: async () => {
         environment.calls.push("measureSourceBytes");
         return {
+          sourceByteSha256: "sourcebytes".padEnd(64, "a"),
           pixelSha256,
           width: 2,
           height: 1,
+          orientation: 1,
           mimeType: "image/jpeg",
-          intakeManifestJson: JSON.stringify({
-            schema_version: "0.2",
-            obverse: { byte_sha256: "sourcebytes".padEnd(64, "a"), pixel_sha256: pixelSha256 },
-          }),
+          intakeVersion: "0.2",
+          manifest: intakeManifest("sourcebytes".padEnd(64, "a"), pixelSha256),
         };
       },
     });
@@ -589,14 +724,14 @@ describe("CompileController", () => {
         const pixelSha256 = `pix:${tag}`.padEnd(64, "a").slice(0, 64);
         const sourceByteSha256 = `src:${tag}`.padEnd(64, "a").slice(0, 64);
         return {
+          sourceByteSha256,
           pixelSha256,
           width: 2,
           height: 1,
+          orientation: 1,
           mimeType: "image/jpeg",
-          intakeManifestJson: JSON.stringify({
-            schema_version: "0.2",
-            obverse: { byte_sha256: sourceByteSha256, pixel_sha256: pixelSha256 },
-          }),
+          intakeVersion: "0.2",
+          manifest: intakeManifest(sourceByteSha256, pixelSha256),
         };
       },
       buildBinding: async (intakeJson) => {

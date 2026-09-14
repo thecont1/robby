@@ -1,7 +1,7 @@
 import React, { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeAll, describe, expect, it } from "vitest";
-import { CredentialEvidence } from "@/components/Build06Panels";
+import { CredentialEvidence, ProvenanceModule } from "@/components/Build06Panels";
 import { gallery, galleryOrder, type CredentialSignature } from "./demoData";
 
 beforeAll(() => {
@@ -55,6 +55,21 @@ const renderCredential = (over: Partial<CredentialSignature> = {}) =>
   renderToStaticMarkup(createElement(CredentialEvidence, { credential: credential(over) }));
 
 describe("credential evidence in object provenance", () => {
+  it("keeps catalogue C2PA hints uninspected at the pre-run provenance boundary", () => {
+    const base = gallery[0];
+    expect(base).toBeDefined();
+    const item = { ...base!, credentialSignature: credential({ status: "absent" }) };
+    const html = renderToStaticMarkup(createElement(ProvenanceModule, {
+      item,
+      runtime: null,
+      onFocusReverse: () => undefined,
+      reverseMode: item.reverseMode,
+      paletteK: 8,
+    }));
+    expect(html).toContain("NOT INSPECTED");
+    expect(html).not.toContain("C2PA ABSENT");
+  });
+
   it("renders visible status, verification, and validation-note rows", () => {
     const html = renderCredential();
     expect(html).toContain("CREDENTIAL STATUS");
@@ -68,8 +83,34 @@ describe("credential evidence in object provenance", () => {
   it("labels every known status distinctly without trusting a candidate", () => {
     expect(renderCredential({ status: "present" })).toContain("C2PA PRESENT");
     expect(renderCredential({ status: "candidate", note: "validation state is Invalid" })).toContain("C2PA CANDIDATE");
-    expect(renderCredential({ status: "checking" })).toContain("C2PA CHECKING");
     expect(renderCredential({ status: "absent" })).toContain("C2PA ABSENT");
+  });
+
+  // Plan 10 §7.1: pre-run, the panel must never assert a credential outcome.
+  it("renders the not-inspected contract pre-run instead of a C2PA verdict", () => {
+    const html = renderCredential({ status: "checking" });
+    expect(html).toContain("NOT INSPECTED");
+    expect(html).toContain("Awaiting explicit compilation");
+    expect(html).toContain("C2PA is inspected only from untouched original source bytes.");
+    // It must not claim any outcome, including a bare "CHECKING" verdict.
+    expect(html).not.toContain("C2PA CHECKING");
+    expect(html).not.toContain("C2PA ABSENT");
+    expect(html).not.toContain('alt="Content Credentials"');
+  });
+
+  // The pre-run copy is fixed; stale per-item verification prose must not leak.
+  it("suppresses seeded credential prose while not inspected", () => {
+    const html = renderCredential({ status: "checking", verificationMethod: "stale method", note: "stale note" });
+    expect(html).not.toContain("stale method");
+    expect(html).not.toContain("stale note");
+  });
+
+  // A post-run absent verdict is a real inspected finding and must survive.
+  it("preserves a genuine inspected absent verdict and its prose", () => {
+    const html = renderCredential({ status: "absent", verificationMethod: "official reader", note: "no manifest found" });
+    expect(html).toContain("C2PA ABSENT");
+    expect(html).toContain("official reader");
+    expect(html).toContain("no manifest found");
   });
 
   it("shows the Content Credentials badge only when a manifest exists", () => {

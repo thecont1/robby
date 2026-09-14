@@ -1,0 +1,863 @@
+{
+  "status": 200,
+  "isArray": true,
+  "keys": [
+    "0",
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7",
+    "8",
+    "9",
+    "10",
+    "11",
+    "12",
+    "13",
+    "14"
+  ],
+  "body": [
+    {
+      "id": "IMG_20200218_095220",
+      "serial": "01 / 15",
+      "title": "IMG_20200218_095220.jpg",
+      "subtitle": "",
+      "date": "unknown",
+      "source": "IMG_20200218_095220.jpg",
+      "dimensions": "2560 × 1920",
+      "ratio": "four-three",
+      "obverse": "/gallery/IMG_20200218_095220.jpg",
+      "reverse": "",
+      "reverseMode": "observability_sheet",
+      "reverseKind": "Instrument plate",
+      "reverseDescription": "",
+      "scriptHash": "",
+      "outputHash": "",
+      "palette": [],
+      "script": "# The JPEG is an opaque byte source plus RGB matrix. No content interpretation.\nbase(\"IMG_20200218_095220.jpg\")\npalette(k: 8)\nreverse(mode: \"observability_sheet\")\noutput(obverse: \"IMG_20200218_095220.jpg\", reverse: \"transient\", manifest: \"transient\")\n",
+      "trace": [
+        {
+          "stage": "01",
+          "label": "Base canvas",
+          "code": "base(\"IMG_20200218_095220.jpg\")",
+          "detail": "2560 × 1920 · source checksum recorded"
+        },
+        {
+          "stage": "02",
+          "label": "Calculate palette",
+          "code": "palette(k: 8)",
+          "detail": "8 dominant clusters sampled from obverse"
+        },
+        {
+          "stage": "03",
+          "label": "Render inverse",
+          "code": "reverse(mode: \"observability_sheet\")",
+          "detail": "observability sheet module · generated only on flip"
+        },
+        {
+          "stage": "04",
+          "label": "Return manifest",
+          "code": "output(obverse: \"IMG_20200218_095220.jpg\", reverse: \"transient\", manifest: \"transient\")",
+          "detail": "transient PNG + reproducibility record · no persisted reverse"
+        }
+      ],
+      "credentialSignature": {
+        "status": "absent",
+        "sourceSha256": "",
+        "verificationMethod": "none",
+        "note": "C2PA not yet inspected"
+      },
+      "colourSignature": {
+        "pixelSha256": "",
+        "paletteSha256": "",
+        "algorithm": "robby-render-v1 median_cut-8 · computed on flip"
+      }
+    },
+    {
+      "id": "MS201306-BipashaAashish0192",
+      "serial": "02 / 15",
+      "title": "MS201306-BipashaAashish0192.jpg",
+      "subtitle": "",
+      "date": "2013",
+      "source": "MS201306-BipashaAashish0192.jpg",
+      "dimensions": "2271 × 1703",
+      "ratio": "four-three",
+      "obverse": "/gallery/MS201306-BipashaAashish0192.jpg",
+      "reverse": "",
+      "reverseMode": "observability_sheet",
+      "reverseKind": "Instrument plate",
+      "reverseDescription": "",
+      "scriptHash": "",
+      "outputHash": "",
+      "palette": [],
+      "script": "# The JPEG is an opaque byte source plus RGB matrix. No content interpretation.\nbase(\"MS201306-BipashaAashish0192.jpg\")\npalette(k: 8)\nreverse(mode: \"observability_sheet\")\noutput(obverse: \"MS201306-BipashaAashish0192.jpg\", reverse: \"transient\", manifest: \"transient\")\n",
+      "trace": [
+        {
+          "stage": "01",
+          "label": "Base canvas",
+          "code": "base(\"MS201306-BipashaAashish0192.jpg\")",
+          "detail": "2271 × 1703 · source checksum recorded"
+        },
+        {
+          "stage": "02",
+          "label": "Calculate palette",
+          "code": "palette(k: 8)",
+          "detail": "8 dominant clusters sampled from obverse"
+        },
+        {
+          "stage": "03",
+          "label": "Render inverse",
+          "code": "reverse(mode: \"observability_sheet\")",
+          "detail": "observability sheet module · generated only on flip"
+        },
+        {
+          "stage": "04",
+          "label": "Return manifest",
+          "code": "output(obverse: \"MS201306-BipashaAashish0192.jpg\", reverse: \"transient\", manifest: \"transient\")",
+          "detail": "transient PNG + reproducibility record · no persisted reverse"
+        }
+      ],
+      "credentialSignature": {
+        "status": "absent",
+        "sourceSha256": "",
+        "verificationMethod": "none",
+        "note": "C2PA not yet inspected"
+      },
+      "colourSignature": {
+        "pixelSha256": "",
+        "paletteSha256": "",
+        "algorithm": "robby-render-v1 median_cut-8 · computed on flip"
+      }
+    },
+    {
+      "id": "MS201412-AddisAbaba0315",
+      "serial": "03 / 15",
+      "title": "MS201412-AddisAbaba0315.jpg",
+      "subtitle": "",
+      "date": "2014",
+      "source": "MS201412-AddisAbaba0315.jpg",
+      "dimensions": "2511 × 1674",
+      "ratio": "three-two",
+      "obverse": "/gallery/MS201412-AddisAbaba0315.jpg",
+      "reverse": "",
+      "reverseMode": "observability_sheet",
+      "reverseKind": "Instrument plate",
+      "reverseDescription": "",
+      "scriptHash": "",
+      "outputHash": "",
+      "palette": [],
+      "script": "# The JPEG is an opaque byte source plus RGB matrix. No content interpretation.\nbase(\"MS201412-AddisAbaba0315.jpg\")\npalette(k: 8)\nreverse(mode: \"observability_sheet\")\noutput(obverse: \"MS201412-AddisAbaba0315.jpg\", reverse: \"transient\", manifest: \"transient\")\n",
+      "trace": [
+        {
+          "stage": "01",
+          "label": "Base canvas",
+          "code": "base(\"MS201412-AddisAbaba0315.jpg\")",
+          "detail": "2511 × 1674 · source checksum recorded"
+        },
+        {
+          "stage": "02",
+          "label": "Calculate palette",
+          "code": "palette(k: 8)",
+          "detail": "8 dominant clusters sampled from obverse"
+        },
+        {
+          "stage": "03",
+          "label": "Render inverse",
+          "code": "reverse(mode: \"observability_sheet\")",
+          "detail": "observability sheet module · generated only on flip"
+        },
+        {
+          "stage": "04",
+          "label": "Return manifest",
+          "code": "output(obverse: \"MS201412-AddisAbaba0315.jpg\", reverse: \"transient\", manifest: \"transient\")",
+          "detail": "transient PNG + reproducibility record · no persisted reverse"
+        }
+      ],
+      "credentialSignature": {
+        "status": "absent",
+        "sourceSha256": "",
+        "verificationMethod": "none",
+        "note": "C2PA not yet inspected"
+      },
+      "colourSignature": {
+        "pixelSha256": "",
+        "paletteSha256": "",
+        "algorithm": "robby-render-v1 median_cut-8 · computed on flip"
+      }
+    },
+    {
+      "id": "MS201508-Uganda0016",
+      "serial": "04 / 15",
+      "title": "MS201508-Uganda0016.jpg",
+      "subtitle": "",
+      "date": "2015",
+      "source": "MS201508-Uganda0016.jpg",
+      "dimensions": "2560 × 1707",
+      "ratio": "three-two",
+      "obverse": "/gallery/MS201508-Uganda0016.jpg",
+      "reverse": "",
+      "reverseMode": "observability_sheet",
+      "reverseKind": "Instrument plate",
+      "reverseDescription": "",
+      "scriptHash": "",
+      "outputHash": "",
+      "palette": [],
+      "script": "# The JPEG is an opaque byte source plus RGB matrix. No content interpretation.\nbase(\"MS201508-Uganda0016.jpg\")\npalette(k: 8)\nreverse(mode: \"observability_sheet\")\noutput(obverse: \"MS201508-Uganda0016.jpg\", reverse: \"transient\", manifest: \"transient\")\n",
+      "trace": [
+        {
+          "stage": "01",
+          "label": "Base canvas",
+          "code": "base(\"MS201508-Uganda0016.jpg\")",
+          "detail": "2560 × 1707 · source checksum recorded"
+        },
+        {
+          "stage": "02",
+          "label": "Calculate palette",
+          "code": "palette(k: 8)",
+          "detail": "8 dominant clusters sampled from obverse"
+        },
+        {
+          "stage": "03",
+          "label": "Render inverse",
+          "code": "reverse(mode: \"observability_sheet\")",
+          "detail": "observability sheet module · generated only on flip"
+        },
+        {
+          "stage": "04",
+          "label": "Return manifest",
+          "code": "output(obverse: \"MS201508-Uganda0016.jpg\", reverse: \"transient\", manifest: \"transient\")",
+          "detail": "transient PNG + reproducibility record · no persisted reverse"
+        }
+      ],
+      "credentialSignature": {
+        "status": "absent",
+        "sourceSha256": "",
+        "verificationMethod": "none",
+        "note": "C2PA not yet inspected"
+      },
+      "colourSignature": {
+        "pixelSha256": "",
+        "paletteSha256": "",
+        "algorithm": "robby-render-v1 median_cut-8 · computed on flip"
+      }
+    },
+    {
+      "id": "MS201804-FIDHGuinea0264",
+      "serial": "05 / 15",
+      "title": "MS201804-FIDHGuinea0264.jpg",
+      "subtitle": "",
+      "date": "2018",
+      "source": "MS201804-FIDHGuinea0264.jpg",
+      "dimensions": "2560 × 1707",
+      "ratio": "three-two",
+      "obverse": "/gallery/MS201804-FIDHGuinea0264.jpg",
+      "reverse": "",
+      "reverseMode": "observability_sheet",
+      "reverseKind": "Instrument plate",
+      "reverseDescription": "",
+      "scriptHash": "",
+      "outputHash": "",
+      "palette": [],
+      "script": "# The JPEG is an opaque byte source plus RGB matrix. No content interpretation.\nbase(\"MS201804-FIDHGuinea0264.jpg\")\npalette(k: 8)\nreverse(mode: \"observability_sheet\")\noutput(obverse: \"MS201804-FIDHGuinea0264.jpg\", reverse: \"transient\", manifest: \"transient\")\n",
+      "trace": [
+        {
+          "stage": "01",
+          "label": "Base canvas",
+          "code": "base(\"MS201804-FIDHGuinea0264.jpg\")",
+          "detail": "2560 × 1707 · source checksum recorded"
+        },
+        {
+          "stage": "02",
+          "label": "Calculate palette",
+          "code": "palette(k: 8)",
+          "detail": "8 dominant clusters sampled from obverse"
+        },
+        {
+          "stage": "03",
+          "label": "Render inverse",
+          "code": "reverse(mode: \"observability_sheet\")",
+          "detail": "observability sheet module · generated only on flip"
+        },
+        {
+          "stage": "04",
+          "label": "Return manifest",
+          "code": "output(obverse: \"MS201804-FIDHGuinea0264.jpg\", reverse: \"transient\", manifest: \"transient\")",
+          "detail": "transient PNG + reproducibility record · no persisted reverse"
+        }
+      ],
+      "credentialSignature": {
+        "status": "absent",
+        "sourceSha256": "",
+        "verificationMethod": "none",
+        "note": "C2PA not yet inspected"
+      },
+      "colourSignature": {
+        "pixelSha256": "",
+        "paletteSha256": "",
+        "algorithm": "robby-render-v1 median_cut-8 · computed on flip"
+      }
+    },
+    {
+      "id": "MS201901-Murgeshpalya0018",
+      "serial": "06 / 15",
+      "title": "MS201901-Murgeshpalya0018.jpg",
+      "subtitle": "",
+      "date": "2019",
+      "source": "MS201901-Murgeshpalya0018.jpg",
+      "dimensions": "2533 × 1900",
+      "ratio": "four-three",
+      "obverse": "/gallery/MS201901-Murgeshpalya0018.jpg",
+      "reverse": "",
+      "reverseMode": "observability_sheet",
+      "reverseKind": "Instrument plate",
+      "reverseDescription": "",
+      "scriptHash": "",
+      "outputHash": "",
+      "palette": [],
+      "script": "# The JPEG is an opaque byte source plus RGB matrix. No content interpretation.\nbase(\"MS201901-Murgeshpalya0018.jpg\")\npalette(k: 8)\nreverse(mode: \"observability_sheet\")\noutput(obverse: \"MS201901-Murgeshpalya0018.jpg\", reverse: \"transient\", manifest: \"transient\")\n",
+      "trace": [
+        {
+          "stage": "01",
+          "label": "Base canvas",
+          "code": "base(\"MS201901-Murgeshpalya0018.jpg\")",
+          "detail": "2533 × 1900 · source checksum recorded"
+        },
+        {
+          "stage": "02",
+          "label": "Calculate palette",
+          "code": "palette(k: 8)",
+          "detail": "8 dominant clusters sampled from obverse"
+        },
+        {
+          "stage": "03",
+          "label": "Render inverse",
+          "code": "reverse(mode: \"observability_sheet\")",
+          "detail": "observability sheet module · generated only on flip"
+        },
+        {
+          "stage": "04",
+          "label": "Return manifest",
+          "code": "output(obverse: \"MS201901-Murgeshpalya0018.jpg\", reverse: \"transient\", manifest: \"transient\")",
+          "detail": "transient PNG + reproducibility record · no persisted reverse"
+        }
+      ],
+      "credentialSignature": {
+        "status": "absent",
+        "sourceSha256": "",
+        "verificationMethod": "none",
+        "note": "C2PA not yet inspected"
+      },
+      "colourSignature": {
+        "pixelSha256": "",
+        "paletteSha256": "",
+        "algorithm": "robby-render-v1 median_cut-8 · computed on flip"
+      }
+    },
+    {
+      "id": "MS201904-Kashmir0594",
+      "serial": "07 / 15",
+      "title": "MS201904-Kashmir0594.jpg",
+      "subtitle": "",
+      "date": "2019",
+      "source": "MS201904-Kashmir0594.jpg",
+      "dimensions": "2276 × 1707",
+      "ratio": "four-three",
+      "obverse": "/gallery/MS201904-Kashmir0594.jpg",
+      "reverse": "",
+      "reverseMode": "observability_sheet",
+      "reverseKind": "Instrument plate",
+      "reverseDescription": "",
+      "scriptHash": "",
+      "outputHash": "",
+      "palette": [],
+      "script": "# The JPEG is an opaque byte source plus RGB matrix. No content interpretation.\nbase(\"MS201904-Kashmir0594.jpg\")\npalette(k: 8)\nreverse(mode: \"observability_sheet\")\noutput(obverse: \"MS201904-Kashmir0594.jpg\", reverse: \"transient\", manifest: \"transient\")\n",
+      "trace": [
+        {
+          "stage": "01",
+          "label": "Base canvas",
+          "code": "base(\"MS201904-Kashmir0594.jpg\")",
+          "detail": "2276 × 1707 · source checksum recorded"
+        },
+        {
+          "stage": "02",
+          "label": "Calculate palette",
+          "code": "palette(k: 8)",
+          "detail": "8 dominant clusters sampled from obverse"
+        },
+        {
+          "stage": "03",
+          "label": "Render inverse",
+          "code": "reverse(mode: \"observability_sheet\")",
+          "detail": "observability sheet module · generated only on flip"
+        },
+        {
+          "stage": "04",
+          "label": "Return manifest",
+          "code": "output(obverse: \"MS201904-Kashmir0594.jpg\", reverse: \"transient\", manifest: \"transient\")",
+          "detail": "transient PNG + reproducibility record · no persisted reverse"
+        }
+      ],
+      "credentialSignature": {
+        "status": "absent",
+        "sourceSha256": "",
+        "verificationMethod": "none",
+        "note": "C2PA not yet inspected"
+      },
+      "colourSignature": {
+        "pixelSha256": "",
+        "paletteSha256": "",
+        "algorithm": "robby-render-v1 median_cut-8 · computed on flip"
+      }
+    },
+    {
+      "id": "MS201907-Turkey0256",
+      "serial": "08 / 15",
+      "title": "MS201907-Turkey0256.jpg",
+      "subtitle": "",
+      "date": "2019",
+      "source": "MS201907-Turkey0256.jpg",
+      "dimensions": "2560 × 1440",
+      "ratio": "three-two",
+      "obverse": "/gallery/MS201907-Turkey0256.jpg",
+      "reverse": "",
+      "reverseMode": "observability_sheet",
+      "reverseKind": "Instrument plate",
+      "reverseDescription": "",
+      "scriptHash": "",
+      "outputHash": "",
+      "palette": [],
+      "script": "# The JPEG is an opaque byte source plus RGB matrix. No content interpretation.\nbase(\"MS201907-Turkey0256.jpg\")\npalette(k: 8)\nreverse(mode: \"observability_sheet\")\noutput(obverse: \"MS201907-Turkey0256.jpg\", reverse: \"transient\", manifest: \"transient\")\n",
+      "trace": [
+        {
+          "stage": "01",
+          "label": "Base canvas",
+          "code": "base(\"MS201907-Turkey0256.jpg\")",
+          "detail": "2560 × 1440 · source checksum recorded"
+        },
+        {
+          "stage": "02",
+          "label": "Calculate palette",
+          "code": "palette(k: 8)",
+          "detail": "8 dominant clusters sampled from obverse"
+        },
+        {
+          "stage": "03",
+          "label": "Render inverse",
+          "code": "reverse(mode: \"observability_sheet\")",
+          "detail": "observability sheet module · generated only on flip"
+        },
+        {
+          "stage": "04",
+          "label": "Return manifest",
+          "code": "output(obverse: \"MS201907-Turkey0256.jpg\", reverse: \"transient\", manifest: \"transient\")",
+          "detail": "transient PNG + reproducibility record · no persisted reverse"
+        }
+      ],
+      "credentialSignature": {
+        "status": "absent",
+        "sourceSha256": "",
+        "verificationMethod": "none",
+        "note": "C2PA not yet inspected"
+      },
+      "colourSignature": {
+        "pixelSha256": "",
+        "paletteSha256": "",
+        "algorithm": "robby-render-v1 median_cut-8 · computed on flip"
+      }
+    },
+    {
+      "id": "MS201910-Ghana9243",
+      "serial": "09 / 15",
+      "title": "MS201910-Ghana9243.jpg",
+      "subtitle": "",
+      "date": "2019",
+      "source": "MS201910-Ghana9243.jpg",
+      "dimensions": "1670 × 1252",
+      "ratio": "four-three",
+      "obverse": "/gallery/MS201910-Ghana9243.jpg",
+      "reverse": "",
+      "reverseMode": "observability_sheet",
+      "reverseKind": "Instrument plate",
+      "reverseDescription": "",
+      "scriptHash": "",
+      "outputHash": "",
+      "palette": [],
+      "script": "# The JPEG is an opaque byte source plus RGB matrix. No content interpretation.\nbase(\"MS201910-Ghana9243.jpg\")\npalette(k: 8)\nreverse(mode: \"observability_sheet\")\noutput(obverse: \"MS201910-Ghana9243.jpg\", reverse: \"transient\", manifest: \"transient\")\n",
+      "trace": [
+        {
+          "stage": "01",
+          "label": "Base canvas",
+          "code": "base(\"MS201910-Ghana9243.jpg\")",
+          "detail": "1670 × 1252 · source checksum recorded"
+        },
+        {
+          "stage": "02",
+          "label": "Calculate palette",
+          "code": "palette(k: 8)",
+          "detail": "8 dominant clusters sampled from obverse"
+        },
+        {
+          "stage": "03",
+          "label": "Render inverse",
+          "code": "reverse(mode: \"observability_sheet\")",
+          "detail": "observability sheet module · generated only on flip"
+        },
+        {
+          "stage": "04",
+          "label": "Return manifest",
+          "code": "output(obverse: \"MS201910-Ghana9243.jpg\", reverse: \"transient\", manifest: \"transient\")",
+          "detail": "transient PNG + reproducibility record · no persisted reverse"
+        }
+      ],
+      "credentialSignature": {
+        "status": "absent",
+        "sourceSha256": "",
+        "verificationMethod": "none",
+        "note": "C2PA not yet inspected"
+      },
+      "colourSignature": {
+        "pixelSha256": "",
+        "paletteSha256": "",
+        "algorithm": "robby-render-v1 median_cut-8 · computed on flip"
+      }
+    },
+    {
+      "id": "MS201912-Nagaland1300",
+      "serial": "10 / 15",
+      "title": "MS201912-Nagaland1300.jpg",
+      "subtitle": "",
+      "date": "2019",
+      "source": "MS201912-Nagaland1300.jpg",
+      "dimensions": "2276 × 1707",
+      "ratio": "four-three",
+      "obverse": "/gallery/MS201912-Nagaland1300.jpg",
+      "reverse": "",
+      "reverseMode": "observability_sheet",
+      "reverseKind": "Instrument plate",
+      "reverseDescription": "",
+      "scriptHash": "",
+      "outputHash": "",
+      "palette": [],
+      "script": "# The JPEG is an opaque byte source plus RGB matrix. No content interpretation.\nbase(\"MS201912-Nagaland1300.jpg\")\npalette(k: 8)\nreverse(mode: \"observability_sheet\")\noutput(obverse: \"MS201912-Nagaland1300.jpg\", reverse: \"transient\", manifest: \"transient\")\n",
+      "trace": [
+        {
+          "stage": "01",
+          "label": "Base canvas",
+          "code": "base(\"MS201912-Nagaland1300.jpg\")",
+          "detail": "2276 × 1707 · source checksum recorded"
+        },
+        {
+          "stage": "02",
+          "label": "Calculate palette",
+          "code": "palette(k: 8)",
+          "detail": "8 dominant clusters sampled from obverse"
+        },
+        {
+          "stage": "03",
+          "label": "Render inverse",
+          "code": "reverse(mode: \"observability_sheet\")",
+          "detail": "observability sheet module · generated only on flip"
+        },
+        {
+          "stage": "04",
+          "label": "Return manifest",
+          "code": "output(obverse: \"MS201912-Nagaland1300.jpg\", reverse: \"transient\", manifest: \"transient\")",
+          "detail": "transient PNG + reproducibility record · no persisted reverse"
+        }
+      ],
+      "credentialSignature": {
+        "status": "absent",
+        "sourceSha256": "",
+        "verificationMethod": "none",
+        "note": "C2PA not yet inspected"
+      },
+      "colourSignature": {
+        "pixelSha256": "",
+        "paletteSha256": "",
+        "algorithm": "robby-render-v1 median_cut-8 · computed on flip"
+      }
+    },
+    {
+      "id": "MS202001-Colombo0453",
+      "serial": "11 / 15",
+      "title": "MS202001-Colombo0453.jpg",
+      "subtitle": "",
+      "date": "2020",
+      "source": "MS202001-Colombo0453.jpg",
+      "dimensions": "2080 × 1560",
+      "ratio": "four-three",
+      "obverse": "/gallery/MS202001-Colombo0453.jpg",
+      "reverse": "",
+      "reverseMode": "observability_sheet",
+      "reverseKind": "Instrument plate",
+      "reverseDescription": "",
+      "scriptHash": "",
+      "outputHash": "",
+      "palette": [],
+      "script": "# The JPEG is an opaque byte source plus RGB matrix. No content interpretation.\nbase(\"MS202001-Colombo0453.jpg\")\npalette(k: 8)\nreverse(mode: \"observability_sheet\")\noutput(obverse: \"MS202001-Colombo0453.jpg\", reverse: \"transient\", manifest: \"transient\")\n",
+      "trace": [
+        {
+          "stage": "01",
+          "label": "Base canvas",
+          "code": "base(\"MS202001-Colombo0453.jpg\")",
+          "detail": "2080 × 1560 · source checksum recorded"
+        },
+        {
+          "stage": "02",
+          "label": "Calculate palette",
+          "code": "palette(k: 8)",
+          "detail": "8 dominant clusters sampled from obverse"
+        },
+        {
+          "stage": "03",
+          "label": "Render inverse",
+          "code": "reverse(mode: \"observability_sheet\")",
+          "detail": "observability sheet module · generated only on flip"
+        },
+        {
+          "stage": "04",
+          "label": "Return manifest",
+          "code": "output(obverse: \"MS202001-Colombo0453.jpg\", reverse: \"transient\", manifest: \"transient\")",
+          "detail": "transient PNG + reproducibility record · no persisted reverse"
+        }
+      ],
+      "credentialSignature": {
+        "status": "absent",
+        "sourceSha256": "",
+        "verificationMethod": "none",
+        "note": "C2PA not yet inspected"
+      },
+      "colourSignature": {
+        "pixelSha256": "",
+        "paletteSha256": "",
+        "algorithm": "robby-render-v1 median_cut-8 · computed on flip"
+      }
+    },
+    {
+      "id": "MS202308-Bangalore0739-Enhanced-NR",
+      "serial": "12 / 15",
+      "title": "MS202308-Bangalore0739-Enhanced-NR.jpg",
+      "subtitle": "",
+      "date": "2023",
+      "source": "MS202308-Bangalore0739-Enhanced-NR.jpg",
+      "dimensions": "2276 × 1707",
+      "ratio": "four-three",
+      "obverse": "/gallery/MS202308-Bangalore0739-Enhanced-NR.jpg",
+      "reverse": "",
+      "reverseMode": "observability_sheet",
+      "reverseKind": "Instrument plate",
+      "reverseDescription": "",
+      "scriptHash": "",
+      "outputHash": "",
+      "palette": [],
+      "script": "# The JPEG is an opaque byte source plus RGB matrix. No content interpretation.\nbase(\"MS202308-Bangalore0739-Enhanced-NR.jpg\")\npalette(k: 8)\nreverse(mode: \"observability_sheet\")\noutput(obverse: \"MS202308-Bangalore0739-Enhanced-NR.jpg\", reverse: \"transient\", manifest: \"transient\")\n",
+      "trace": [
+        {
+          "stage": "01",
+          "label": "Base canvas",
+          "code": "base(\"MS202308-Bangalore0739-Enhanced-NR.jpg\")",
+          "detail": "2276 × 1707 · source checksum recorded"
+        },
+        {
+          "stage": "02",
+          "label": "Calculate palette",
+          "code": "palette(k: 8)",
+          "detail": "8 dominant clusters sampled from obverse"
+        },
+        {
+          "stage": "03",
+          "label": "Render inverse",
+          "code": "reverse(mode: \"observability_sheet\")",
+          "detail": "observability sheet module · generated only on flip"
+        },
+        {
+          "stage": "04",
+          "label": "Return manifest",
+          "code": "output(obverse: \"MS202308-Bangalore0739-Enhanced-NR.jpg\", reverse: \"transient\", manifest: \"transient\")",
+          "detail": "transient PNG + reproducibility record · no persisted reverse"
+        }
+      ],
+      "credentialSignature": {
+        "status": "absent",
+        "sourceSha256": "",
+        "verificationMethod": "none",
+        "note": "C2PA not yet inspected"
+      },
+      "colourSignature": {
+        "pixelSha256": "",
+        "paletteSha256": "",
+        "algorithm": "robby-render-v1 median_cut-8 · computed on flip"
+      }
+    },
+    {
+      "id": "MS202309-HongKong0469-Enhanced-NR",
+      "serial": "13 / 15",
+      "title": "MS202309-HongKong0469-Enhanced-NR.jpg",
+      "subtitle": "",
+      "date": "2023",
+      "source": "MS202309-HongKong0469-Enhanced-NR.jpg",
+      "dimensions": "2206 × 1655",
+      "ratio": "four-three",
+      "obverse": "/gallery/MS202309-HongKong0469-Enhanced-NR.jpg",
+      "reverse": "",
+      "reverseMode": "observability_sheet",
+      "reverseKind": "Instrument plate",
+      "reverseDescription": "",
+      "scriptHash": "",
+      "outputHash": "",
+      "palette": [],
+      "script": "# The JPEG is an opaque byte source plus RGB matrix. No content interpretation.\nbase(\"MS202309-HongKong0469-Enhanced-NR.jpg\")\npalette(k: 8)\nreverse(mode: \"observability_sheet\")\noutput(obverse: \"MS202309-HongKong0469-Enhanced-NR.jpg\", reverse: \"transient\", manifest: \"transient\")\n",
+      "trace": [
+        {
+          "stage": "01",
+          "label": "Base canvas",
+          "code": "base(\"MS202309-HongKong0469-Enhanced-NR.jpg\")",
+          "detail": "2206 × 1655 · source checksum recorded"
+        },
+        {
+          "stage": "02",
+          "label": "Calculate palette",
+          "code": "palette(k: 8)",
+          "detail": "8 dominant clusters sampled from obverse"
+        },
+        {
+          "stage": "03",
+          "label": "Render inverse",
+          "code": "reverse(mode: \"observability_sheet\")",
+          "detail": "observability sheet module · generated only on flip"
+        },
+        {
+          "stage": "04",
+          "label": "Return manifest",
+          "code": "output(obverse: \"MS202309-HongKong0469-Enhanced-NR.jpg\", reverse: \"transient\", manifest: \"transient\")",
+          "detail": "transient PNG + reproducibility record · no persisted reverse"
+        }
+      ],
+      "credentialSignature": {
+        "status": "absent",
+        "sourceSha256": "",
+        "verificationMethod": "none",
+        "note": "C2PA not yet inspected"
+      },
+      "colourSignature": {
+        "pixelSha256": "",
+        "paletteSha256": "",
+        "algorithm": "robby-render-v1 median_cut-8 · computed on flip"
+      }
+    },
+    {
+      "id": "MS202401-Ayodhya0041",
+      "serial": "14 / 15",
+      "title": "MS202401-Ayodhya0041.jpg",
+      "subtitle": "",
+      "date": "2024",
+      "source": "MS202401-Ayodhya0041.jpg",
+      "dimensions": "2276 × 1707",
+      "ratio": "four-three",
+      "obverse": "/gallery/MS202401-Ayodhya0041.jpg",
+      "reverse": "",
+      "reverseMode": "observability_sheet",
+      "reverseKind": "Instrument plate",
+      "reverseDescription": "",
+      "scriptHash": "",
+      "outputHash": "",
+      "palette": [],
+      "script": "# The JPEG is an opaque byte source plus RGB matrix. No content interpretation.\nbase(\"MS202401-Ayodhya0041.jpg\")\npalette(k: 8)\nreverse(mode: \"observability_sheet\")\noutput(obverse: \"MS202401-Ayodhya0041.jpg\", reverse: \"transient\", manifest: \"transient\")\n",
+      "trace": [
+        {
+          "stage": "01",
+          "label": "Base canvas",
+          "code": "base(\"MS202401-Ayodhya0041.jpg\")",
+          "detail": "2276 × 1707 · source checksum recorded"
+        },
+        {
+          "stage": "02",
+          "label": "Calculate palette",
+          "code": "palette(k: 8)",
+          "detail": "8 dominant clusters sampled from obverse"
+        },
+        {
+          "stage": "03",
+          "label": "Render inverse",
+          "code": "reverse(mode: \"observability_sheet\")",
+          "detail": "observability sheet module · generated only on flip"
+        },
+        {
+          "stage": "04",
+          "label": "Return manifest",
+          "code": "output(obverse: \"MS202401-Ayodhya0041.jpg\", reverse: \"transient\", manifest: \"transient\")",
+          "detail": "transient PNG + reproducibility record · no persisted reverse"
+        }
+      ],
+      "credentialSignature": {
+        "status": "absent",
+        "sourceSha256": "",
+        "verificationMethod": "none",
+        "note": "C2PA not yet inspected"
+      },
+      "colourSignature": {
+        "pixelSha256": "",
+        "paletteSha256": "",
+        "algorithm": "robby-render-v1 median_cut-8 · computed on flip"
+      }
+    },
+    {
+      "id": "MSC55186",
+      "serial": "15 / 15",
+      "title": "MSC55186.jpg",
+      "subtitle": "",
+      "date": "unknown",
+      "source": "MSC55186.jpg",
+      "dimensions": "2270 × 1703",
+      "ratio": "four-three",
+      "obverse": "/gallery/MSC55186.jpg",
+      "reverse": "",
+      "reverseMode": "observability_sheet",
+      "reverseKind": "Instrument plate",
+      "reverseDescription": "",
+      "scriptHash": "",
+      "outputHash": "",
+      "palette": [],
+      "script": "# The JPEG is an opaque byte source plus RGB matrix. No content interpretation.\nbase(\"MSC55186.jpg\")\npalette(k: 8)\nreverse(mode: \"observability_sheet\")\noutput(obverse: \"MSC55186.jpg\", reverse: \"transient\", manifest: \"transient\")\n",
+      "trace": [
+        {
+          "stage": "01",
+          "label": "Base canvas",
+          "code": "base(\"MSC55186.jpg\")",
+          "detail": "2270 × 1703 · source checksum recorded"
+        },
+        {
+          "stage": "02",
+          "label": "Calculate palette",
+          "code": "palette(k: 8)",
+          "detail": "8 dominant clusters sampled from obverse"
+        },
+        {
+          "stage": "03",
+          "label": "Render inverse",
+          "code": "reverse(mode: \"observability_sheet\")",
+          "detail": "observability sheet module · generated only on flip"
+        },
+        {
+          "stage": "04",
+          "label": "Return manifest",
+          "code": "output(obverse: \"MSC55186.jpg\", reverse: \"transient\", manifest: \"transient\")",
+          "detail": "transient PNG + reproducibility record · no persisted reverse"
+        }
+      ],
+      "credentialSignature": {
+        "status": "absent",
+        "sourceSha256": "",
+        "verificationMethod": "none",
+        "note": "C2PA not yet inspected"
+      },
+      "colourSignature": {
+        "pixelSha256": "",
+        "paletteSha256": "",
+        "algorithm": "robby-render-v1 median_cut-8 · computed on flip"
+      }
+    }
+  ]
+}
