@@ -74,7 +74,9 @@ const AUDIT = `(() => {
   const lum = ([r,g,b]) => { const f = v => { v/=255; return v<=0.03928 ? v/12.92 : Math.pow((v+0.055)/1.055,2.4); };
     return 0.2126*f(r)+0.7152*f(g)+0.0722*f(b); };
   const ratio = (fg,bg) => { const a=parse(fg), b=parse(bg); if(!a||!b) return null;
-    const l1=Math.max(lum(a),lum(b)), l2=Math.min(lum(a),lum(b)); return +((l1+0.05)/(l2+0.05)).toFixed(2); };
+    // Raw ratio: rounding before the threshold comparison can promote a failing
+    // value (e.g. 2.9953 -> 3.00) into a pass. Round only when reporting.
+    const l1=Math.max(lum(a),lum(b)), l2=Math.min(lum(a),lum(b)); return (l1+0.05)/(l2+0.05); };
 
   const interactive = [...document.querySelectorAll('button,a[href],input,textarea,select,summary,[role="button"],[role="tab"],[tabindex]:not([tabindex="-1"])')].filter(vis);
 
@@ -88,7 +90,7 @@ const AUDIT = `(() => {
     const large = size >= 24 || (size >= 18.66 && bold);
     const r = ratio(cs.color, effBg(el));
     if (r !== null && r < (large ? 3 : 4.5)) {
-      contrast.push({ text: text.slice(0,45), size, ratio: r, need: large?3:4.5, color: cs.color, bg: effBg(el) });
+      contrast.push({ text: text.slice(0,45), size, ratio: +r.toFixed(2), need: large?3:4.5, color: cs.color, bg: effBg(el) });
     }
   }
 

@@ -51,8 +51,10 @@ result.dark=await c.eval(`(() => {
  const over=(f,b)=>({r:f.r*f.a+b.r*(1-f.a),g:f.g*f.a+b.g*(1-f.a),b:f.b*f.a+b.b*(1-f.a),a:1});
  const bg=e=>{const s=[];for(let c=e;c;c=c.parentElement){const p=parse(getComputedStyle(c).backgroundColor);if(p&&p.a>0){s.push(p);if(p.a===1)break}}let b=s.pop()||{r:0,g:0,b:0,a:1};while(s.length)b=over(s.pop(),b);return b};
  const lum=c=>{const f=v=>{v/=255;return v<=.03928?v/12.92:Math.pow((v+.055)/1.055,2.4)};return .2126*f(c.r)+.7152*f(c.g)+.0722*f(c.b)};
- const ratio=(a,b)=>{const x=Math.max(lum(a),lum(b)),y=Math.min(lum(a),lum(b));return +((x+.05)/(y+.05)).toFixed(2)};
- const fails=[];for(const e of [...document.querySelectorAll('p,span,label,button,a,h1,h2,h3,h4,li,small,summary,strong,em,div,code')].filter(vis)){const t=(e.textContent||'').trim();if(!t||e.children.length)continue;const cs=getComputedStyle(e),f=parse(cs.color),b=bg(e);if(!f)continue;const fc=f.a<1?over(f,b):f,size=parseFloat(cs.fontSize),bold=parseInt(cs.fontWeight)>=700,need=size>=24||(size>=18.66&&bold)?3:4.5,r=ratio(fc,b);if(r<need)fails.push({text:t.slice(0,38),ratio:r,need,fg:cs.color,bg:[b.r,b.g,b.b].map(Math.round)})}
+ // Return the raw ratio: rounding before the threshold comparison can promote a
+ // failing value (e.g. 2.9953 -> 3.00) into a pass. Round only when reporting.
+ const ratio=(a,b)=>{const x=Math.max(lum(a),lum(b)),y=Math.min(lum(a),lum(b));return (x+.05)/(y+.05)};
+ const fails=[];for(const e of [...document.querySelectorAll('p,span,label,button,a,h1,h2,h3,h4,li,small,summary,strong,em,div,code')].filter(vis)){const t=(e.textContent||'').trim();if(!t||e.children.length)continue;const cs=getComputedStyle(e),f=parse(cs.color),b=bg(e);if(!f)continue;const fc=f.a<1?over(f,b):f,size=parseFloat(cs.fontSize),bold=parseInt(cs.fontWeight)>=700,need=size>=24||(size>=18.66&&bold)?3:4.5,r=ratio(fc,b);if(r<need)fails.push({text:t.slice(0,38),ratio:+r.toFixed(2),need,fg:cs.color,bg:[b.r,b.g,b.b].map(Math.round)})}
  return {htmlClass:document.documentElement.className,failures:fails,bodyBg:getComputedStyle(document.body).backgroundColor};
 })()`);
 
