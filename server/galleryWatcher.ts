@@ -88,7 +88,7 @@ function buildTrace(script: string, source: string, dimensions: string): { stage
   ];
   const paletteCode = code.match(/palette\s*\([^)]*\)/)?.[0] ?? `palette(k: ${paletteK})`;
   trace.push({ stage: "02", label: "Calculate palette", code: paletteCode, detail: `${paletteK} dominant clusters sampled from obverse` });
-  const reverseCode = code.match(/reverse\s*\([^)]*\)/)?.[0] ?? `reverse(mode: "${reverseMode}")`;
+  const reverseCode = `reverse(mode: "${reverseMode}")`;
   trace.push({ stage: "03", label: "Render inverse", code: reverseCode, detail: `${reverseModuleDescription(reverseMode)} · generated only on flip` });
   const outputCode = code.match(/output\s*\([^)]*\)/)?.[0] ?? "output(…)";
   trace.push({ stage: "04", label: "Return manifest", code: outputCode, detail: "transient PNG + reproducibility record · no persisted reverse" });

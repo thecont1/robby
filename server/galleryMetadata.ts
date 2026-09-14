@@ -225,11 +225,7 @@ export function parseGalleryScriptSettings(script: string): { paletteK: number; 
   // A mode must be an actual quoted string argument; `reverse()` or a bare
   // identifier falls back to the negative module, as it always has.
   const modeArgument = reverseDeclaration ? declarationArgument(reverseDeclaration.inner, "mode") : null;
-  let reverseMode = modeArgument?.quoted ? modeArgument.raw : "negative";
-  // Preserve the gallery metadata compatibility contract: the historical
-  // single-quoted palette_grid spelling resolves to the negative fallback.
-  // Other genuine single-quoted modes remain recognised.
-  if (modeArgument?.quote === "'" && reverseMode === "palette_grid") reverseMode = "negative";
+  const reverseMode = modeArgument?.quoted ? modeArgument.raw : "negative";
   if (!GALLERY_REVERSE_MODES.includes(reverseMode as GalleryReverseMode)) {
     throw new Error("v1 supports only registered reverse modules");
   }

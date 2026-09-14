@@ -49,7 +49,7 @@ React gallery and source editor
 - `client/src/lib/liveRender.ts`: submits canonical IR and validates the transient response manifest/headers.
 - `server/liveRender.ts`: HTTP reverse endpoint boundary and native-render invocation.
 - `server/liveRenderer.ts`: defensive `robby-ir-v1` validation before native rendering.
-- `server/galleryWatcher.ts`: scans the configured gallery root, reads or creates adjacent `.robby` scripts, and exposes JPEG catalogue records.
+- `server/galleryWatcher.ts`: scans the configured gallery root, reads existing `.robby` scripts when present, and synthesizes a default recipe in memory when none exists. The watched gallery directory remains read-only; the watcher never creates sidecar files.
 - `server/gallerySource.ts`: flat filename, regular-file, symlink, and realpath containment boundary.
 - `server/c2pa.ts`: exact-local-JPEG C2PA inspection through the official SDK, with scoped status (`absent`, `candidate`, `present`).
 
@@ -64,7 +64,7 @@ The ordinary static server in `server/index.ts` serves the built client. The app
   version: "robby-ir-v1",
   canvas: { base: string, width: number | null, height: number | null },
   palette: { k: number },
-  reverse: { mode: "negative" },
+  reverse: { mode: "negative" | "observability_sheet" | "quantised_obverse" | "palette_grid" },
   output: { obverse: string, reverse: string, manifest: string },
   meta: { script_sha256: string }
 }

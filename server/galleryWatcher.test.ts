@@ -110,6 +110,7 @@ describe("gallery snapshot", () => {
       expect(items[0]?.script).toBe(recipe);
       expect(readFileSync(recipePath, "utf-8")).toBe(before);
       expect(readdirSync(root).sort()).toEqual(["authored.jpg", "authored.robby"]);
+      expect(items[0]?.trace.find(step => step.stage === "03")?.code).toBe('reverse(mode: "observability_sheet")');
     } finally {
       rmSync(root, { recursive: true, force: true });
     }

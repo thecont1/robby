@@ -44,13 +44,10 @@ describe("constitutional gallery metadata", () => {
     });
   });
 
-  it("keeps the legacy negative fallback for single-quoted palette_grid metadata", () => {
-    // The metadata reader understands single-quoted spans so declaration-like
-    // text inside them is ignored, but gallery metadata historically resolves
-    // this single-quoted mode form to the negative fallback.
+  it("keeps single-quoted palette_grid as palette_grid", () => {
     expect(parseGalleryScriptSettings("base('x.jpg')\npalette(k: 8)\nreverse(mode: 'palette_grid')")).toEqual({
       paletteK: 8,
-      reverseMode: "negative",
+      reverseMode: "palette_grid",
     });
   });
 
