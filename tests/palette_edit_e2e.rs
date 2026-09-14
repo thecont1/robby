@@ -24,14 +24,14 @@ fn authored_text_after_palette_edit_lowers_to_new_k() {
 
 #[test]
 fn palette_bounds_are_enforced_by_the_compiler() {
-    for k in [3u8, 16] {
+    for k in [3u8, 16, 64] {
         let src = SCRIPT.replace("palette(k: 8)", &format!("palette(k: {k})"));
         assert_eq!(
             compile_source(&src).expect("in-range k compiles").palette.k,
             k
         );
     }
-    for k in ["2", "17"] {
+    for k in ["2", "65"] {
         let src = SCRIPT.replace("palette(k: 8)", &format!("palette(k: {k})"));
         assert!(compile_source(&src).is_err(), "k={k} must be rejected");
     }
