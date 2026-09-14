@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Actual UI happy-path compilation for two distinct real gallery specimens.
 import http from 'node:http';
-const PORT=Number(process.env.CDP_PORT||9333), APP=process.env.APP_URL||'http://localhost:3001/';
+const PORT=Number(process.env.CDP_PORT||9333), APP=process.env.APP_URL||'http://localhost:3002/';
 const get=(p,m='GET')=>new Promise((resolve,reject)=>{const q=http.request({host:'127.0.0.1',port:PORT,path:p,method:m},r=>{let d='';r.on('data',c=>d+=c);r.on('end',()=>{try{resolve(JSON.parse(d))}catch(e){reject(e)}})});q.on('error',reject);q.end()});
 class C{constructor(u){this.w=new WebSocket(u);this.n=0;this.p=new Map()}async open(){await new Promise((r,j)=>{this.w.addEventListener('open',r,{once:true});this.w.addEventListener('error',j,{once:true})});this.w.addEventListener('message',e=>{const m=JSON.parse(e.data);if(!m.id)return;const p=this.p.get(m.id);if(!p)return;this.p.delete(m.id);m.error?p.reject(new Error(m.error.message)):p.resolve(m.result)})}call(method,params={}){const id=++this.n;this.w.send(JSON.stringify({id,method,params}));return new Promise((resolve,reject)=>this.p.set(id,{resolve,reject}))}async e(expression){const r=await this.call('Runtime.evaluate',{expression,awaitPromise:true,returnByValue:true});if(r.exceptionDetails)throw new Error(r.exceptionDetails.exception?.description||r.exceptionDetails.text);return r.result.value}}
 const t=await get('/json/new?'+encodeURIComponent(APP),'PUT'),c=new C(t.webSocketDebuggerUrl);await c.open();await c.call('Runtime.enable');await c.call('Page.enable');

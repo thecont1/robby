@@ -2,7 +2,7 @@
 // Focused follow-up: tab/panel wiring, composited contrast, scroll-container overflow.
 import http from 'node:http';
 const PORT = Number(process.env.CDP_PORT || 9333);
-const APP = process.env.APP_URL || 'http://localhost:3001/';
+const APP = process.env.APP_URL || 'http://localhost:3002/';
 function httpJson(p, m='GET'){return new Promise((res,rej)=>{const r=http.request({host:'127.0.0.1',port:PORT,path:p,method:m},x=>{let d='';x.on('data',c=>d+=c);x.on('end',()=>{try{res(JSON.parse(d))}catch(e){rej(e)}})});r.on('error',rej);r.end();});}
 class Cdp{constructor(u){this.ws=new WebSocket(u);this.id=0;this.p=new Map();}
  async open(){await new Promise((r,j)=>{this.ws.addEventListener('open',r,{once:true});this.ws.addEventListener('error',j,{once:true});});

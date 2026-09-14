@@ -4,7 +4,7 @@
 import http from 'node:http';
 
 const PORT = Number(process.env.CDP_PORT || 9333);
-const APP = process.env.APP_URL || 'http://localhost:3001/';
+const APP = process.env.APP_URL || 'http://localhost:3002/';
 
 function httpJson(path, method = 'GET') {
   return new Promise((resolve, reject) => {

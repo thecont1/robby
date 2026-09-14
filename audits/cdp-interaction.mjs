@@ -2,7 +2,7 @@
 // Plan 10 §13.6 interaction audit over Chrome DevTools Protocol.
 import http from 'node:http';
 const PORT = Number(process.env.CDP_PORT || 9333);
-const APP = process.env.APP_URL || 'http://localhost:3001/';
+const APP = process.env.APP_URL || 'http://localhost:3002/';
 const httpJson = (path, method='GET') => new Promise((resolve,reject) => {
   const req=http.request({host:'127.0.0.1',port:PORT,path,method},res=>{let d='';res.on('data',c=>d+=c);res.on('end',()=>{try{resolve(JSON.parse(d))}catch(e){reject(e)}})});req.on('error',reject);req.end();
 });
