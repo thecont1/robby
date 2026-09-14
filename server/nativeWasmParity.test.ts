@@ -36,7 +36,7 @@ function renderNative(settings: string) {
 }
 
 describe("native/WASM render parity", () => {
-  it.each([3, 5, 8, 12, 16])("is byte-identical for k=%i", async k => {
+  it.each([3, 5, 8, 12, 16, 20, 32, 64])("is byte-identical for k=%i", async k => {
     await initWasm(wasmBytes);
     const settings = JSON.stringify({ mode: "negative", k, width: 96, height: 64 });
     const native = renderNative(settings);

@@ -5,11 +5,11 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { renderEphemeralReverse } from "./liveRender";
 
-const validIr = (source: string) => ({
+const validIr = (source: string, k = 8, mode = "negative") => ({
   version: "robby-ir-v1",
   canvas: { base: source, width: null, height: null },
-  palette: { k: 8 },
-  reverse: { mode: "negative" },
+  palette: { k },
+  reverse: { mode },
   output: { obverse: "front.png", reverse: "transient", manifest: "transient" },
   meta: { script_sha256: "a".repeat(64) },
 });
@@ -70,6 +70,34 @@ describe("local live-render source boundary", () => {
       expect(result.png.length).toBeGreaterThan(8);
       expect(readdirSync(root).sort()).toEqual(beforeNames);
       expect(createHash("sha256").update(readFileSync(sourcePath)).digest("hex")).toBe(beforeHash);
+    } finally {
+      if (previous === undefined) delete process.env.ROBBY_GALLERY_DIR;
+      else process.env.ROBBY_GALLERY_DIR = previous;
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it.each([20, 64])("renders an observability sheet end-to-end with palette k=%i", async paletteK => {
+    const root = mkdtempSync(join(tmpdir(), "robby-live-source-"));
+    const previous = process.env.ROBBY_GALLERY_DIR;
+    process.env.ROBBY_GALLERY_DIR = root;
+    try {
+      copyFileSync(resolve(process.cwd(), "tests", "fixtures", "render-source.jpg"), join(root, "safe.jpg"));
+      const result = await renderEphemeralReverse(
+        validIr("safe.jpg", paletteK, "observability_sheet"),
+        {
+          palette_k: paletteK,
+          reverse_mode: "observability_sheet",
+          ir_schema: "robby-ir-v1",
+          evidence: { exif: null, iptc: null, xmp: null, gps: null, c2pa: null },
+          included: [],
+          withheld: [],
+        },
+      );
+
+      expect(result.png.length).toBeGreaterThan(8);
+      expect(result.manifest.render_module).toBe("observability_sheet");
+      expect(result.manifest.colour_swatches).toHaveLength(paletteK);
     } finally {
       if (previous === undefined) delete process.env.ROBBY_GALLERY_DIR;
       else process.env.ROBBY_GALLERY_DIR = previous;
