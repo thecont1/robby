@@ -98,6 +98,8 @@ describe("ephemeral reverse HTTP handler", () => {
     ["included filename", { included: ["private-source.jpg"], withheld: [] }],
     ["withheld path", { included: [], withheld: ["private/source"] }],
     ["included GPS", { included: ["12.9716, 77.5946"], withheld: [] }],
+    ["included email", { included: ["ops@example.com"], withheld: [] }],
+    ["withheld coordinates", { included: [], withheld: ["12.97/77.59"] }],
   ])("rejects unsafe disclosure-list entry: %s", async (_label, lists) => {
     const response = responseDouble();
     const handler = createEphemeralReverseHandler(async () => ({ png: Buffer.from("png"), manifest }));
@@ -123,5 +125,18 @@ describe("ephemeral reverse HTTP handler", () => {
 
     expect(response.code).toBe(400);
     expect(response.body).toEqual({ error: "Gallery source not found: missing.jpg" });
+  });
+
+  it("does not invoke the renderer when the request is already aborted", async () => {
+    let called = 0;
+    const response = responseDouble();
+    const handler = createEphemeralReverseHandler(async () => {
+      called += 1;
+      return { png: Buffer.from("png"), manifest };
+    });
+    await handler({ body: { ir: { version: "robby-ir-v1" } }, aborted: true }, response);
+    expect(called).toBe(0);
+    expect(response.code).toBe(500);
+    expect(response.body).toEqual({ error: "Live reverse rendering was cancelled." });
   });
 });

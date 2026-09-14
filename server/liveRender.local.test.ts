@@ -76,4 +76,23 @@ describe("local live-render source boundary", () => {
       rmSync(root, { recursive: true, force: true });
     }
   });
+
+  it("rejects a sheet whose source digest disagrees with the rendered source", async () => {
+    const root = mkdtempSync(join(tmpdir(), "robby-live-source-"));
+    const previous = process.env.ROBBY_GALLERY_DIR;
+    process.env.ROBBY_GALLERY_DIR = root;
+    try {
+      copyFileSync(resolve(process.cwd(), "tests", "fixtures", "render-source.jpg"), join(root, "safe.jpg"));
+      await expect(renderEphemeralReverse(validIr("safe.jpg"), {
+        source_sha256: "f".repeat(64),
+        evidence: { exif: null, iptc: null, xmp: null, gps: null, c2pa: null },
+        included: [],
+        withheld: [],
+      })).rejects.toThrow("source_sha256");
+    } finally {
+      if (previous === undefined) delete process.env.ROBBY_GALLERY_DIR;
+      else process.env.ROBBY_GALLERY_DIR = previous;
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
 });

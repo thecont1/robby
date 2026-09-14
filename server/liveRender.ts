@@ -26,6 +26,22 @@ const SHEET_ROOT_KEYS = [
 const SHEET_EVIDENCE_KEYS = ["exif", "iptc", "xmp", "gps", "c2pa"] as const;
 const EVIDENCE_TOKEN = "(OBSERVED|UNAVAILABLE|REDACTED|PRESENT|ABSENT|VALID|INVALID|NOT INSPECTED|NOT REPORTED|UNTRUSTED SIGNER|TRUSTED SIGNER|SIGNER NOT ASSESSED)";
 const ALLOWED_EVIDENCE_STATES = new RegExp(`^${EVIDENCE_TOKEN}(?: · ${EVIDENCE_TOKEN})*$`);
+// Finite public-safe disclosure vocabulary: DEFAULT_INCLUDED labels plus the
+// omitted labels produced by the disclosure audit. Anything else — filenames,
+// emails, coordinates — is rejected before it can be printed on the sheet.
+const ALLOWED_DISCLOSURE_LABELS = new Set([
+  "Palette",
+  "binding mark",
+  "recipe parameters",
+  "evidence states",
+  "source pixels",
+  "quantised obverse",
+  "filename",
+  "capture time",
+  "full hashes",
+  "raw metadata",
+  "raw GPS",
+]);
 
 type UnknownRecord = Record<string, unknown>;
 
@@ -61,14 +77,8 @@ function stringList(value: unknown, label: string): string[] {
     if (typeof entry !== "string" || entry.length === 0 || entry.length > 64) {
       throw new LiveRenderValidationError(`Sheet ${label}[${index}] must be a short string.`);
     }
-    // Disclosure entries are printed onto a public sheet, so they carry the
-    // same public-safe obligation as every other sheet string: no filenames,
-    // no paths, no raw GPS.
-    if (/[-+]?\d+(?:\.\d+)?\s*[,/]\s*[-+]?\d+(?:\.\d+)?/.test(entry)) {
-      throw new LiveRenderValidationError("Sheet facts must not include raw GPS.");
-    }
-    if (/\.(jpe?g|png|tiff?|webp)$/i.test(entry) || /[/\\]/.test(entry)) {
-      throw new LiveRenderValidationError("Sheet facts must not include filenames or paths.");
+    if (!ALLOWED_DISCLOSURE_LABELS.has(entry)) {
+      throw new LiveRenderValidationError(`Sheet ${label}[${index}] is not a public-safe disclosure label.`);
     }
     return entry;
   });
@@ -159,8 +169,16 @@ export type EphemeralReverse = {
 
 let renderQueue: Promise<unknown> = Promise.resolve();
 
-function serialized<T>(work: () => Promise<T>) {
-  const next = renderQueue.then(work, work);
+function serialized<T>(work: () => Promise<T>, signal?: AbortSignal) {
+  const run = () => {
+    if (signal?.aborted) {
+      const error = new Error("Live reverse rendering was cancelled.");
+      error.name = "AbortError";
+      throw error;
+    }
+    return work();
+  };
+  const next = renderQueue.then(run, run);
   renderQueue = next.catch(() => undefined);
   return next;
 }
@@ -173,7 +191,13 @@ async function runRustRenderer(
   sourcePath: string,
   ir: LiveRenderableIr,
   sheet?: LiveSheetFacts,
+  signal?: AbortSignal,
 ): Promise<EphemeralReverse> {
+  if (signal?.aborted) {
+    const error = new Error("Live reverse rendering was cancelled.");
+    error.name = "AbortError";
+    throw error;
+  }
   const settings = JSON.stringify({
     mode: ir.reverse.mode,
     k: ir.palette.k,
@@ -188,25 +212,47 @@ async function runRustRenderer(
     });
     const chunks: Buffer[] = [];
     let stderr = "";
+    let settled = false;
+    const abort = () => {
+      child.kill("SIGTERM");
+    };
+    if (signal) {
+      if (signal.aborted) abort();
+      else signal.addEventListener("abort", abort, { once: true });
+    }
+    const finish = (fn: () => void) => {
+      if (settled) return;
+      settled = true;
+      signal?.removeEventListener("abort", abort);
+      fn();
+    };
     child.stdout.on("data", chunk => chunks.push(Buffer.from(chunk)));
     child.stderr.on("data", chunk => { stderr += String(chunk); });
-    child.on("error", reject);
+    child.on("error", error => finish(() => reject(error)));
     child.on("close", code => {
-      if (code !== 0) {
-        reject(new Error(stderr.trim() || `Rust renderer exited with ${code}`));
-        return;
-      }
-      const manifestLine = stderr.split("\n").find(line => line.startsWith("ROBBY_MANIFEST:"));
-      if (!manifestLine) {
-        reject(new Error("Rust renderer omitted its manifest."));
-        return;
-      }
-      try {
-        const manifest = JSON.parse(manifestLine.slice("ROBBY_MANIFEST:".length)) as RenderManifest;
-        resolvePromise({ png: Buffer.concat(chunks), manifest });
-      } catch (error) {
-        reject(new Error(`Rust renderer returned an invalid manifest: ${String(error)}`));
-      }
+      finish(() => {
+        if (signal?.aborted) {
+          const error = new Error("Live reverse rendering was cancelled.");
+          error.name = "AbortError";
+          reject(error);
+          return;
+        }
+        if (code !== 0) {
+          reject(new Error(stderr.trim() || `Rust renderer exited with ${code}`));
+          return;
+        }
+        const manifestLine = stderr.split("\n").find(line => line.startsWith("ROBBY_MANIFEST:"));
+        if (!manifestLine) {
+          reject(new Error("Rust renderer omitted its manifest."));
+          return;
+        }
+        try {
+          const manifest = JSON.parse(manifestLine.slice("ROBBY_MANIFEST:".length)) as RenderManifest;
+          resolvePromise({ png: Buffer.concat(chunks), manifest });
+        } catch (error) {
+          reject(new Error(`Rust renderer returned an invalid manifest: ${String(error)}`));
+        }
+      });
     });
   });
 }
@@ -233,8 +279,19 @@ function assertSheetMatchesIr(ir: LiveRenderableIr, sheet: LiveSheetFacts | unde
   }
 }
 
+function assertSheetMatchesSourceDigest(sheet: LiveSheetFacts | undefined, sourceDigest: string) {
+  if (!sheet?.source_sha256) return;
+  if (sheet.source_sha256.toLowerCase() !== sourceDigest.toLowerCase()) {
+    throw new LiveRenderValidationError("Sheet source_sha256 does not match the rendered source digest.");
+  }
+}
+
 /** One request invokes one Rust render and keeps its PNG only in process memory. */
-export async function renderEphemeralReverse(irInput: unknown, sheetInput?: unknown): Promise<EphemeralReverse> {
+export async function renderEphemeralReverse(
+  irInput: unknown,
+  sheetInput?: unknown,
+  signal?: AbortSignal,
+): Promise<EphemeralReverse> {
   const ir = normalizeLiveRenderableIr(irInput);
   const sheet = normalizeLiveSheetFacts(sheetInput);
   assertSheetMatchesIr(ir, sheet);
@@ -246,7 +303,9 @@ export async function renderEphemeralReverse(irInput: unknown, sheetInput?: unkn
       error instanceof Error ? error.message : "The watched gallery source is unavailable.",
     );
   }
-  return runRustRenderer(source.path, ir, sheet);
+  const result = await runRustRenderer(source.path, ir, sheet, signal);
+  assertSheetMatchesSourceDigest(sheet, result.manifest.source_obverse_sha256);
+  return result;
 }
 
 export function registerLiveRenderRoutes(app: Express) {
@@ -260,13 +319,21 @@ type ReverseResponse = {
   send: (body: Buffer) => unknown;
   json: (body: unknown) => unknown;
 };
-type RenderFunction = (ir: unknown, sheet?: unknown) => Promise<EphemeralReverse>;
+type RenderFunction = (ir: unknown, sheet?: unknown, signal?: AbortSignal) => Promise<EphemeralReverse>;
+
+function abortSignalFromRequest(req: { aborted?: boolean; on?: (event: string, listener: () => void) => void }) {
+  const controller = new AbortController();
+  if (req.aborted) controller.abort();
+  req.on?.("aborted", () => controller.abort());
+  return controller.signal;
+}
 
 export function createEphemeralReverseHandler(render: RenderFunction = renderEphemeralReverse) {
-  return async (req: { body?: { ir?: unknown; sheet?: unknown } }, res: ReverseResponse) => {
+  return async (req: { body?: { ir?: unknown; sheet?: unknown }; aborted?: boolean; on?: (event: string, listener: () => void) => void }, res: ReverseResponse) => {
     try {
       const sheet = normalizeLiveSheetFacts(req.body?.sheet);
-      const result = await serialized(() => render(req.body?.ir, sheet));
+      const signal = abortSignalFromRequest(req);
+      const result = await serialized(() => render(req.body?.ir, sheet, signal), signal);
       const manifest = result.manifest;
       res.status(200);
       res.setHeader("Cache-Control", "no-store, max-age=0");
