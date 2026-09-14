@@ -11,7 +11,21 @@
 @custom-variant dark (&:is(.dark *));
 @theme inline { --color-background: var(--background); --color-foreground: var(--foreground); --color-primary: var(--primary); --color-primary-foreground: var(--primary-foreground); --color-border: var(--border); --color-ring: var(--ring); --radius-sm: 0; --radius-md: 0; --radius-lg: 0; }
 :root { --background: #f4efe1; --foreground: #1c1a19; --primary: #e3442f; --primary-foreground: #fffaf0; --border: rgba(28,26,25,.22); --ring: #e3442f; }
-@layer base { * { @apply border-border outline-ring/50; } html { scroll-behavior: smooth; } body { @apply bg-background text-foreground; background-image: linear-gradient(rgba(244,239,225,.88), rgba(244,239,225,.88)); font-family: "Space Grotesk", ui-sans-serif, system-ui, sans-serif; } button, a { -webkit-tap-highlight-color: transparent; } button:not(:disabled), a[href] { @apply cursor-pointer; } }
+@layer base { * { @apply border-border outline-ring/50; } html { scroll-behavior: smooth; } body { @apply bg-background text-foreground; background-image: linear-gradient(rgba(244,239,225,.88), rgba(244,239,225,.88)); font-family: "Space Grotesk", ui-sans-serif, system-ui, sans-serif; } button, a { -webkit-tap-highlight-color: transparent; } button:not(:disabled), a[href] { @apply cursor-pointer; } :focus-visible { outline: 2px solid #7c3024; outline-offset: 3px; } }
+
+.sr-only { border: 0; clip: rect(0, 0, 0, 0); height: 1px; margin: -1px; overflow: hidden; padding: 0; position: absolute; white-space: nowrap; width: 1px; }
+
+/* Skip-to-gallery link: off-screen until keyboard focus, then a visible,
+ * high-contrast target. Classes toggled in Home.tsx keep it accessible even
+ * when focus lands programmatically. */
+.skip-link { position: absolute; left: 4.2vw; top: -100px; z-index: 100; background: #7c3024; color: #fff8e9; font-family: "DM Mono", ui-monospace, monospace; font-size: 11px; font-weight: 700; letter-spacing: .08em; padding: 11px 16px; text-decoration: none; text-transform: uppercase; transition: top .18s cubic-bezier(.23,1,.32,1); }
+.skip-link:focus, .skip-link.skip-link-focus { top: 14px; }
+.skip-link:focus-visible { outline: 2px solid #1c1a19; outline-offset: 2px; }
+.dark .skip-link { color: #fff8e9; }
+.dark .skip-link:focus-visible { outline-color: #f7efe0; }
+
+/* Primary controls retain a comfortable activation area at narrow widths. */
+.compile-orio-control, .flip-control, .artwork-view-control, .object-navigation button, .feature-control.icon-control, .menu-control { min-height: 44px; }
 .mono, .mono-label, code { font-family: "DM Mono", ui-monospace, monospace; }.mono-label { color: #6b665e; font-size: 9px; font-weight: 700; letter-spacing: .15em; text-transform: uppercase; }
 .site-header { align-items: center; border-bottom: 1px solid rgba(28,26,25,.38); display: flex; height: 70px; justify-content: space-between; padding: 0 4.2vw; }.brand-lockup { align-items: center; color: #1c1a19; display: inline-flex; font-family: "DM Mono", monospace; font-size: 18px; font-weight: 700; letter-spacing: -.08em; text-decoration: none; }.brand-lockup img { height: 34px; margin-right: 10px; width: 34px; }.brand-suffix { color: #e3442f; font-size: 11px; letter-spacing: .02em; margin-left: 3px; }.header-center { align-items: center; display: flex; gap: 13px; margin-left: 118px; }.header-kicker { font-family: "Source Serif 4", Georgia, serif; font-size: 14px; font-style: italic; }.header-dot { background: #e3442f; border-radius: 99px; height: 5px; width: 5px; }.header-actions { align-items: center; display: flex; gap: 15px; }.source-download { align-items: center; border-bottom: 1px solid #e3442f; color: #1c1a19; display: inline-flex; font-family: "DM Mono", monospace; font-size: 9px; font-weight: 700; gap: 5px; letter-spacing: .09em; padding-bottom: 3px; text-decoration: none; transition: color .16s cubic-bezier(.23,1,.32,1); }.source-download:hover { color: #e3442f; }.compile-status { align-items: center; color: #e3442f; display: flex; font-family: "DM Mono", monospace; font-size: 9px; font-weight: 700; gap: 6px; letter-spacing: .09em; }.compile-status.checking { color: #8a7b60; }.compile-status.error { color: #e3442f; }
 .gallery-intro { display: grid; grid-template-columns: minmax(115px,.42fr) minmax(470px,1.45fr) minmax(280px,.7fr); min-height: 258px; padding: 50px 4.2vw 38px; position: relative; }.gallery-intro::after { background: #1c1a19; bottom: 0; content: ""; height: 1px; left: 4.2vw; position: absolute; right: 4.2vw; }.intro-index { align-items: flex-start; color: #6b665e; display: flex; flex-direction: column; font-family: "DM Mono", monospace; font-size: 10px; gap: 5px; letter-spacing: .15em; padding-top: 10px; }.intro-copy { animation: reveal-up .54s cubic-bezier(.23,1,.32,1) both; }.eyebrow { color: #e3442f; font-family: "DM Mono", monospace; font-size: 10px; font-weight: 700; letter-spacing: .16em; margin: 0 0 16px; text-transform: uppercase; }h1,h2,h3,p { margin-top: 0; }h1 { font-family: "Source Serif 4", Georgia, serif; font-size: clamp(44px,5vw,79px); font-weight: 500; letter-spacing: -.065em; line-height: .86; margin: 0; }h1 em,h3 em { color: #e3442f; font-weight: 500; }.intro-note { align-self: end; animation: reveal-up .54s .12s cubic-bezier(.23,1,.32,1) both; font-family: "Source Serif 4", Georgia, serif; font-size: 15px; line-height: 1.34; max-width: 280px; padding: 0 0 3px 26px; }.intro-note p { margin-bottom: 17px; }.note-rule { background: #1c1a19; display: block; height: 1px; margin-bottom: 16px; width: 38px; }
@@ -210,6 +224,7 @@
  * location, and a calm three-part control line beneath the artwork. */
 .stage-metadata { align-items:baseline; padding:8px 0 6px; }.stage-metadata > div { gap:6px; }.stage-face-record .mono-label { font-size:9px; }.stage-dimensions { color:#514b43; font-size:10px; letter-spacing:.06em; }.stage-caption { align-items:center; display:grid; grid-template-columns:minmax(0,1fr) auto minmax(0,1fr); min-height:0; padding:11px 0 12px; }.caption-turn { grid-column:2; justify-self:center; }.caption-navigation { grid-column:3; justify-self:end; }.caption-turn .flip-control { min-height:36px; }.trace-steps { border-top:0; }.trace-step { min-height:120px; padding:21px 0; }.trace-step strong { font-size:16px; }.trace-step code { font-size:11px; margin-top:7px; }.trace-step p { font-size:11px; margin-top:7px; }.trace-evidence { margin-top:10px; padding-top:8px; }.trace-mode-tabs { margin:0 -19px 3px; padding:0 12px; }.trace-mode-tabs button { padding:0 6px; }
 @media (max-width:790px) { .trace-step { min-height:100px; padding:16px 0; }.trace-step strong { font-size:14px; }.trace-step code,.trace-step p { font-size:10px; } }
+@media (max-width:560px) { .compile-orio-control, .flip-control { min-height:44px; } .gallery-workspace { gap:24px; } .teppanyaki-counter { padding:17px; } .teppanyaki-counter .counter-message { font-size:17px; } }
 @media (max-width:560px) { .stage-metadata { align-items:baseline; flex-direction:row; gap:4px; }.stage-face-record { flex:0 0 auto; white-space:nowrap; }.stage-display-tools { width:auto; }.stage-dimensions { font-size:9px; }.stage-caption { grid-template-columns:1fr auto; row-gap:8px; }.caption-turn { grid-column:1 / -1; grid-row:1; }.caption-navigation { grid-column:1 / -1; grid-row:2; justify-self:stretch; }.object-navigation { justify-content:space-between; width:100%; } }
 
 /* The stable viewing window preserves controls, not a black matte. Any unused
@@ -286,5 +301,46 @@
 .failure-record dd { color: #f4efe1; font-family: "DM Mono", ui-monospace, monospace; font-size: 11px; line-height: 1.45; overflow-wrap: anywhere; }
 .failure-record code { color: #d7cdbc; font-size: 11px; }
 .mode-notice, .mode-intro { font-size: 11px; line-height: 1.45; }
+
+/* Counter states are de-emphasised with enclosure, spacing, and weight—not
+ * inherited opacity, which would also wash out meaningful text. */
+.teppanyaki-counter { background:transparent; border:1px solid rgba(28,26,25,.54); box-shadow:none; color:#1c1a19; display:flex; flex-direction:column; min-height:100%; opacity:1; padding:19px 19px 17px; transition:border-color .16s cubic-bezier(.23,1,.32,1), background-color .16s cubic-bezier(.23,1,.32,1); }
+@media (prefers-reduced-motion: reduce) {
+  .teppanyaki-counter { transition:none; }
+}
+.teppanyaki-counter.state-primed { border-color:#7c3024; }
+.teppanyaki-counter.state-running,
+.teppanyaki-counter.state-resolved,
+.teppanyaki-counter.state-stale,
+.teppanyaki-counter.state-failed { border-color:#7c3024; }
+.teppanyaki-counter .trace-heading { border-bottom-color:rgba(28,26,25,.3); }
+.teppanyaki-counter .trace-heading > div { color:#1c1a19; }
+.teppanyaki-counter .trace-heading .mono-label { color:#1c1a19; font-size:10px; }
+.teppanyaki-counter .trace-heading > span { color:#7c3024; font-size:9px; }
+.teppanyaki-counter .trace-title { padding:20px 0 17px; }
+.teppanyaki-counter .trace-title .eyebrow { color:#7c3024; font-size:10px; margin-bottom:8px; }
+.teppanyaki-counter .counter-message { color:#1c1a19; font-family:"Source Serif 4",Georgia,serif; font-size:18px; line-height:1.15; margin:0; max-width:31ch; }
+.teppanyaki-stations { list-style:none; margin:0; padding:0; }
+.teppanyaki-station { border-bottom:1px solid rgba(28,26,25,.22); display:grid; gap:10px; grid-template-columns:28px minmax(0,1fr); min-height:62px; opacity:1; padding:11px 0; }
+.teppanyaki-station.status-idle { color:#514b43; }
+.teppanyaki-station.status-started,
+.teppanyaki-station.status-artifact,
+.teppanyaki-station.status-completed,
+.teppanyaki-station.status-failed { color:#1c1a19; }
+.teppanyaki-station strong { display:block; font-size:13px; }
+.teppanyaki-station p { color:#514b43; font-family:"DM Mono",monospace; font-size:11px; line-height:1.35; margin:4px 0 0; }
+.teppanyaki-station em { color:#7c3024; display:block; font-family:"DM Mono",monospace; font-size:10px; font-style:normal; letter-spacing:.08em; margin-top:4px; text-transform:uppercase; }
+.teppanyaki-swatches { display:flex; flex-wrap:wrap; gap:3px; margin-top:7px; }
+.teppanyaki-swatches i { border:1px solid rgba(28,26,25,.55); display:block; height:11px; width:11px; }
+.compile-orio-control { align-items:center; background:#7c3024; border:1px solid #7c3024; color:#fffaf0; display:inline-flex; font-family:"DM Mono",monospace; font-size:10px; font-weight:700; gap:7px; letter-spacing:.1em; min-height:44px; padding:0 12px; text-transform:uppercase; }
+.compile-orio-control:disabled { cursor:wait; opacity:.54; }
+.caption-turn { align-items:center; display:flex; gap:8px; }
+.teppanyaki-audit { color:#514b43; font-family:"DM Mono",monospace; font-size:10px; letter-spacing:.06em; line-height:1.4; margin:12px 0 0; text-transform:uppercase; }
+.dark .teppanyaki-counter { background:transparent; border-color:#e3442f; color:#f7efe0; }
+.dark .teppanyaki-counter .trace-heading { border-bottom-color:#e3442f; }
+.dark .teppanyaki-counter .trace-heading > div,.dark .teppanyaki-counter .trace-heading .mono-label,.dark .teppanyaki-counter .counter-message,.dark .teppanyaki-station.status-idle,.dark .teppanyaki-station.status-started,.dark .teppanyaki-station.status-artifact,.dark .teppanyaki-station.status-completed,.dark .teppanyaki-station.status-failed { color:#f7efe0; }
+.dark .teppanyaki-counter .trace-heading > span,.dark .teppanyaki-counter .trace-title .eyebrow,.dark .teppanyaki-station em { color:#e8a394; }
+.dark .teppanyaki-station { border-bottom-color:#e3442f; }.dark .teppanyaki-station p,.dark .teppanyaki-audit { color:#d79a8d; }.dark .teppanyaki-swatches i { border-color:#e3442f; }
+.image-only .teppanyaki-counter { pointer-events:none; visibility:hidden; }
 
 /* Colour signature swatch strip — horizontally scrollable for large palettes */

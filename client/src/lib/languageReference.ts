@@ -46,13 +46,13 @@ export const languageReference: readonly ReferenceCommand[] = [
   },
   {
     name: "reverse",
-    syntax: 'reverse(mode: "negative")',
-    description: "Selects the registered pure mathematical reverse module.",
+    syntax: 'reverse(mode: "negative" | "observability_sheet" | "quantised_obverse" | "palette_grid")',
+    description: "Selects one of the four registered v1 reverse modules: negative, observability_sheet, quantised_obverse, or palette_grid.",
     parameters: [
-      { name: "mode", type: '"negative"', required: true, detail: "The v1 registry contains only the negative module." },
+      { name: "mode", type: '"negative" | "observability_sheet" | "quantised_obverse" | "palette_grid"', required: true, detail: "All four modes are compiler-accepted; palette-derived visual modes use the documented median-cut palette." },
     ],
-    example: 'reverse(mode: "negative")',
-    notes: "Exactly one reverse declaration is required.",
+    example: 'reverse(mode: "quantised_obverse")',
+    notes: "Exactly one reverse declaration is required. palette_grid arrangement is seed-only.",
   },
   {
     name: "output",

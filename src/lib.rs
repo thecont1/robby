@@ -4,15 +4,27 @@
 //! the optional WebAssembly adapter used by the browser showcase.
 
 pub mod ast;
+pub mod binding;
 pub mod error;
+pub mod font;
+pub mod intake;
 pub mod ir;
 pub mod lexer;
 pub mod parser;
 pub mod render;
 pub mod validator;
 
+pub use binding::{BindingOptions, BindingResult, BINDING_STATEMENT};
 pub use error::{CompileResult, CompilerError};
-pub use ir::Ir;
+pub use ir::{Ir, RecipeIr};
+
+/// Compile a Phase 3 recipe through lexing, parsing, validation, and canonical lowering.
+pub fn compile_recipe_source(source: &str) -> CompileResult<RecipeIr> {
+    let tokens = lexer::lex(source)?;
+    let recipe = parser::parse_recipe(&tokens)?;
+    validator::validate_recipe(&recipe)?;
+    Ok(ir::lower_recipe(&recipe))
+}
 
 /// Compile source text through every explicit compiler pass.
 pub fn compile_source(source: &str) -> CompileResult<Ir> {
@@ -20,6 +32,73 @@ pub fn compile_source(source: &str) -> CompileResult<Ir> {
     let ast = parser::parse(&tokens)?;
     validator::validate(&ast)?;
     Ok(ir::lower(&ast, source))
+}
+
+/// Inspect raw source bytes into a deterministic, public-safe intake manifest.
+///
+/// This is the shared native/WASM path that yields the canonical pixel hash
+/// and the source dimensions shown in the browser Measure station. The public
+/// projection redacts GPS/EXIF/IPTC/XMP values and neutralizes C2PA claim
+/// metadata, so only reproducibility fingerprints cross into the browser.
+pub fn inspect_image_json(original_name: &str, bytes: &[u8]) -> CompileResult<String> {
+    let manifest = intake::inspect_image(original_name, bytes)?;
+    let public = manifest.sanitize_public();
+    serde_json::to_string(&public).map_err(|error| {
+        CompilerError::plain(format!("Unable to serialize intake manifest: {error}"))
+    })
+}
+
+/// Build the authoritative `BindingRecord` for a v1 gallery compile from a
+/// canonical binding request JSON (ADR-003 / Plan 9A).
+///
+/// The request carries every identity domain explicitly; this entry point
+/// only validates, runs the one canonical algorithm, and serializes the
+/// record. It never derives inputs from browser state.
+pub fn build_binding_json(request_json: &str) -> CompileResult<String> {
+    let request: binding::CanonicalBindingRequest =
+        serde_json::from_str(request_json).map_err(|error| {
+            CompilerError::plain(format!("Invalid canonical binding request: {error}"))
+        })?;
+    let record = binding::build_binding_record(&request).map_err(CompilerError::plain)?;
+    serde_json::to_string(&record).map_err(|error| {
+        CompilerError::plain(format!("Unable to serialize binding record: {error}"))
+    })
+}
+
+/// Build a canonical binding request for the active `robby-ir-v1` language in
+/// Rust, from the raw pieces the browser legitimately holds: the public-safe
+/// intake manifest, the authored recipe source, structured selected evidence,
+/// and runtime identities (Plan 9A / P9A.5).
+///
+/// The recipe is re-compiled here (parse → validate → lower) so the canonical
+/// recipe identity is always Rust-derived, never UI formatting.
+pub fn binding_request_v1_json(
+    intake_json: &str,
+    recipe_source: &str,
+    evidence_json: &str,
+    compiler_version: &str,
+    renderer_version: &str,
+) -> CompileResult<String> {
+    use sha2::Digest;
+    let intake: intake::IngredientManifest = serde_json::from_str(intake_json)
+        .map_err(|error| CompilerError::plain(format!("Invalid intake manifest: {error}")))?;
+    let evidence: binding::SelectedEvidence = serde_json::from_str(evidence_json)
+        .map_err(|error| CompilerError::plain(format!("Invalid selected evidence: {error}")))?;
+    evidence.validate().map_err(CompilerError::plain)?;
+    let ir = compile_source(recipe_source)?;
+    let authored_recipe_sha256 = format!("{:x}", sha2::Sha256::digest(recipe_source.as_bytes()));
+    let request = binding::binding_request_from_ir_v1(
+        &intake,
+        &ir,
+        &authored_recipe_sha256,
+        &binding::V1DisclosurePolicy::default_v1(),
+        &evidence,
+        compiler_version,
+        renderer_version,
+    );
+    serde_json::to_string(&request).map_err(|error| {
+        CompilerError::plain(format!("Unable to serialize binding request: {error}"))
+    })
 }
 
 /// A stable human-readable version for the CLI, manifest UI, and WASM bridge.
@@ -35,13 +114,53 @@ mod wasm {
     use wasm_bindgen::prelude::*;
 
     use crate::render::{render_reverse, RenderSettings};
-    use crate::{compile_source, COMPILER_VERSION, RUST_TOOLCHAIN};
+    use crate::{
+        binding_request_v1_json as build_v1_request,
+        build_binding_json as build_binding_record_json, compile_source,
+        inspect_image_json as inspect, COMPILER_VERSION, RUST_TOOLCHAIN,
+    };
 
     /// Compile Robby source in the browser using this exact Rust library.
     #[wasm_bindgen]
     pub fn compile_source_json(source: &str) -> Result<String, JsValue> {
         let ir = compile_source(source).map_err(|error| JsValue::from_str(&error.to_string()))?;
         serde_json::to_string(&ir).map_err(|error| JsValue::from_str(&error.to_string()))
+    }
+
+    /// Build the authoritative canonical `BindingRecord` from a JSON
+    /// `CanonicalBindingRequest`. One algorithm, shared with the native CLI.
+    #[wasm_bindgen]
+    pub fn build_binding_json(request_json: &str) -> Result<String, JsValue> {
+        build_binding_record_json(request_json)
+            .map_err(|error| JsValue::from_str(&error.to_string()))
+    }
+
+    /// Build the canonical v1 binding request in Rust from the public-safe
+    /// intake manifest, authored recipe source, and structured evidence.
+    #[wasm_bindgen]
+    pub fn binding_request_v1_json(
+        intake_json: &str,
+        recipe_source: &str,
+        evidence_json: &str,
+        compiler_version: &str,
+        renderer_version: &str,
+    ) -> Result<String, JsValue> {
+        build_v1_request(
+            intake_json,
+            recipe_source,
+            evidence_json,
+            compiler_version,
+            renderer_version,
+        )
+        .map_err(|error| JsValue::from_str(&error.to_string()))
+    }
+
+    /// Inspect raw image bytes into the same public-safe intake manifest the
+    /// native CLI produces. Returns a JSON `IngredientManifest` (sanitized),
+    /// including the canonical pixel hash and source dimensions.
+    #[wasm_bindgen]
+    pub fn inspect_image_json(original_name: &str, bytes: &[u8]) -> Result<String, JsValue> {
+        inspect(original_name, bytes).map_err(|error| JsValue::from_str(&error.to_string()))
     }
 
     #[wasm_bindgen]
@@ -78,7 +197,7 @@ mod tests {
 base("base.jpg", width: 1280, height: 720)
 palette(k: 8)
 reverse(mode: "negative")
-output(obverse: "front.png", reverse: "back.png", manifest: "manifest.json")
+output(obverse: "front.png", reverse: "transient", manifest: "transient")
 "#;
 
     #[test]
@@ -133,7 +252,7 @@ output(obverse: "front.png", reverse: "back.png", manifest: "manifest.json")
         let source = r#"base("image.jpg")
 palette(k: 6)
 reverse(mode: "negative")
-output(obverse: "front.png", reverse: "back.png", manifest: "manifest.json")"#;
+output(obverse: "front.png", reverse: "transient", manifest: "transient")"#;
         let tokens = lexer::lex(source).expect("tokens");
         let ast = parser::parse(&tokens).expect("AST");
         validator::validate(&ast).expect("valid gallery script");

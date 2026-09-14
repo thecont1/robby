@@ -35,6 +35,12 @@ pub fn validate(script: &Script) -> CompileResult<()> {
                         "Only one `palette(...)` command is allowed.",
                     ));
                 }
+                if reverse_seen {
+                    return Err(error(
+                        command,
+                        "`palette(...)` must appear before `reverse(...)`.",
+                    ));
+                }
                 palette_seen = true;
                 let values = named(command, &["k"])?;
                 validate_palette_k(&values, command)?;
@@ -59,8 +65,20 @@ pub fn validate(script: &Script) -> CompileResult<()> {
                 output_seen = true;
                 let values = named(command, &["obverse", "reverse", "manifest"])?;
                 required_string(&values, "obverse", command)?;
-                required_string(&values, "reverse", command)?;
-                required_string(&values, "manifest", command)?;
+                let reverse_target = required_string(&values, "reverse", command)?;
+                if reverse_target != "transient" {
+                    return Err(error(
+                        command,
+                        "The `reverse` output target must be \"transient\" — durable reverse paths are forbidden.",
+                    ));
+                }
+                let manifest_target = required_string(&values, "manifest", command)?;
+                if manifest_target != "transient" {
+                    return Err(error(
+                        command,
+                        "The `manifest` output target must be \"transient\" — durable manifest paths are forbidden.",
+                    ));
+                }
             }
             other => {
                 return Err(error(
@@ -110,10 +128,19 @@ fn validate_base(command: &Command) -> CompileResult<()> {
 fn validate_reverse(command: &Command) -> CompileResult<()> {
     let values = named(command, &["mode"])?;
     let mode = required_string(&values, "mode", command)?;
-    if mode != "negative" {
+    if ![
+        "negative",
+        "observability_sheet",
+        "quantised_obverse",
+        "palette_grid",
+    ]
+    .contains(&mode)
+    {
         return Err(error(
             command,
-            format!("Unknown reverse mode `{mode}`. v1 supports `negative`."),
+            format!(
+                "Unknown reverse mode `{mode}`. v1 supports `negative`, `observability_sheet`, `quantised_obverse`, and `palette_grid`."
+            ),
         ));
     }
     Ok(())
@@ -223,4 +250,460 @@ fn type_error(command: &Command, key: &str, value: &Value, expected: &str) -> Co
             value.type_name()
         ),
     )
+}
+
+/// Validate the Phase 3 recipe grammar without changing the v1 validator.
+pub fn validate_recipe(recipe: &crate::ast::Recipe) -> CompileResult<()> {
+    let clauses = &recipe.object.clauses;
+    let allowed = [
+        "input", "inspect", "context", "split", "measure", "bind", "reverse", "publish",
+    ];
+    for clause in clauses {
+        if !allowed.contains(&clause.name.as_str()) {
+            return Err(CompilerError::at(
+                clause.span.line,
+                format!("Unknown recipe clause `{}`.", clause.name),
+            ));
+        }
+    }
+    let count = |name: &str| clauses.iter().filter(|clause| clause.name == name).count();
+    if count("input") != 1 {
+        return Err(CompilerError::plain(
+            "A recipe requires exactly one `input` clause; multi-image compositing is unsupported.",
+        ));
+    }
+    for name in [
+        "inspect", "context", "split", "measure", "bind", "reverse", "publish",
+    ] {
+        if count(name) != 1 {
+            return Err(CompilerError::plain(format!(
+                "A recipe requires exactly one `{name}` clause."
+            )));
+        }
+    }
+    let input = clauses
+        .iter()
+        .find(|clause| clause.name == "input")
+        .unwrap();
+    if input.arguments.len() != 1 || input.arguments[0].value.as_string().is_none() {
+        return Err(CompilerError::at(
+            input.span.line,
+            "`input` requires one image path string.",
+        ));
+    }
+    validate_entries(
+        recipe,
+        "inspect",
+        &["exif", "iptc", "xmp", "c2pa", "gps"],
+        &[
+            ("exif", &["read"]),
+            ("iptc", &["read"]),
+            ("xmp", &["read"]),
+            ("c2pa", &["verify"]),
+            ("gps", &["private"]),
+        ],
+    )?;
+    validate_context(recipe)?;
+    validate_split(recipe)?;
+    validate_measure(recipe)?;
+    validate_bind(recipe)?;
+    validate_reverse_recipe(recipe)?;
+    validate_publish(recipe)?;
+    Ok(())
+}
+
+fn recipe_clause<'a>(recipe: &'a crate::ast::Recipe, name: &str) -> &'a crate::ast::Clause {
+    recipe
+        .object
+        .clauses
+        .iter()
+        .find(|clause| clause.name == name)
+        .unwrap()
+}
+
+fn validate_entries(
+    recipe: &crate::ast::Recipe,
+    clause_name: &str,
+    names: &[&str],
+    values: &[(&str, &[&str])],
+) -> CompileResult<()> {
+    let clause = recipe_clause(recipe, clause_name);
+    for entry in &clause.entries {
+        let key = entry.name.as_deref().unwrap_or_default();
+        let Some(allowed_values) = values
+            .iter()
+            .find(|(name, _)| *name == key)
+            .map(|(_, values)| *values)
+        else {
+            return Err(CompilerError::at(
+                clause.span.line,
+                format!("Unknown {clause_name} directive `{key}`."),
+            ));
+        };
+        let Some(value) = value_identifier(&entry.value) else {
+            return Err(CompilerError::at(
+                entry.span.line,
+                format!("`{key}` in `{clause_name}` must use a supported directive."),
+            ));
+        };
+        if !allowed_values.contains(&value) {
+            return Err(CompilerError::at(
+                entry.span.line,
+                format!("Unsupported {clause_name} directive `{key}: {value}`."),
+            ));
+        }
+    }
+    if clause
+        .entries
+        .iter()
+        .any(|entry| !names.contains(&entry.name.as_deref().unwrap_or_default()))
+    {
+        return Err(CompilerError::at(
+            clause.span.line,
+            format!("Unsupported {clause_name} directive."),
+        ));
+    }
+    Ok(())
+}
+
+fn validate_context(recipe: &crate::ast::Recipe) -> CompileResult<()> {
+    let clause = recipe_clause(recipe, "context");
+    let allowed = ["place", "time", "era", "source_capture_time", "source_gps"];
+    validate_clause_keys(clause, &allowed, "context")?;
+    for entry in &clause.entries {
+        let key = entry.name.as_deref().unwrap_or_default();
+        match key {
+            "place" | "time" | "era" => validate_call(
+                &entry.value,
+                "set",
+                None,
+                entry.span.line,
+                "Context declarations must be tagged `set` and remain declared.",
+            )?,
+            "source_capture_time" => validate_call(
+                &entry.value,
+                "retain",
+                Some("observed"),
+                entry.span.line,
+                "Unsupported context privacy directive; use `retain observed`.",
+            )?,
+            "source_gps" => validate_call(
+                &entry.value,
+                "keep",
+                Some("private"),
+                entry.span.line,
+                "Unsupported context privacy directive; use `keep private`.",
+            )?,
+            _ => unreachable!(),
+        }
+    }
+    Ok(())
+}
+
+fn validate_split(recipe: &crate::ast::Recipe) -> CompileResult<()> {
+    let clause = recipe_clause(recipe, "split");
+    if clause.variant.as_deref() != Some("palette") {
+        return Err(CompilerError::at(
+            clause.span.line,
+            "Only `split palette` is supported.",
+        ));
+    }
+    validate_clause_keys(clause, &["method", "colours", "order"], "palette")?;
+    let values = entry_map(clause);
+    if value_identifier(
+        values
+            .get("method")
+            .ok_or_else(|| CompilerError::at(clause.span.line, "Missing palette method."))?,
+    ) != Some("median_cut")
+    {
+        return Err(CompilerError::at(
+            clause.span.line,
+            "Unsupported palette method; only `median_cut` is supported.",
+        ));
+    }
+    let colours = values
+        .get("colours")
+        .and_then(|value| value.as_number())
+        .unwrap_or(0.0);
+    if !(3.0..=32.0).contains(&colours) || colours.fract() != 0.0 {
+        return Err(CompilerError::at(
+            clause.span.line,
+            "Palette `colours` must be an integer between 3 and 32.",
+        ));
+    }
+    if value_identifier(
+        values
+            .get("order")
+            .ok_or_else(|| CompilerError::at(clause.span.line, "Missing palette order."))?,
+    ) != Some("frequency")
+    {
+        return Err(CompilerError::at(
+            clause.span.line,
+            "Unsupported palette order; only `frequency` is supported.",
+        ));
+    }
+    Ok(())
+}
+
+fn validate_measure(recipe: &crate::ast::Recipe) -> CompileResult<()> {
+    let clause = recipe_clause(recipe, "measure");
+    validate_clause_keys(clause, &["luminance", "texture"], "measure")?;
+    for entry in &clause.entries {
+        // `bands`/`grid` each take exactly one positive integer argument.
+        // Checking only the call name accepted `bands()`, `bands(1, 2)` and
+        // `bands(foo)`, all of which lowered to a silent default.
+        let Value::Call {
+            ref name,
+            ref arguments,
+        } = entry.value
+        else {
+            return Err(CompilerError::at(
+                entry.span.line,
+                "Unsupported measure directive.",
+            ));
+        };
+        let (expected_name, expected_value) = match entry.name.as_deref() {
+            Some("luminance") => ("bands", 8.0),
+            Some("texture") => ("grid", 24.0),
+            _ => unreachable!("measure keys validated above"),
+        };
+        if name != expected_name {
+            return Err(CompilerError::at(
+                entry.span.line,
+                format!(
+                    "Unsupported measure directive; `{}` requires `{expected_name}({expected_value:.0})`.",
+                    entry.name.as_deref().unwrap_or_default()
+                ),
+            ));
+        }
+        if arguments.len() != 1 {
+            return Err(CompilerError::at(
+                entry.span.line,
+                format!("`{name}` takes exactly one argument."),
+            ));
+        }
+        let Some(count) = arguments[0].as_number() else {
+            return Err(CompilerError::at(
+                entry.span.line,
+                format!("`{name}` requires a numeric argument."),
+            ));
+        };
+        if count != expected_value {
+            return Err(CompilerError::at(
+                entry.span.line,
+                format!("`{name}` requires the value {expected_value:.0}."),
+            ));
+        }
+    }
+    Ok(())
+}
+
+fn validate_bind(recipe: &crate::ast::Recipe) -> CompileResult<()> {
+    let clause = recipe_clause(recipe, "bind");
+    let allowed = [
+        ("source", "sha256"),
+        ("pixels", "canonical_rgba_sha256"),
+        ("recipe", "canonical_ir"),
+        ("evidence", "verified_public"),
+        ("evidence", "none"),
+        ("compiler", "version"),
+    ];
+    for entry in &clause.entries {
+        let key = entry.name.as_deref().unwrap_or_default();
+        let value = value_identifier(&entry.value).unwrap_or_default();
+        if !allowed.contains(&(key, value)) {
+            return Err(CompilerError::at(
+                entry.span.line,
+                format!("Unsupported binding directive `{key}: {value}`."),
+            ));
+        }
+    }
+    Ok(())
+}
+
+fn validate_reverse_recipe(recipe: &crate::ast::Recipe) -> CompileResult<()> {
+    let clause = recipe_clause(recipe, "reverse");
+    if ![
+        "negative",
+        "quantised_obverse",
+        "palette_grid",
+        "observability_sheet",
+    ]
+    .contains(&clause.variant.as_deref().unwrap_or_default())
+    {
+        return Err(CompilerError::at(
+            clause.span.line,
+            "Unsupported reverse mode.",
+        ));
+    }
+    let values = entry_map(clause);
+    let mode = clause.variant.as_deref().unwrap();
+    // Every authored key is checked against the complete allowed set for this
+    // mode, with duplicates rejected, before anything is read out of the map.
+    let allowed: &[&str] = match mode {
+        "palette_grid" => &["arrange", "seed", "border", "cell"],
+        "observability_sheet" => &["seed", "palette"],
+        _ => &["palette", "dither"],
+    };
+    validate_clause_keys(clause, allowed, "reverse")?;
+    let required: &[(&str, &str)] = match mode {
+        "palette_grid" => &[
+            ("arrange", "seeded_shuffle"),
+            ("seed", "object_binding"),
+            ("border", "source_palette"),
+        ],
+        "observability_sheet" => &[("seed", "object_binding"), ("palette", "active")],
+        _ => &[("palette", "active"), ("dither", "none")],
+    };
+    for (key, expected) in required {
+        let value = values.get(*key).ok_or_else(|| {
+            CompilerError::at(
+                clause.span.line,
+                format!("Missing reverse directive `{key}`."),
+            )
+        })?;
+        if value_identifier(value) != Some(*expected) {
+            return Err(CompilerError::at(
+                clause.span.line,
+                format!(
+                    "Unsupported reverse directive `{key}`{}.",
+                    if *key == "seed" {
+                        "; unsupported seed source"
+                    } else {
+                        ""
+                    }
+                ),
+            ));
+        }
+    }
+    if mode == "palette_grid" {
+        // `cell` is lowered with `as u32`, which silently wraps negatives and
+        // truncates fractions. Validate the authored value here, against the
+        // same bound the renderer enforces.
+        if let Some(value) = values.get("cell") {
+            let Some(cell) = value.as_number() else {
+                return Err(CompilerError::at(
+                    clause.span.line,
+                    "Palette grid `cell` must be numeric.",
+                ));
+            };
+            if cell.fract() != 0.0 || !(1.0..=4096.0).contains(&cell) {
+                return Err(CompilerError::at(
+                    clause.span.line,
+                    "Palette grid `cell` must be an integer between 1 and 4096.",
+                ));
+            }
+        } else {
+            return Err(CompilerError::at(
+                clause.span.line,
+                "Palette grid `cell` must be numeric.",
+            ));
+        }
+    }
+    Ok(())
+}
+
+fn validate_publish(recipe: &crate::ast::Recipe) -> CompileResult<()> {
+    let clause = recipe_clause(recipe, "publish");
+    let allowed = [
+        ("gps", "remove"),
+        ("capture_time", "redact"),
+        ("c2pa", "summary"),
+        ("manifest", "public_safe"),
+    ];
+    for entry in &clause.entries {
+        let key = entry.name.as_deref().unwrap_or_default();
+        let value = value_identifier(&entry.value).unwrap_or_default();
+        if !allowed.contains(&(key, value)) {
+            return Err(CompilerError::at(
+                entry.span.line,
+                format!("Unsupported publish directive `{key}: {value}`."),
+            ));
+        }
+    }
+    Ok(())
+}
+
+/// Reject surplus and duplicate authored keys before lowering.
+///
+/// `entry_map` collapses a clause into a `HashMap`, so a duplicated key would
+/// silently overwrite its earlier occurrence and a surplus key would simply be
+/// ignored. Both are authoring errors: validate against the complete allowed
+/// set while every occurrence is still present.
+fn validate_clause_keys(
+    clause: &crate::ast::Clause,
+    allowed: &[&str],
+    what: &str,
+) -> CompileResult<()> {
+    let mut seen: Vec<&str> = Vec::with_capacity(clause.entries.len());
+    for entry in &clause.entries {
+        let key = entry.name.as_deref().unwrap_or_default();
+        if !allowed.contains(&key) {
+            return Err(CompilerError::at(
+                entry.span.line,
+                format!("Unsupported {what} directive `{key}`."),
+            ));
+        }
+        if seen.contains(&key) {
+            return Err(CompilerError::at(
+                entry.span.line,
+                format!("Duplicate {what} directive `{key}`."),
+            ));
+        }
+        seen.push(key);
+    }
+    Ok(())
+}
+
+/// Validate a `name(arg)` call exactly: name, argument count, argument type,
+/// and the required argument value.
+///
+/// Matching on the call name alone accepts `set()`, `set(a, b)` and
+/// `keep public` — all authoring errors that would otherwise lower silently.
+fn validate_call(
+    value: &Value,
+    name: &str,
+    expected_argument: Option<&str>,
+    line: usize,
+    message: &str,
+) -> CompileResult<()> {
+    let Value::Call {
+        name: actual,
+        arguments,
+    } = value
+    else {
+        return Err(CompilerError::at(line, message.to_string()));
+    };
+    if actual != name {
+        return Err(CompilerError::at(line, message.to_string()));
+    }
+    match expected_argument {
+        Some(expected) => {
+            if arguments.len() != 1 || value_identifier(&arguments[0]) != Some(expected) {
+                return Err(CompilerError::at(line, message.to_string()));
+            }
+        }
+        None => {
+            // `set(...)` carries the authored declaration value: exactly one
+            // argument, and it must be a string rather than a bare identifier.
+            if arguments.len() != 1 || !matches!(arguments[0], Value::String(_)) {
+                return Err(CompilerError::at(line, message.to_string()));
+            }
+        }
+    }
+    Ok(())
+}
+
+fn entry_map(clause: &crate::ast::Clause) -> HashMap<&str, &Value> {
+    clause
+        .entries
+        .iter()
+        .filter_map(|entry| entry.name.as_deref().map(|name| (name, &entry.value)))
+        .collect()
+}
+fn value_identifier(value: &Value) -> Option<&str> {
+    match value {
+        Value::Identifier(value) => Some(value),
+        _ => None,
+    }
 }

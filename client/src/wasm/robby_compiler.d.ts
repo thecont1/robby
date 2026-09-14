@@ -7,6 +7,33 @@
 */
 export function compile_source_json(source: string): string;
 /**
+* Build the authoritative canonical `BindingRecord` from a JSON
+* `CanonicalBindingRequest`. One algorithm, shared with the native CLI.
+* @param {string} request_json
+* @returns {string}
+*/
+export function build_binding_json(request_json: string): string;
+/**
+* Build the canonical v1 binding request in Rust from the public-safe
+* intake manifest, authored recipe source, and structured evidence.
+* @param {string} intake_json
+* @param {string} recipe_source
+* @param {string} evidence_json
+* @param {string} compiler_version
+* @param {string} renderer_version
+* @returns {string}
+*/
+export function binding_request_v1_json(intake_json: string, recipe_source: string, evidence_json: string, compiler_version: string, renderer_version: string): string;
+/**
+* Inspect raw image bytes into the same public-safe intake manifest the
+* native CLI produces. Returns a JSON `IngredientManifest` (sanitized),
+* including the canonical pixel hash and source dimensions.
+* @param {string} original_name
+* @param {Uint8Array} bytes
+* @returns {string}
+*/
+export function inspect_image_json(original_name: string, bytes: Uint8Array): string;
+/**
 * @returns {string}
 */
 export function compiler_version(): string;
@@ -27,8 +54,11 @@ export type InitInput = RequestInfo | URL | Response | BufferSource | WebAssembl
 
 export interface InitOutput {
   readonly memory: WebAssembly.Memory;
+  readonly binding_request_v1_json: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number) => void;
+  readonly build_binding_json: (a: number, b: number, c: number) => void;
   readonly compile_source_json: (a: number, b: number, c: number) => void;
   readonly compiler_version: (a: number) => void;
+  readonly inspect_image_json: (a: number, b: number, c: number, d: number, e: number) => void;
   readonly render_reverse_json: (a: number, b: number, c: number, d: number, e: number) => void;
   readonly rust_toolchain: (a: number) => void;
   readonly __wbindgen_add_to_stack_pointer: (a: number) => number;

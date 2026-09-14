@@ -47,6 +47,74 @@ describe("ephemeral reverse HTTP handler", () => {
     expect(JSON.stringify(response.headers)).not.toContain("storage");
   });
 
+  it("forwards sibling sheet facts to the renderer and rejects filenames", async () => {
+    const seen: unknown[] = [];
+    const response = responseDouble();
+    const png = Buffer.from("ephemeral-png");
+    const handler = createEphemeralReverseHandler(async (_ir, sheet) => {
+      seen.push(sheet);
+      return { png, manifest };
+    });
+    await handler({
+      body: {
+        ir: { version: "robby-ir-v1" },
+        sheet: {
+          run_id: "9C1EAA11",
+          binding_short_id: "RB-A1B2-C3D4",
+          source_sha256: "a".repeat(64),
+          pixel_sha256: "b".repeat(64),
+          recipe_sha256: "c".repeat(64),
+          palette_k: 8,
+          reverse_mode: "observability_sheet",
+          ir_schema: "robby-ir-v1",
+          policy_name: "robby-v1-default-disclosure-policy",
+          evidence: { exif: "OBSERVED", iptc: "UNAVAILABLE", xmp: "UNAVAILABLE", gps: "REDACTED", c2pa: "ABSENT" },
+          included: ["Palette"],
+          withheld: ["filename"],
+        },
+      },
+    }, response);
+    expect(response.code).toBe(200);
+    expect(seen[0]).toMatchObject({ binding_short_id: "RB-A1B2-C3D4", evidence: { gps: "REDACTED" } });
+
+    const rejected = responseDouble();
+    const rejecting = createEphemeralReverseHandler(async () => ({ png, manifest }));
+    await rejecting({
+      body: {
+        ir: { version: "robby-ir-v1" },
+        sheet: {
+          run_id: "x",
+          binding_short_id: "secret-source.jpg",
+          evidence: { exif: null, iptc: null, xmp: null, gps: null, c2pa: null },
+          included: [],
+          withheld: [],
+        },
+      },
+    }, rejected);
+    expect(rejected.code).toBe(400);
+  });
+
+  it.each([
+    ["included filename", { included: ["private-source.jpg"], withheld: [] }],
+    ["withheld path", { included: [], withheld: ["private/source"] }],
+    ["included GPS", { included: ["12.9716, 77.5946"], withheld: [] }],
+    ["included email", { included: ["ops@example.com"], withheld: [] }],
+    ["withheld coordinates", { included: [], withheld: ["12.97/77.59"] }],
+  ])("rejects unsafe disclosure-list entry: %s", async (_label, lists) => {
+    const response = responseDouble();
+    const handler = createEphemeralReverseHandler(async () => ({ png: Buffer.from("png"), manifest }));
+    await handler({
+      body: {
+        ir: { version: "robby-ir-v1" },
+        sheet: {
+          evidence: { exif: null, iptc: null, xmp: null, gps: null, c2pa: null },
+          ...lists,
+        },
+      },
+    }, response);
+    expect(response.code).toBe(400);
+  });
+
   it("returns a clear 400 response when the render program is rejected", async () => {
     const response = responseDouble();
     const handler = createEphemeralReverseHandler(async () => {
@@ -57,5 +125,18 @@ describe("ephemeral reverse HTTP handler", () => {
 
     expect(response.code).toBe(400);
     expect(response.body).toEqual({ error: "Gallery source not found: missing.jpg" });
+  });
+
+  it("does not invoke the renderer when the request is already aborted", async () => {
+    let called = 0;
+    const response = responseDouble();
+    const handler = createEphemeralReverseHandler(async () => {
+      called += 1;
+      return { png: Buffer.from("png"), manifest };
+    });
+    await handler({ body: { ir: { version: "robby-ir-v1" } }, aborted: true }, response);
+    expect(called).toBe(0);
+    expect(response.code).toBe(500);
+    expect(response.body).toEqual({ error: "Live reverse rendering was cancelled." });
   });
 });

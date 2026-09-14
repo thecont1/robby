@@ -40,7 +40,7 @@ export type GalleryItem = {
   ratio: "four-three" | "three-two";
   obverse: string;
   reverse: string;
-  reverseMode: "negative";
+  reverseMode: "negative" | "observability_sheet" | "quantised_obverse" | "palette_grid";
   reverseKind: string;
   reverseDescription: string;
   scriptHash: string;
@@ -57,14 +57,14 @@ type GalleryDefinition = Omit<GalleryItem, "serial" | "trace" | "script">;
 const paletteTrace = (source: string, dimensions: string): readonly TraceStep[] => [
   { stage: "01", label: "Base canvas", code: `base("${source}")`, detail: `${dimensions} · source checksum recorded` },
   { stage: "02", label: "Calculate palette", code: "palette(k: 8)", detail: "8 deterministic RGB clusters" },
-  { stage: "03", label: "Render reverse", code: 'reverse(mode: "negative")', detail: "pure seed-driven negative module" },
+  { stage: "03", label: "Render reverse", code: 'reverse(mode: "observability_sheet")', detail: "instrument plate from palette, seed, and hashes" },
   { stage: "04", label: "Prepare manifest", code: "output(…transient)", detail: "hashes and seed returned with ephemeral PNG bytes" },
 ];
 
 const sourceScript = (id: string, source: string) => `# Immutable source study. The original JPEG is read-only; reverse bytes exist only during an explicit turn request.
 base("${source}")
 palette(k: 8)
-reverse(mode: "negative")
+reverse(mode: "observability_sheet")
 output(obverse: "${source}", reverse: "transient", manifest: "transient")
 `;
 

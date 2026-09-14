@@ -49,7 +49,7 @@ Panels enter with a short 180ms upward-and-fade motion using a strong ease-out, 
 `DM Mono` carries code, coordinates, hashes, and technical labels. `Source Serif 4` provides the editorial title voice and framing captions. A compact sans-serif system stack is reserved for interface controls. Display headlines use tight tracking; technical values use tabular numerals.
 
 ### Brand Essence
-**Robby is an explainable visual-composition compiler for image-makers who want the final picture and the evidence of how it came to be.**
+**Robby is an explainable image-object compiler for image-makers who want the photograph and a deterministic reverse, with the evidence of how it came to be.**
 
 Personality: forensic, tactile, generous.
 

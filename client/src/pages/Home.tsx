@@ -6,11 +6,15 @@
  */
 
 import SourceEditor from "@/components/SourceEditor";
-import { CompilationTraceModes, ProvenanceModule, type RuntimeRecord, type TraceMode } from "@/components/Build06Panels";
+import TeppanyakiCounter from "@/components/TeppanyakiCounter";
+import { ProvenanceModule, type RuntimeRecord, type TraceMode } from "@/components/Build06Panels";
 import { loadCompileHistory, persistCompileSnapshot, type CompileSnapshot } from "@/lib/compileHistory";
+import { compileActions } from "@/lib/compileActions";
+import { browserCompileController } from "@/lib/compileBrowser";
+import type { CompileRun } from "@/lib/compileEvents";
 import { verifiedCompilerStatus } from "@/lib/compilerStatus";
-import { requestEphemeralReverse, type EphemeralReverseResult } from "@/lib/liveRender";
-import { paletteKFromSource, replacePaletteK } from "@/lib/paletteSettings";
+import { paletteKFromSource } from "@/lib/paletteSettings";
+import { authoredRecipeForCompile, editPaletteInRecipe, isCompiledSourceCurrent, reverseModeFromSource } from "@/lib/recipeAuthority";
 
 import {
   DropdownMenu,
@@ -22,10 +26,11 @@ import {
 import { useTheme } from "@/contexts/ThemeContext";
 import { type CredentialSignature, type TraceStep, type GalleryItem } from "@/lib/demoData";
 import { useGallery } from "@/lib/useGallery";
-import { inspectC2paCredential } from "@/lib/c2paCredentials";
+import { createRecipeDraftStore } from "@/lib/recipeDrafts";
 import { footerSocialLinks } from "@/lib/footerLinks";
-import { compileWithRust, rustToolchainVersion, type RobbyIr } from "@/lib/robbyCompiler";
+import { rustToolchainVersion, type RobbyIr } from "@/lib/robbyCompiler";
 import { gallerySlideDirection, isImageOnlyExitKey, swipeGalleryOffset, themeControlLabel, type GallerySlideDirection } from "@/lib/visualModes";
+import { artworkModalKeyAction, focusableArtworkSelector } from "@/lib/artworkModal";
 import {
   BookOpen,
   ChevronLeft,
@@ -42,7 +47,7 @@ import {
   Minimize2,
 } from "lucide-react";
 import { Link } from "wouter";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 
 function MonoLabel({ children }: { children: React.ReactNode }) {
   return <span className="mono-label">{children}</span>;
@@ -83,7 +88,6 @@ export default function Home() {
   const [compilerState, setCompilerState] = useState<"checking" | "verified" | "error">("checking");
   const [compilerLabel, setCompilerLabel] = useState("RUST CORE · LOADING");
   const [compiledEdit, setCompiledEdit] = useState<{ specimenId: string; ir: RobbyIr; source: string } | null>(null);
-  const [ephemeralReverse, setEphemeralReverse] = useState<{ specimenId: string; url: string; result: EphemeralReverseResult } | null>(null);
   const [projectionState, setProjectionState] = useState<ProjectionState>("gallery");
   const [traceMode, setTraceMode] = useState<TraceMode>("evidence");
   const [failureMessage, setFailureMessage] = useState<string | null>(null);
@@ -96,9 +100,34 @@ export default function Home() {
   const [credentialOverride, setCredentialOverride] = useState<CredentialSignature | null>(null);
   const [isRenderingReverse, setIsRenderingReverse] = useState(false);
   const [paletteK, setPaletteK] = useState(8);
+  const [compileRun, setCompileRun] = useState<CompileRun | null>(null);
+  // The draft store is a ref (see `selectedDraft` below) so reads during render
+  // never lag a commit. A ref mutation does not re-render on its own, so every
+  // write to the store must bump this revision to commit the new authored text
+  // to the screen. It is a commit signal, not data: read `selectedDraft` for
+  // the actual source.
+  const [, commitDraftRevision] = useState(0);
+  const bumpDraftRevision = useCallback(() => commitDraftRevision(revision => revision + 1), []);
+  const draftStore = useRef(createRecipeDraftStore());
+  // Derive the structured palette control from authored text. `fallback` is
+  // what to show when the text is not parseable: on a specimen switch we reset
+  // to the language default (8), but while the user is mid-edit we keep the
+  // last valid value rather than snapping the control around.
+  const setPaletteKFromDraft = useCallback((draft: string, fallback?: number) => {
+    try {
+      setPaletteK(paletteKFromSource(draft));
+    } catch {
+      if (fallback !== undefined) setPaletteK(fallback);
+    }
+  }, []);
   const artworkTouchStartX = useRef<number | null>(null);
+  const artworkViewRef = useRef<HTMLDivElement>(null);
+  const appShellRef = useRef<HTMLElement>(null);
+  const mainContentRef = useRef<HTMLElement>(null);
+  const artworkOpenerRef = useRef<HTMLButtonElement>(null);
   const compileHistory = useRef<Record<string, CompileSnapshot[]>>({});
-  const reverseUrlRef = useRef<string | null>(null);
+  const selectedIdRef = useRef("");
+  const selectedRecipeRef = useRef({ specimenId: "", source: "" });
   const discardReverseAfterFlip = useRef(false);
   const { theme, toggleTheme } = useTheme();
 
@@ -123,30 +152,52 @@ export default function Home() {
   const activeFace = face;
   const liveIr = projectionState === "live" && compiledEdit?.specimenId === selected.id ? compiledEdit.ir : null;
   const displayedObverse = selected.obverse;
-  const displayedInverse = ephemeralReverse?.specimenId === selected.id ? ephemeralReverse.url : undefined;
+  const displayedInverse = compileRun?.galleryItemId === selected.id ? compileRun.result?.reverseObjectUrl : undefined;
+  // The draft store is the authority for "what source is this specimen
+  // showing". Reading the ref directly by the selected id (rather than
+  // mirroring it into state, which would lag a render behind a selection
+  // change) keeps the visible editor source and the compileOrio input
+  // identical when returning to a specimen that was edited earlier in the
+  // session. Every write to the store bumps the draft revision above so the
+  // new text is actually committed to the screen.
+  const selectedDraft = draftStore.current.get(selected.id, selected.script);
+  // The selected specimen's stored draft is the single authored-source
+  // authority for BOTH editor display and Compile Orio input. A previously
+  // compiled projection may describe that draft, but must never replace it.
+  const activeRecipe = selectedDraft;
+  const recipeChanged = Boolean(compileRun?.result && compileRun.recipeSource !== activeRecipe);
+  const actions = compileActions({
+    run: compileRun?.galleryItemId === selected.id ? compileRun : null,
+    recipeChanged,
+    face,
+    isRendering: isRenderingReverse,
+  });
   const projectionUnavailable = projectionState === "draft" || projectionState === "compiling" || projectionState === "error";
   const trace = projectionUnavailable ? [] : liveIr ? traceFromIr(liveIr) : selected.trace;
-  const liveScriptHash = projectionUnavailable ? null : liveIr?.meta.script_sha256 ?? selected.scriptHash;
-  const liveReverseMode = projectionUnavailable ? null : liveIr?.reverse.mode ?? selected.reverseMode;
-  const currentHistory = compileHistory.current[selected.id] ?? [];
-  const isSlideTransitioning = Boolean(slideTransition);
+  // What reverse module the currently visible authored recipe declares: prefer
+  // the current compile result, then parse the selected draft, then fall back
+  // to the specimen metadata. This keeps the provenance command synchronized
+  // immediately after editing, before validation or rendering finishes.
+  const activeReverseMode = compileRun?.galleryItemId === selected.id && compileRun.recipeSource === activeRecipe
+    ? compileRun.result?.renderModule ?? reverseModeFromSource(activeRecipe, selected.reverseMode)
+    : reverseModeFromSource(activeRecipe, selected.reverseMode);
+
+  // Synchronised during commit, not during render: compile notifications can
+  // arrive synchronously, and a render-phase assignment would either be stale
+  // (a render that never commits) or a side effect in render. useLayoutEffect
+  // runs before paint and before any subscriber can read the ref.
+  useLayoutEffect(() => {
+    selectedIdRef.current = selected.id;
+    selectedRecipeRef.current = { specimenId: selected.id, source: activeRecipe };
+  }, [selected.id, activeRecipe]);
 
   useEffect(() => {
-    try {
-      setPaletteK(paletteKFromSource(selected.script));
-    } catch {
-      setPaletteK(8);
-    }
-  }, [selected.id, selected.script]);
-
-  useEffect(() => {
-    let active = true;
+    const draft = draftStore.current.get(selected.id, selected.script);
+    setPaletteKFromDraft(draft, 8);
+    bumpDraftRevision();
+    setCompileRun(current => current?.galleryItemId === selected.id ? current : null);
     setCredentialOverride(null);
-    void inspectC2paCredential(selected.source)
-      .then(result => { if (active) setCredentialOverride(result); })
-      .catch(() => { /* Retain C2PA CHECKING when the validator cannot complete. */ });
-    return () => { active = false; };
-  }, [selected.source]);
+  }, [selected.id, selected.script, setPaletteKFromDraft, bumpDraftRevision]);
 
   const hashValue = async (value: string) => {
     const bytes = new TextEncoder().encode(value);
@@ -154,13 +205,22 @@ export default function Home() {
     return Array.from(new Uint8Array(digest)).map(byte => byte.toString(16).padStart(2, "0")).join("");
   };
 
-  const discardEphemeralReverse = () => {
-    if (reverseUrlRef.current) URL.revokeObjectURL(reverseUrlRef.current);
-    reverseUrlRef.current = null;
-    setEphemeralReverse(null);
+  const discardSessionReverse = () => {
+    browserCompileController.cancelActive();
+    setCompileRun(null);
+    setIsRenderingReverse(false);
   };
 
-  useEffect(() => () => { if (reverseUrlRef.current) URL.revokeObjectURL(reverseUrlRef.current); }, []);
+  useEffect(() => browserCompileController.subscribe(run => {
+    if (run.galleryItemId !== selectedIdRef.current) return;
+    setCompileRun(run);
+    if (run.status === "running") setIsRenderingReverse(true);
+    if (run.status !== "running") setIsRenderingReverse(false);
+  }), []);
+
+  // Plan 9B: on unmount, cancel any running compile and revoke every session
+  // Blob URL so nothing leaks across navigation.
+  useEffect(() => () => browserCompileController.dispose(), []);
 
   useEffect(() => {
     if (gallery.length === 0) return;
@@ -182,7 +242,12 @@ export default function Home() {
   }, [gallery.length > 0]);
 
   const commitSelection = (nextIndex: number) => {
-    discardEphemeralReverse();
+    discardSessionReverse();
+    // Reject outgoing notifications immediately. The committed render's
+    // layout effect installs the real incoming id/source; avoiding an indexed
+    // gallery read here also survives gallery mutations mid-animation.
+    selectedIdRef.current = "";
+    selectedRecipeRef.current = { specimenId: "", source: "" };
     setSelectedIndex(nextIndex);
     setFace("obverse");
     setIsFlipping(false);
@@ -190,7 +255,7 @@ export default function Home() {
     setProjectionState("gallery");
     setFailureMessage(null);
     setTraceMode("evidence");
-    setRuntimeRecord(null);
+    setRuntimeRecord(current => current ? { compiledAt: current.compiledAt, irHash: current.irHash, toolchain: current.toolchain } : null);
   };
 
   const selectImage = (nextIndex: number) => {
@@ -209,47 +274,66 @@ export default function Home() {
     });
   };
 
-  const turnOver = async () => {
+  const compileOrio = async (force = false) => {
     if (isFlipping || isRenderingReverse) return;
+    const compiledSpecimenId = selected.id;
+    const source = authoredRecipeForCompile(activeRecipe);
+    setFailureMessage(null);
+    setIsRenderingReverse(true);
+    setProjectionState("compiling");
+    const run = await browserCompileController.compile({
+      galleryItemId: compiledSpecimenId,
+      sourceName: selected.source,
+      sourceUrl: selected.obverse,
+      recipeSource: source,
+    }, { force });
+    const currentAuthority = selectedRecipeRef.current;
+    if (!isCompiledSourceCurrent(compiledSpecimenId, source, currentAuthority.specimenId, currentAuthority.source)) return;
+    setCompileRun(run);
+    if (run.status !== "completed" || !run.result) {
+      setProjectionState("error");
+      setFailureMessage(run.diagnostic ?? "The live compiler could not generate this inverse.");
+      return;
+    }
+    const orio = run.result;
+    setProjectionState("live");
+    setRuntimeRecord(current => ({
+      compiledAt: orio.createdAt,
+      irHash: orio.canonicalRecipeHash,
+      toolchain: current?.toolchain ?? "RUST/WASM",
+      c2paEvidence: orio.c2paEvidence,
+      transientReverse: {
+        generatedAt: orio.createdAt,
+        outputSha256: orio.reverseOutputSha256,
+        sourceSha256: orio.sourceByteSha256,
+        mode: orio.renderModule,
+        seed: orio.derivedSeed,
+        settingsSha256: orio.canonicalRecipeHash,
+        swatches: orio.colourSwatches,
+      },
+    }));
+  };
+
+  // Memoized so the keydown effect below re-binds whenever the compilation
+  // state this handler captures changes. Without it, the F shortcut keeps
+  // calling a closure created before the run completed and silently no-ops.
+  const turnOver = useCallback(async () => {
+    if (isFlipping || !actions.turnEnabled) return;
     if (face === "inverse") {
-      discardReverseAfterFlip.current = true;
+      discardReverseAfterFlip.current = false;
       setIsFlipping(true);
       setFace("obverse");
       return;
     }
-
-    setIsRenderingReverse(true);
-    setFailureMessage(null);
-    try {
-      const activeSource = compiledEdit?.specimenId === selected.id ? compiledEdit.source : selected.script;
-      const source = replacePaletteK(activeSource, paletteK);
-      const ir = await compileWithRust(source);
-      const result = await requestEphemeralReverse(ir);
-      const url = URL.createObjectURL(result.blob);
-      if (reverseUrlRef.current) URL.revokeObjectURL(reverseUrlRef.current);
-      reverseUrlRef.current = url;
-      setEphemeralReverse({ specimenId: selected.id, url, result });
-      const compiledAt = new Date().toISOString();
-      const irHash = await hashValue(JSON.stringify(ir));
-      setCompiledEdit({ specimenId: selected.id, ir, source });
-      setProjectionState("live");
-      setRuntimeRecord(current => ({ compiledAt, irHash, toolchain: current?.toolchain ?? "RUST/WASM", transientReverse: { generatedAt: compiledAt, outputSha256: result.manifest.output_sha256, sourceSha256: result.manifest.source_obverse_sha256, mode: result.manifest.render_module, seed: result.manifest.derived_seed, settingsSha256: result.manifest.script_settings_sha256, swatches: result.manifest.colour_swatches } }));
-      setIsFlipping(true);
-      setFace("inverse");
-    } catch (error) {
-      setFailureMessage(error instanceof Error ? error.message : "The live compiler could not generate this inverse.");
-    } finally {
-      setIsRenderingReverse(false);
-    }
-  };
+    if (!compileRun?.result) return;
+    setIsFlipping(true);
+    setFace("inverse");
+  }, [isFlipping, actions.turnEnabled, face, compileRun?.result]);
 
   const settleFlip = (event: React.TransitionEvent<HTMLDivElement>) => {
     if (event.target === event.currentTarget && event.propertyName === "transform") {
       setIsFlipping(false);
-      if (discardReverseAfterFlip.current) {
-        discardReverseAfterFlip.current = false;
-        discardEphemeralReverse();
-      }
+      discardReverseAfterFlip.current = false;
     }
   };
 
@@ -264,13 +348,64 @@ export default function Home() {
   };
 
   useEffect(() => {
+    if (!artworkView) return;
+    const shell = appShellRef.current;
+    const background = shell ? Array.from(shell.children).filter((child) => !child.classList.contains("artwork-view")) : [];
+    background.forEach((child) => child.setAttribute("inert", ""));
+    requestAnimationFrame(() => {
+      const first = artworkViewRef.current?.querySelector<HTMLElement>(focusableArtworkSelector());
+      first?.focus();
+    });
+    return () => background.forEach((child) => child.removeAttribute("inert"));
+  }, [artworkView]);
+
+  // Skip-to-content helpers: reveal the visually-hidden link when it receives
+  // keyboard focus, then return the user (and the link) to the header once
+  // focus leaves it. This keeps the skip link usable without ever tapping a key.
+  const revealSkipLink = () => {
+    const link = document.querySelector<HTMLAnchorElement>(".skip-link");
+    link?.classList.add("skip-link-focus");
+  };
+  const restoreSkipLink = () => {
+    const link = document.querySelector<HTMLAnchorElement>(".skip-link");
+    if (link && !link.matches(":focus")) link.classList.remove("skip-link-focus");
+  };
+
+  // On first load, give the header messaging a short beat, then glide the top of
+  // the gallery slider and Teppanyaki Counter up to the top of the viewport.
+  // Mirrors the "skip to main content" behaviour, without the intervening click.
+  useEffect(() => {
+    if (galleryLoading || gallery.length === 0) return;
+    const timer = window.setTimeout(() => {
+      mainContentRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 1800);
+    return () => window.clearTimeout(timer);
+  }, [galleryLoading, gallery.length]);
+
+  useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
-      const target = event.target as HTMLElement | null;
-      if (target?.isContentEditable || target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || target instanceof HTMLSelectElement) return;
-      if (artworkView && event.key === "Escape") {
-        setArtworkView(false);
+      if (artworkView) {
+        const focusables = artworkViewRef.current ? Array.from(artworkViewRef.current.querySelectorAll<HTMLElement>(focusableArtworkSelector())) : [];
+        const index = focusables.indexOf(document.activeElement as HTMLElement);
+        const action = artworkModalKeyAction(event.key, event.shiftKey, index, focusables.length);
+        if (action === "close") {
+          event.preventDefault();
+          event.stopPropagation();
+          closeArtworkView();
+          return;
+        }
+        if (event.key === "Tab" && focusables.length > 0 && (action === "previous" || action === "next")) {
+          event.preventDefault();
+          focusables[action === "previous" ? focusables.length - 1 : 0]?.focus();
+          return;
+        }
         return;
       }
+
+      const target = event.target as HTMLElement | null;
+      if (target?.isContentEditable || target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || target instanceof HTMLSelectElement) return;
+      // Gallery shortcuts must not steal caret, menu, tab, or control input.
+      if (target?.closest("button, a, [role=tab], [role=menuitem], [contenteditable=true]")) return;
       if (imageOnly && isImageOnlyExitKey(event.key)) {
         setImageOnly(false);
         return;
@@ -279,52 +414,49 @@ export default function Home() {
       if (event.key === "ArrowRight") selectImage(selectedIndex + 1);
       if (event.key.toLowerCase() === "f") turnOver();
     };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [selectedIndex, isFlipping, slideTransition, imageOnly, artworkView]);
+    document.addEventListener("keydown", onKeyDown, true);
+    return () => document.removeEventListener("keydown", onKeyDown, true);
+  }, [selectedIndex, isFlipping, slideTransition, imageOnly, artworkView, turnOver]);
 
   useEffect(() => {
-    if (!historyReady) return;
     let active = true;
     setCompilerState("checking");
-    setCompilerLabel("RUST CORE · VERIFYING");
-    setRuntimeRecord(null);
-
-    Promise.all([compileWithRust(selected.script), rustToolchainVersion()])
-      .then(async ([ir, toolchain]) => {
+    setCompilerLabel("RUST CORE · READY");
+    rustToolchainVersion()
+      .then(toolchain => {
         if (!active) return;
-        const compiledAt = new Date().toISOString();
-        const irHash = await hashValue(JSON.stringify(ir));
-        if (!active) return;
-        const baseline: CompileSnapshot = { id: `${selected.id}-${irHash}`, specimenId: selected.id, source: selected.script, ir, trace: traceFromIr(ir), compiledAt, irHash, origin: "baseline" };
-        if (!compileHistory.current[selected.id]?.length) {
-          const persistedHistory = await persistCompileSnapshot(baseline);
-          if (!active) return;
-          compileHistory.current[selected.id] = persistedHistory;
-          setHistoryRevision(current => current + 1);
-        }
         setCompilerState("verified");
         setCompilerLabel(verifiedCompilerStatus(toolchain));
-        setRuntimeRecord({ compiledAt, irHash, toolchain });
+        setRuntimeRecord(current => current ? { ...current, toolchain } : { compiledAt: "", irHash: "", toolchain });
       })
       .catch(() => {
         if (!active) return;
         setCompilerState("error");
         setCompilerLabel("RUST CORE · CHECK FAILED");
       });
-
     return () => {
       active = false;
     };
-  }, [selected.id, selected.script, historyReady]);
+  }, []);
 
   const applyCompiledSource = async (ir: RobbyIr, source: string) => {
+    // Capture the authorities before the first await. `selected` is a render
+    // snapshot; reading it after persistence cannot tell whether the user has
+    // switched specimens or edited/reset this draft in the meantime.
+    const compiledSpecimenId = selected.id;
+    const specimenScript = selected.script;
     const compiledAt = new Date().toISOString();
     const irHash = await hashValue(JSON.stringify(ir));
-    const snapshot: CompileSnapshot = { id: `${selected.id}-${irHash}`, specimenId: selected.id, source, ir, trace: traceFromIr(ir), compiledAt, irHash, origin: "editor" };
-    compileHistory.current[selected.id] = await persistCompileSnapshot(snapshot);
+    const snapshot: CompileSnapshot = { id: `${compiledSpecimenId}-${irHash}`, specimenId: compiledSpecimenId, source, ir, trace: traceFromIr(ir), compiledAt, irHash, origin: "editor" };
+    compileHistory.current[compiledSpecimenId] = await persistCompileSnapshot(snapshot);
     setHistoryRevision(current => current + 1);
-    setCompiledEdit({ specimenId: selected.id, ir, source });
+
+    // Keep the historical snapshot, but never let a stale async completion
+    // overwrite the currently visible specimen's palette/projection/runtime.
+    const currentAuthority = selectedRecipeRef.current;
+    if (!isCompiledSourceCurrent(compiledSpecimenId, source, currentAuthority.specimenId, currentAuthority.source)) return;
+
+    setCompiledEdit({ specimenId: compiledSpecimenId, ir, source });
     setPaletteK(ir.palette.k);
     setProjectionState("live");
     setFace("obverse");
@@ -334,28 +466,34 @@ export default function Home() {
 
   const clearLiveProjection = () => {
     setCompiledEdit(null);
-    discardEphemeralReverse();
     setProjectionState("compiling");
     setFailureMessage(null);
   };
 
   const markProjectionUnavailable = (message: string) => {
     setCompiledEdit(null);
-    discardEphemeralReverse();
     setProjectionState("error");
     setFailureMessage(message);
   };
 
-  const markDraftProjectionUnavailable = () => {
+  const markDraftProjectionUnavailable = (draft: string) => {
+    draftStore.current.set(selected.id, draft);
+    selectedRecipeRef.current = { specimenId: selected.id, source: draft };
+    // No fallback: keep the last valid structured value while the source is
+    // mid-edit and temporarily unparseable.
+    setPaletteKFromDraft(draft);
+    bumpDraftRevision();
     setCompiledEdit(null);
-    discardEphemeralReverse();
     setProjectionState("draft");
     setFailureMessage(null);
   };
 
   const resetLiveProjection = () => {
+    draftStore.current.clear(selected.id);
+    selectedRecipeRef.current = { specimenId: selected.id, source: selected.script };
+    setPaletteKFromDraft(selected.script, 8);
+    bumpDraftRevision();
     setCompiledEdit(null);
-    discardEphemeralReverse();
     setProjectionState("gallery");
     setFailureMessage(null);
   };
@@ -382,6 +520,11 @@ export default function Home() {
     selectImage(selectedIndex + offset);
   };
 
+  const closeArtworkView = () => {
+    setArtworkView(false);
+    requestAnimationFrame(() => artworkOpenerRef.current?.focus());
+  };
+
   if (galleryLoading || gallery.length === 0) {
     return (
       <main className="app-shell min-h-screen overflow-hidden bg-[#f4efe1] text-[#1c1a19] flex items-center justify-center">
@@ -391,7 +534,15 @@ export default function Home() {
   }
 
   return (
-    <main className={`app-shell min-h-screen overflow-hidden bg-[#f4efe1] text-[#1c1a19]${imageOnly ? " image-only" : ""}`}>
+    <main ref={appShellRef} className={`app-shell min-h-screen overflow-hidden bg-[#f4efe1] text-[#1c1a19]${imageOnly ? " image-only" : ""}`}>
+      <a
+        className="skip-link"
+        href="#gallery"
+        onFocus={revealSkipLink}
+        onBlur={restoreSkipLink}
+      >
+        Skip to gallery &amp; compilation
+      </a>
       <header className="site-header">
         <a className="brand-lockup" href="#gallery" aria-label="robby gallery">
           <img src="/icons/robby-registration-mark_658aceee.png" alt="robby split registration disc" />
@@ -426,7 +577,7 @@ export default function Home() {
 
       <section className="gallery-intro" inert={imageOnly}>
         <div className="intro-copy">
-          <h1><span className="headline-line headline-primary"><span className="headline-accent">Explainable</span> <span className="headline-ink">visual composition</span></span><em className="headline-line"><span className="headline-accent">compiler</span> <span className="headline-ink">in rust.</span></em></h1>
+          <h1><span className="headline-line headline-primary"><span className="headline-accent">Explainable</span> <span className="headline-ink">image-object</span></span><em className="headline-line"><span className="headline-accent">compiler</span> <span className="headline-ink">in rust.</span></em></h1>
         </div>
         <div className="intro-note">
           <span className="note-rule" />
@@ -435,7 +586,7 @@ export default function Home() {
         </div>
       </section>
 
-      <section id="gallery" className="gallery-workspace" aria-label="robby image-object gallery">
+      <section ref={mainContentRef} id="gallery" className="gallery-workspace" aria-label="robby image-object gallery" tabIndex={-1}>
         <section className="object-stage" aria-label={`${selected.title} ${activeFace} image-object`}>
           <div className="artwork-stage-frame">
             <span className="stage-corner top-left" aria-hidden="true" /><span className="stage-corner top-right" aria-hidden="true" /><span className="stage-corner bottom-left" aria-hidden="true" /><span className="stage-corner bottom-right" aria-hidden="true" />
@@ -513,7 +664,7 @@ export default function Home() {
               <div className="stage-metadata" inert={imageOnly}>
                 <div className="stage-display-tools">
                   <span className="stage-face-record"><MonoLabel>{activeFace}</MonoLabel><span aria-hidden="true">·</span><span className="mono stage-dimensions">{selected.dimensions}</span></span>
-                  <button type="button" className="artwork-view-control" onClick={() => setArtworkView(true)} aria-label={`Open ${selected.title} in full-bleed artwork view`} title="Open full-bleed artwork view"><Maximize2 size={15} /></button>
+                  <button ref={artworkOpenerRef} type="button" className="artwork-view-control" onClick={() => setArtworkView(true)} aria-label={`Open ${selected.title} in full-bleed artwork view`} title="Open full-bleed artwork view"><Maximize2 size={15} /></button>
                 </div>
               </div>
               <div className="caption-turn">
@@ -529,12 +680,32 @@ export default function Home() {
                     disabled={isFlipping || isRenderingReverse}
                     onChange={(event) => {
                       const value = Number(event.target.value);
-                      if (Number.isInteger(value) && value >= 3 && value <= 16) setPaletteK(value);
+                      if (!Number.isInteger(value) || value < 3 || value > 16) return;
+                      try {
+                        const nextRecipe = editPaletteInRecipe(activeRecipe, value);
+                        draftStore.current.set(selected.id, nextRecipe);
+                        selectedRecipeRef.current = { specimenId: selected.id, source: nextRecipe };
+                        bumpDraftRevision();
+                        setPaletteK(value);
+                        setCompiledEdit(null);
+                        setProjectionState("draft");
+                        setFailureMessage(null);
+                      } catch (error) {
+                        setFailureMessage(error instanceof Error ? error.message : String(error));
+                      }
                     }}
                   />
                 </label>
-                <button type="button" className="flip-control" onClick={() => void turnOver()} disabled={isFlipping || isRenderingReverse} aria-label={face === "inverse" ? `Return ${selected.title} to its obverse` : `Compile and turn ${selected.title} to its inverse`}>
-                  {face === "inverse" ? <RotateCcw size={18} /> : <FlipHorizontal2 size={18} />}<span>{isRenderingReverse ? "Compiling inverse" : isFlipping ? "Turning object" : face === "inverse" ? "Return to obverse" : "Turn to inverse"}</span><small>F</small>
+                <button type="button" className="compile-orio-control" onClick={() => void compileOrio(actions.compileForce)} disabled={!actions.compileEnabled || isFlipping} aria-label={`${actions.compileLabel} for ${selected.title}`}>
+                  <CircleDotDashed size={16} /><span>{actions.compileLabel}</span>
+                </button>
+                {actions.showCancel && (
+                  <button type="button" className="compile-orio-control" onClick={() => browserCompileController.cancelActive()} aria-label={`Cancel compile for ${selected.title}`}>
+                    <span>Cancel</span>
+                  </button>
+                )}
+                <button type="button" className="flip-control" onClick={() => void turnOver()} disabled={!actions.turnEnabled || isFlipping} aria-label={face === "inverse" ? `Return ${selected.title} to its obverse` : `Turn ${selected.title} to its inverse`}>
+                  {face === "inverse" ? <RotateCcw size={18} /> : <FlipHorizontal2 size={18} />}<span>{isFlipping ? "Turning object" : actions.turnLabel}</span><small>F</small>
                 </button>
               </div>
               <div className="caption-navigation">
@@ -565,16 +736,14 @@ export default function Home() {
 
         </section>
 
-        <aside className="trace-panel" aria-label={`Compilation trace for ${selected.title}`} inert={imageOnly}>
-          <div className="trace-heading"><div><CircleDotDashed size={15} /><MonoLabel>Compilation trace</MonoLabel></div><span>{projectionState === "draft" ? "DRAFT" : projectionState === "compiling" ? "VALIDATING" : projectionState === "error" ? "UNAVAILABLE" : `${trace.length} STEPS`}</span></div>
-          <div className="trace-title"><p className="eyebrow">Evidence beside object</p><h3>{selected.source}<br /><em>/ {activeFace}</em></h3></div>
-          <CompilationTraceModes item={selectedWithCredential} trace={trace} activeMode={traceMode} onModeChange={setTraceMode} projectionState={projectionState} failureMessage={failureMessage} history={currentHistory} runtime={runtimeRecord} />
-        </aside>
+        <div inert={imageOnly}>
+          <TeppanyakiCounter run={compileRun?.galleryItemId === selected.id ? compileRun : null} recipeChanged={recipeChanged} />
+        </div>
         <div className="source-workbench-wrap" inert={imageOnly}>
           <SourceEditor
             specimenId={selected.id}
             title={selected.title}
-            source={selected.script}
+            source={selectedDraft}
             onCompiled={applyCompiledSource}
             onCompileStart={clearLiveProjection}
             onCompileError={markProjectionUnavailable}
@@ -584,7 +753,7 @@ export default function Home() {
         </div>
       </section>
 
-      <div inert={imageOnly}><ProvenanceModule item={selectedWithCredential} runtime={runtimeRecord} onFocusReverse={focusReverseStep} /></div>
+      <div inert={imageOnly}><ProvenanceModule item={selectedWithCredential} runtime={runtimeRecord} onFocusReverse={focusReverseStep} reverseMode={activeReverseMode} paletteK={paletteK} /></div>
 
       <footer className="site-footer" inert={imageOnly}>
         <div className="footer-left">
@@ -599,14 +768,15 @@ export default function Home() {
         </div>
         <p className="footer-copyright">© 2026 <a href="https://thecontrarian.in/" target="_blank" rel="noreferrer">Mahesh Shantaram / thecontrarian.in</a></p>
       </footer>
-      {artworkView && <div className="artwork-view" role="dialog" aria-modal="true" aria-label={`${selected.title} full-bleed artwork view`} onClick={() => setArtworkView(false)}>
+      {artworkView && <div ref={artworkViewRef} className="artwork-view" role="dialog" aria-modal="true" aria-labelledby="artwork-view-title" tabIndex={-1} onClick={closeArtworkView}>
+        <h2 id="artwork-view-title" className="sr-only">{selected.title} full-bleed artwork view</h2>
         <div className="artwork-view-frame" onClick={event => event.stopPropagation()} onTouchStart={handleArtworkTouchStart} onTouchEnd={handleArtworkTouchEnd}>
           <div className="artwork-view-image-viewport">
             {face === "obverse"
               ? <img src={displayedObverse} alt={`${selected.title} obverse`} />
               : displayedInverse && <img src={displayedInverse} alt={`${selected.title} inverse`} />}
           </div>
-          <div className="artwork-view-controls"><div className="artwork-view-meta"><span>{selected.title} / {face}</span><span>SWIPE TO BROWSE · ESC TO CLOSE</span></div><button type="button" onClick={() => setArtworkView(false)} aria-label="Close full-bleed artwork view" title="Close full-bleed artwork view"><Minimize2 size={19} /></button></div>
+          <div className="artwork-view-controls"><div className="artwork-view-meta"><span>{selected.title} / {face}</span><span>SWIPE TO BROWSE · ESC TO CLOSE</span></div><button type="button" onClick={closeArtworkView} aria-label="Close full-bleed artwork view" title="Close full-bleed artwork view"><Minimize2 size={19} /></button></div>
         </div>
       </div>}
     </main>

@@ -38,4 +38,23 @@ describe("live image render configuration", () => {
   it("rejects extra undeclared fields", () => {
     expect(() => normalizeLiveRenderableIr({ ...liveIr(), semanticHint: "person" })).toThrow("Unknown IR field");
   });
+
+  it("accepts observability_sheet as a live reverse mode", () => {
+    expect(normalizeLiveRenderableIr({
+      ...liveIr(),
+      reverse: { mode: "observability_sheet" },
+    }).reverse.mode).toBe("observability_sheet");
+  });
+
+  // Bug reproduction: TECH-SPEC §3 requires reverse and manifest targets to be
+  // "transient"; the boundary currently accepts any string.
+  it.each(["back.png", "/tmp/reverse.png"])("rejects durable reverse target %s", target => {
+    const ir = { ...liveIr(), output: { obverse: "front.jpg", reverse: target, manifest: "transient" } };
+    expect(() => normalizeLiveRenderableIr(ir)).toThrow("transient");
+  });
+
+  it("rejects a durable manifest target", () => {
+    const ir = { ...liveIr(), output: { obverse: "front.jpg", reverse: "transient", manifest: "manifest.json" } };
+    expect(() => normalizeLiveRenderableIr(ir)).toThrow("transient");
+  });
 });

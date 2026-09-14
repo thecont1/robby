@@ -6,7 +6,7 @@
 
 import { compileWithRust, type RobbyIr } from "@/lib/robbyCompiler";
 import { AlertTriangle, CheckCircle2, Code2, Play, RotateCcw } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 
 type EditorState =
   | { kind: "idle" }
@@ -21,7 +21,7 @@ type SourceEditorProps = {
   onCompiled: (ir: RobbyIr, source: string) => Promise<void>;
   onCompileStart: () => void;
   onCompileError: (message: string) => void;
-  onDraftChange: () => void;
+  onDraftChange: (draft: string) => void;
   onReset: () => void;
 };
 
@@ -29,8 +29,15 @@ export default function SourceEditor({ specimenId, title, source, onCompiled, on
   const [draft, setDraft] = useState(source);
   const [state, setState] = useState<EditorState>({ kind: "idle" });
   const compileGeneration = useRef(0);
+  // `source` is now the caller's stored draft for this specimen, so it echoes
+  // back every keystroke we emit. Remember what we last emitted (scoped to the
+  // specimen) so the re-seed effect ignores its own echo and only fires for a
+  // genuine outside change: a specimen switch or a reset.
+  const lastEmitted = useRef<string | null>(null);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
+    if (lastEmitted.current === `${specimenId}\u0000${source}`) return;
+    lastEmitted.current = null;
     compileGeneration.current += 1;
     setDraft(source);
     setState({ kind: "idle" });
@@ -56,6 +63,7 @@ export default function SourceEditor({ specimenId, title, source, onCompiled, on
 
   const reset = () => {
     compileGeneration.current += 1;
+    lastEmitted.current = null;
     setDraft(source);
     setState({ kind: "idle" });
     onReset();
@@ -64,8 +72,10 @@ export default function SourceEditor({ specimenId, title, source, onCompiled, on
   const updateDraft = (nextDraft: string) => {
     if (nextDraft === draft) return;
     compileGeneration.current += 1;
+    lastEmitted.current = `${specimenId}\u0000${nextDraft}`;
     setDraft(nextDraft);
-    onDraftChange();
+    setState({ kind: "idle" });
+    onDraftChange(nextDraft);
   };
 
   const lineCount = Math.max(1, draft.split("\n").length);
@@ -73,7 +83,7 @@ export default function SourceEditor({ specimenId, title, source, onCompiled, on
   return (
     <section className="source-workbench" aria-labelledby="source-editor-title">
       <div id="source-editor-title" className="source-workbench-heading">
-        <div><Code2 size={15} /><span className="mono-label">Live source / Rust compiler</span></div>
+        <div><Code2 size={15} /><span className="mono-label">Recipe workbench / Rust validator</span></div>
         <span className="mono">{title.toUpperCase()} · {lineCount} LINES</span>
       </div>
       <div className="source-editor" data-state={state.kind}>
@@ -89,7 +99,7 @@ export default function SourceEditor({ specimenId, title, source, onCompiled, on
       </div>
       <div className="source-editor-actions">
         <button type="button" className="compile-source" onClick={compile} disabled={state.kind === "compiling"}>
-          <Play size={14} fill="currentColor" /> {state.kind === "compiling" ? "Compiling in Rust…" : "Compile with Rust"}
+          <Play size={14} fill="currentColor" /> {state.kind === "compiling" ? "Validating in Rust…" : "Validate recipe"}
         </button>
         <button type="button" className="reset-source" onClick={reset} disabled={state.kind === "compiling"}>
           <RotateCcw size={13} /> Reset specimen source
@@ -99,7 +109,7 @@ export default function SourceEditor({ specimenId, title, source, onCompiled, on
       {state.kind === "success" && (
         <div className="source-result success" role="status">
           <CheckCircle2 size={16} />
-          <div><strong>Valid `robby-ir-v1` rendered by the server executor.</strong><span>The stage now shows fresh derived output from this source; the authenticated JPEG was only read and checksum-verified.</span></div>
+          <div><strong>Recipe valid — lowered to `robby-ir-v1`.</strong><span>No reverse was rendered here. This only checks the recipe and refreshes the compilation trace; use Compile Orio to build the reverse.</span></div>
         </div>
       )}
       {state.kind === "error" && (

@@ -3,6 +3,10 @@
 Version: v0.1 (living document)
 Status: **Constitutional purge and deterministic live-render parity verified.**
 
+> Contract note: one compile run accepts exactly one obverse photograph and produces one reverse image-object face. Robby is not a semantic image editor, compositor, masking system, or multi-image collage engine. Reverse output is transient in v1; manifest fields are reproducibility evidence, not ownership or authorship claims.
+>
+> Related accepted decisions: [`docs/ARCHITECTURE-DECISIONS.md`](docs/ARCHITECTURE-DECISIONS.md), [`docs/EVIDENCE-TAXONOMY.md`](docs/EVIDENCE-TAXONOMY.md), [`docs/BASELINE.md`](docs/BASELINE.md).
+
 ---
 
 ## 1. System definition
@@ -54,10 +58,10 @@ output(obverse: "source.jpg", reverse: "transient", manifest: "transient")
 | ------------------------------------ | --------------------------------------------------------------------------- |
 | `base(path, width?, height?)`        | Declares exactly one gallery JPEG and optional output dimensions.           |
 | `palette(k)`                         | Optional; selects 3–16 deterministic RGB clusters. Omission means `k = 8`.  |
-| `reverse(mode: "negative")`          | Required exactly once; selects the only v1 render module.                   |
+| `reverse(mode)`                      | Required once. v1 accepts `negative`, `observability_sheet`, `quantised_obverse`, and `palette_grid`. |
 | `output(obverse, reverse, manifest)` | Required final command; reverse and manifest targets must be `"transient"`. |
 
-Unknown commands, fields, output targets, duplicate declarations, non-integer `k`, out-of-range `k`, and modes other than `negative` are compile errors. Removed syntax is not accepted through compatibility translation.
+Unknown commands, fields, output targets, duplicate declarations, non-integer `k`, and out-of-range `k` are compile errors. v1 scripts accept `negative`, `observability_sheet`, `quantised_obverse`, and `palette_grid`; Phase 3 recipes accept `quantised_obverse`, `palette_grid`, and `observability_sheet`. Removed syntax is not accepted through compatibility translation.
 
 ## 4. Constitutional rule
 
@@ -77,11 +81,12 @@ No spatial content model, depicted-subject model, captioning, recognition, or in
 source_hash   = sha256(exact_obverse_bytes)
 settings_hash = sha256(canonical_render_settings)
 derived_seed  = sha256(source_hash || settings_hash)
-swatches      = deterministic_rgb_clustering(decoded_pixels, k)
-reverse_png   = registered_module(swatches, settings, seeded_stream)
+palette       = median_cut(decoded_pixels, k)
+index_map     = nearest_palette_index(decoded_pixels, palette)
+reverse_png   = registered_module(decoded_pixels, palette, settings, seeded_stream)
 ```
 
-`derived_seed` is a reproducibility mechanism, not an encryption key. The module registry currently contains exactly `negative`. The module inverts the flat swatches and arranges them procedurally using only canonical settings and the deterministic stream.
+`derived_seed` is a reproducibility mechanism, not an encryption key. The palette algorithm is the median-cut contract in ADR-003. The module registry contains `quantised_obverse`, `palette_grid`, and the retained v1 `negative` backend. `palette_grid` may look random, but its shuffle is seeded only from hashed source bytes and settings.
 
 Required guarantees:
 
@@ -116,7 +121,12 @@ The manifest field `cached_intermediate` is `null` in v1. If intermediate cachin
 - `output_sha256`;
 - `render_module`;
 - ordered `colour_swatches`;
-- `cached_intermediate`.
+- `cached_intermediate`;
+- `palette_method` (`median_cut`);
+- `palette_parameters`;
+- ordered weighted `palette` entries;
+- `palette_index_map_sha256`;
+- `artifacts` with hashed `quantised_obverse` and/or `palette_grid` descriptors.
 
 Compile timestamps are runtime events and are deliberately excluded from the deterministic manifest. Embedded C2PA inspection is a separate source-credential concern and is never conflated with the generated render manifest.
 

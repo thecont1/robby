@@ -1,11 +1,112 @@
 //! Parse Robby tokens into an AST without deciding whether the program is valid.
 
-use crate::ast::{Argument, Command, Script, Span, Value};
+use crate::ast::{Argument, Clause, Command, Object, Recipe, Script, Span, Value};
 use crate::error::{CompileResult, CompilerError};
 use crate::lexer::{Token, TokenKind};
 
 pub fn parse(tokens: &[Token]) -> CompileResult<Script> {
     Parser { tokens, cursor: 0 }.parse_script()
+}
+
+pub fn parse_recipe(tokens: &[Token]) -> CompileResult<Recipe> {
+    Parser { tokens, cursor: 0 }.parse_recipe()
+}
+
+impl<'a> Parser<'a> {
+    fn parse_recipe(&mut self) -> CompileResult<Recipe> {
+        self.consume_newlines();
+        let (name, span) = self.expect_identifier("Expected `object` at the start of a recipe.")?;
+        if name != "object" {
+            return Err(CompilerError::at(
+                span.line,
+                "Expected `object` at the start of a recipe.",
+            ));
+        }
+        let object_name = match self.current().kind.clone() {
+            TokenKind::String(value) => {
+                self.advance();
+                value
+            }
+            _ => return Err(self.error_here("Expected an object name string.")),
+        };
+        self.expect(
+            |kind| matches!(kind, TokenKind::LeftBrace),
+            "Expected `{` after object name.",
+        )?;
+        self.consume_newlines();
+        let mut clauses = Vec::new();
+        while !self.check(|kind| matches!(kind, TokenKind::RightBrace | TokenKind::Eof)) {
+            clauses.push(self.parse_clause()?);
+            self.consume_newlines();
+        }
+        self.expect(
+            |kind| matches!(kind, TokenKind::RightBrace),
+            "Expected `}` to close object.",
+        )?;
+        self.consume_newlines();
+        if !self.at_eof() {
+            return Err(self.error_here("Only one object recipe is supported."));
+        }
+        Ok(Recipe {
+            object: Object {
+                name: object_name,
+                clauses,
+            },
+        })
+    }
+
+    fn parse_clause(&mut self) -> CompileResult<Clause> {
+        let (name, span) = self.expect_identifier("Expected a recipe clause.")?;
+        let variant = if name == "split" || name == "reverse" {
+            Some(self.expect_identifier("Expected a clause mode.")?.0)
+        } else {
+            None
+        };
+        let mut clause = Clause::new(name, variant, span);
+        if self.matches(|kind| matches!(kind, TokenKind::LeftBrace)) {
+            self.consume_newlines();
+            while !self.check(|kind| matches!(kind, TokenKind::RightBrace | TokenKind::Eof)) {
+                clause.entries.push(self.parse_entry()?);
+                self.consume_newlines();
+            }
+            self.expect(
+                |kind| matches!(kind, TokenKind::RightBrace),
+                "Expected `}` to close clause.",
+            )?;
+        } else {
+            clause.arguments.push(self.parse_argument()?);
+        }
+        Ok(clause)
+    }
+
+    fn parse_entry(&mut self) -> CompileResult<Argument> {
+        let span = self.current().span;
+        let name = self.expect_identifier("Expected a clause entry name.")?.0;
+        self.expect(
+            |kind| matches!(kind, TokenKind::Colon),
+            "Expected `:` after entry name.",
+        )?;
+        let mut value = self.parse_value()?;
+        if let Value::Identifier(action) = value {
+            if matches!(
+                action.as_str(),
+                "set" | "retain" | "keep" | "bands" | "grid"
+            ) {
+                let argument = self.parse_value()?;
+                value = Value::Call {
+                    name: action,
+                    arguments: vec![argument],
+                };
+            } else {
+                value = Value::Identifier(action);
+            }
+        }
+        Ok(Argument {
+            name: Some(name),
+            value,
+            span,
+        })
+    }
 }
 
 struct Parser<'a> {
@@ -90,7 +191,27 @@ impl<'a> Parser<'a> {
             }
             TokenKind::Identifier(value) => {
                 self.advance();
-                Ok(Value::Identifier(value))
+                if self.matches(|kind| matches!(kind, TokenKind::LeftParen)) {
+                    let mut arguments = Vec::new();
+                    if !self.check(|kind| matches!(kind, TokenKind::RightParen)) {
+                        loop {
+                            arguments.push(self.parse_value()?);
+                            if !self.matches(|kind| matches!(kind, TokenKind::Comma)) {
+                                break;
+                            }
+                        }
+                    }
+                    self.expect(
+                        |kind| matches!(kind, TokenKind::RightParen),
+                        "Expected `)` to close call.",
+                    )?;
+                    Ok(Value::Call {
+                        name: value,
+                        arguments,
+                    })
+                } else {
+                    Ok(Value::Identifier(value))
+                }
             }
             _ => Err(CompilerError::at(
                 token.span.line,
