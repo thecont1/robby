@@ -10,7 +10,7 @@ describe("observation deck interaction contract", () => {
     expect(counterSource).toContain("← → TO CYCLE · F TO FLIP · C TO COMPILE");
     expect(counterSource).toContain("<p className=\"teppanyaki-shortcuts\"");
     expect(counterSource).toContain("content-credentials-salute");
-    expect(counterSource).toContain("/icons/content_credentials_cr.svg");
+    expect(counterSource).toContain("/icons/content_credentials_logo_light.svg");
     expect(homeSource).not.toContain("← → TO CYCLE · F TO FLIP");
     expect(homeSource).toContain('event.key.toLowerCase() === "c"');
     expect(homeSource).toContain("compileOrio(actions.compileForce)");

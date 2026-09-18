@@ -8,19 +8,21 @@ const terrain = readFileSync(new URL("../components/GeneralizedTerrain.tsx", imp
 const analysis = readFileSync(new URL("../components/IngredientAnalysisPanel.tsx", import.meta.url), "utf8");
 
  describe("ingredient analysis observation contract", () => {
-  it("keeps analysis behind an explicit user action", () => {
+  it("runs analysis from the counter tabs, not a separate inspect button", () => {
     expect(home).toContain("analyzeIngredientsWithRust");
-    expect(analysis).toContain("Analyze ingredients");
+    expect(analysis).not.toContain("Analyze ingredients");
+    expect(evidence).not.toContain("Inspect evidence");
     expect(analysis).toContain("onAnalyze");
     expect(home).toContain("onAnalyzeIngredients={() => void analyzeIngredients()}");
+    expect(home).toContain("selectCounterView");
     expect(home).toContain("ingredientRequestGeneration");
     expect(home).toContain("isCurrentRequest");
   });
 
-  it("offers counter, visual ingredients, and embedded evidence views", () => {
-    expect(counter).toContain(">Counter</button>");
-    expect(counter).toContain(">Visual ingredients</button>");
-    expect(counter).toContain(">Embedded evidence</button>");
+  it("offers ingredients, stuffing, and get cooking views", () => {
+    expect(counter).toContain(">Ingredients</button>");
+    expect(counter).toContain(">Stuffing</button>");
+    expect(counter).toContain(">Get cooking</button>");
     expect(counter).toContain("EmbeddedEvidencePanel");
   });
 

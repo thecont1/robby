@@ -31,7 +31,7 @@ export default function IngredientAnalysisPanel({ status, analysis, error, palet
   onAnalyze: () => void;
 }) {
   if (status === "idle") {
-    return <div className="ingredient-analysis-empty" role="status"><p>Run the Rust ingredient pass to expose how this one reverse is measured.</p><button type="button" className="ingredient-analyze-button" onClick={onAnalyze}>Analyze ingredients</button><small>On demand · no image derivative · bounded 8 × 8 fields</small></div>;
+    return <div className="ingredient-analysis-empty" role="status"><p>The Rust ingredient pass runs when this tab opens.</p><small>On demand · no image derivative · bounded 8 × 8 fields</small></div>;
   }
 
   if (status === "running") {

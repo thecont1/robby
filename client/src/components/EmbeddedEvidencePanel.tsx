@@ -9,7 +9,7 @@ function EvidenceRow({ label, state, note }: { label: string; state: string; not
 export default function EmbeddedEvidencePanel({ analysis, onAnalyze, running }: { analysis: IngredientAnalysis | null; onAnalyze: () => void; running: boolean }) {
   const [consentedSourceDigest, setConsentedSourceDigest] = useState<string | null>(null);
   if (!analysis) {
-    return <div className="ingredient-analysis-empty" role="status"><p>Inspect embedded evidence separately from the visual ingredients.</p><button type="button" className="ingredient-analyze-button" onClick={onAnalyze} disabled={running}>{running ? "Inspecting evidence" : "Inspect evidence"}</button><small>Values remain private; only extraction states enter this view.</small></div>;
+    return <div className="ingredient-analysis-empty" role="status"><p>{running ? "Inspecting the stuffing sealed inside this obverse…" : "Embedded evidence is inspected when this tab opens."}</p><small>Values remain private; only extraction states enter this view.</small></div>;
   }
   return <div className="embedded-evidence-panel" aria-live="polite">
     <div className="ingredient-analysis-head"><div><p className="eyebrow">EVIDENCE INSPECTED</p><p className="ingredient-analysis-title">Metadata is evidence, not decoration.</p></div><button type="button" className="ingredient-refresh" onClick={onAnalyze} disabled={running}>{running ? "Reading" : "Reinspect"}</button></div>

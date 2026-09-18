@@ -89,6 +89,11 @@ function StationList({ stations, railProgress }: { stations: StationView[]; rail
 const PALETTE_MIN = 3;
 const PALETTE_MAX = 64;
 
+// Tab order reads as a prep narrative — gather the Ingredients, check the
+// Stuffing hidden inside, then Get Cooking. `cooking` is the default view:
+// it carries the k slider, swatch grid, and station rail.
+export type CounterView = "ingredients" | "evidence" | "cooking";
+
 export default function TeppanyakiCounter({
   run,
   recipeChanged,
@@ -102,6 +107,8 @@ export default function TeppanyakiCounter({
   ingredientAnalysis,
   ingredientError,
   onAnalyzeIngredients,
+  view,
+  onViewChange,
 }: {
   run: CompileRun | null;
   recipeChanged: boolean;
@@ -127,8 +134,11 @@ export default function TeppanyakiCounter({
   ingredientAnalysis: IngredientAnalysis | null;
   ingredientError: string | null;
   onAnalyzeIngredients: () => void;
+  /** Active tab. Lifted into Home so it survives the `key={selected.id}`
+   *  remount when the user cycles gallery images. */
+  view: CounterView;
+  onViewChange: (view: CounterView) => void;
 }) {
-  const [view, setView] = useState<"counter" | "ingredients" | "evidence">("counter");
   const state = deriveCounterState(run, recipeChanged);
   const copy = counterCopy(state);
   const presentation = counterPresentation(state);
@@ -161,21 +171,21 @@ export default function TeppanyakiCounter({
           <h2 id="teppanyaki-counter-title" className="mono-label">Teppanyaki counter</h2>
         </div>
         <div className="teppanyaki-heading-status">
-          {hasContentCredentials && <span className="content-credentials-salute" title="Content Credentials found in the source image" aria-label={`Content Credentials ${credentialPresence}`}><img src="/icons/content_credentials_cr.svg" alt="" aria-hidden="true" /><span>CR</span></span>}
+          {hasContentCredentials && <span className="content-credentials-salute" title={`Content Credentials ${credentialPresence} — found in the source image`}><img src="/icons/content_credentials_logo_light.svg" alt={`Content Credentials ${credentialPresence}`} /></span>}
           <span aria-label={`Compilation state: ${state}`}>{state.toUpperCase()}</span>
         </div>
       </div>
       <p className="teppanyaki-shortcuts" aria-label="Keyboard shortcuts">← → TO CYCLE · F TO FLIP · C TO COMPILE</p>
       <div className="teppanyaki-view-tabs" role="tablist" aria-label="Teppanyaki counter views">
-        <button type="button" role="tab" aria-selected={view === "counter"} className={view === "counter" ? "active" : ""} onClick={() => setView("counter")}>Counter</button>
-        <button type="button" role="tab" aria-selected={view === "ingredients"} className={view === "ingredients" ? "active" : ""} onClick={() => setView("ingredients")}>Visual ingredients</button>
-        <button type="button" role="tab" aria-selected={view === "evidence"} className={view === "evidence" ? "active" : ""} onClick={() => setView("evidence")}>Embedded evidence</button>
+        <button type="button" role="tab" aria-selected={view === "ingredients"} className={view === "ingredients" ? "active" : ""} onClick={() => onViewChange("ingredients")}>Ingredients</button>
+        <button type="button" role="tab" aria-selected={view === "evidence"} className={view === "evidence" ? "active" : ""} onClick={() => onViewChange("evidence")}>Stuffing</button>
+        <button type="button" role="tab" aria-selected={view === "cooking"} className={view === "cooking" ? "active" : ""} onClick={() => onViewChange("cooking")}>Get cooking</button>
       </div>
       <div className="trace-title" role="status" aria-live="polite" aria-atomic="true">
         <p className="eyebrow">{copy.kicker}</p>
         <p className="counter-message">{copy.body}</p>
       </div>
-      {view === "counter" ? <>
+      {view === "cooking" ? <>
       <div className="palette-slider">
         <label htmlFor="palette-k-slider" className="mono-label">Palette k</label>
         <div className="palette-slider-row">
