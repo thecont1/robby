@@ -90,7 +90,6 @@ pub struct IdentityIngredients {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct TerrainIngredients {
     pub representation: String,
-    pub seed_token: String,
     pub grid_size: usize,
     pub heights: Vec<u8>,
 }
@@ -187,7 +186,6 @@ fn generalized_terrain(seed: u64) -> TerrainIngredients {
         .collect();
     TerrainIngredients {
         representation: "coarse-gps-seeded-terrain".to_string(),
-        seed_token: format!("{:08X}", seed as u32),
         grid_size,
         heights,
     }
@@ -336,4 +334,17 @@ fn average_hash(pixels: &[[u8; 3]], width: u32, height: u32) -> String {
 
 fn digest_bytes(bytes: &[u8]) -> String {
     format!("{:x}", Sha256::digest(bytes))
+}
+
+#[cfg(test)]
+mod bounded_sample_tests {
+    use super::{bounded_sample, MAX_ANALYSIS_PIXELS};
+
+    #[test]
+    fn expensive_analysis_sample_never_exceeds_pixel_budget() {
+        let pixels = vec![[12_u8, 34, 56]; 2_000_000];
+        let (sampled, width, height) = bounded_sample(&pixels, 2000, 1000);
+        assert!(sampled.len() <= MAX_ANALYSIS_PIXELS);
+        assert_eq!(sampled.len(), (width * height) as usize);
+    }
 }

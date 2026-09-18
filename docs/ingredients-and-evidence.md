@@ -15,7 +15,7 @@ The analysis is intentionally bounded. It does not transfer a full raster into R
 | **Counter** | Existing compilation actions | Eight live compiler stations and the one reverse result | Existing public-safe trace and transient output rules |
 | **Visual ingredients** | `Analyze ingredients` | Palette, hashes, luminance, spatial, edge, texture, and perceptual fields | Measurements only; no image derivative |
 | **Embedded evidence** | `Inspect evidence` | EXIF, IPTC, XMP, GPS, and C2PA extraction states | Raw values withheld; GPS coordinates never displayed |
-| **Generalized terrain** | `Show generalized terrain` after GPS evidence inspection | Coarse seed-derived Three.js surface | Explicit consent; only a seed token and height field cross the Rust/WASM boundary |
+| **Generalized terrain** | `Show generalized terrain` after GPS evidence inspection | Coarse region-derived Three.js surface | Explicit consent; only a bounded height field crosses the Rust/WASM boundary |
 
 ## Proposed language direction: v2, not silently enabled in v1
 

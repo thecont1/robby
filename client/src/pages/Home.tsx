@@ -48,6 +48,7 @@ import {
   Lightbulb,
   Maximize2,
   Minimize2,
+  Presentation,
   X,
 } from "lucide-react";
 import { Link } from "wouter";
@@ -83,16 +84,16 @@ function traceFromIr(ir: RobbyIr): TraceStep[] {
 
 function ReverseArtwork({ result, alt, active }: { result?: SessionOrio; alt: string; active: boolean }) {
   if (!active || !result) return null;
-  if (result.colourSwatches.length >= 3) {
-    return <SwatchMatrix
+  const body = result.colourSwatches.length >= 3
+    ? <SwatchMatrix
       swatches={result.colourSwatches}
       seed={swatchSeed(result.derivedSeed, result.c2paEvidence.presence)}
       active={active}
       resetKey={result.compileRunId}
       alt={alt}
-    />;
-  }
-  return <img src={result.reverseObjectUrl} alt={alt} className="object-image" />;
+    />
+    : <img src={result.reverseObjectUrl} alt={alt} className="object-image" />;
+  return <div className="reverse-face-frame">{body}</div>;
 }
 
 type ProjectionState = "gallery" | "draft" | "compiling" | "error" | "live";
@@ -160,6 +161,8 @@ export default function Home() {
   const compileHistory = useRef<Record<string, CompileSnapshot[]>>({});
   const selectedIdRef = useRef("");
   const selectedRecipeRef = useRef({ specimenId: "", source: "" });
+  const ingredientRequestGeneration = useRef(0);
+  const ingredientAuthorityRef = useRef({ specimenId: "", paletteK: 0 });
   const compileGeneration = useRef(0);
   const discardReverseAfterFlip = useRef(false);
   const { theme, toggleTheme } = useTheme();
@@ -270,6 +273,11 @@ export default function Home() {
     selectedRecipeRef.current = { specimenId: selected.id, source: activeRecipe };
   }, [selected.id, activeRecipe]);
 
+  useLayoutEffect(() => {
+    ingredientRequestGeneration.current += 1;
+    ingredientAuthorityRef.current = { specimenId: selected.id, paletteK };
+  }, [selected.id, paletteK]);
+
   useEffect(() => {
     const draft = draftStore.current.get(selected.id, selected.script);
     setPaletteKFromDraft(draft, 8);
@@ -282,6 +290,12 @@ export default function Home() {
     setIngredientAnalysis(null);
     setIngredientError(null);
   }, [selected.id, selected.script, setPaletteKFromDraft, bumpDraftRevision]);
+
+  useEffect(() => {
+    setIngredientStatus("idle");
+    setIngredientAnalysis(null);
+    setIngredientError(null);
+  }, [paletteK]);
 
   const hashValue = async (value: string) => {
     const bytes = new TextEncoder().encode(value);
@@ -428,9 +442,15 @@ export default function Home() {
     if (ingredientStatus === "running" || !selected.id) return;
     const specimenId = selected.id;
     const analysisK = paletteK;
+    const requestGeneration = ++ingredientRequestGeneration.current;
+    const isCurrentRequest = () => ingredientRequestGeneration.current === requestGeneration
+      && ingredientAuthorityRef.current.specimenId === specimenId
+      && ingredientAuthorityRef.current.paletteK === analysisK
+      && selectedIdRef.current === specimenId;
     const cacheKey = `${specimenId}:${analysisK}`;
     const cached = ingredientCache.current[cacheKey];
     if (cached) {
+      if (!isCurrentRequest()) return;
       setIngredientAnalysis({ specimenId, paletteK: analysisK, value: cached });
       setIngredientStatus("ready");
       setIngredientError(null);
@@ -445,12 +465,12 @@ export default function Home() {
           return response.arrayBuffer().then(buffer => new Uint8Array(buffer));
         }));
       const value = await analyzeIngredientsWithRust(bytes, analysisK);
-      if (selectedIdRef.current !== specimenId || paletteK !== analysisK) return;
+      if (!isCurrentRequest()) return;
       ingredientCache.current[cacheKey] = value;
       setIngredientAnalysis({ specimenId, paletteK: analysisK, value });
       setIngredientStatus("ready");
     } catch (error) {
-      if (selectedIdRef.current !== specimenId) return;
+      if (!isCurrentRequest()) return;
       setIngredientStatus("error");
       setIngredientError(error instanceof Error ? error.message : String(error));
     }
@@ -756,6 +776,7 @@ export default function Home() {
 
               <DropdownMenuItem asChild><Link href="/brief/hackathon"><FileText size={17} /> Hackathon brief</Link></DropdownMenuItem>
               <DropdownMenuItem asChild><Link href="/brief/image-object"><Lightbulb size={17} /> Image-object concept</Link></DropdownMenuItem>
+              <DropdownMenuItem asChild><a href="/deck/"><Presentation size={17} /> Presentation deck</a></DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem asChild><a href="https://github.com/thecont1/robby/archive/refs/heads/dev/harleen.zip" target="_blank" rel="noreferrer"><Download size={17} /> Download troid / Rust source</a></DropdownMenuItem>
             </DropdownMenuContent>

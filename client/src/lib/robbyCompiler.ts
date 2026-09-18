@@ -99,7 +99,6 @@ export type IngredientAnalysis = {
   identity: { perceptual_hash: string };
   terrain: {
     representation: string;
-    seed_token: string;
     grid_size: number;
     heights: number[];
   } | null;

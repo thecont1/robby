@@ -53,13 +53,18 @@ export default function GeneralizedTerrain({ terrain }: { terrain: Terrain }) {
     };
     const observer = new ResizeObserver(resize);
     observer.observe(host);
-    const animate = () => {
+    const renderFrame = () => {
       frame += 1;
       surface.rotation.y = Math.sin(frame / 360) * 0.12;
       renderer.render(scene, camera);
+    };
+    const reduceMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
+    const animate = () => {
+      renderFrame();
       raf = requestAnimationFrame(animate);
     };
-    animate();
+    if (reduceMotion) renderFrame();
+    else animate();
     return () => {
       cancelAnimationFrame(raf);
       observer.disconnect();
@@ -70,5 +75,5 @@ export default function GeneralizedTerrain({ terrain }: { terrain: Terrain }) {
     };
   }, [terrain]);
 
-  return <div ref={hostRef} className="generalized-terrain" role="img" aria-label="Generalized GPS-seeded terrain representation" />;
+  return <div ref={hostRef} className="generalized-terrain" role="img" aria-label="Generalized coarse terrain representation" />;
 }

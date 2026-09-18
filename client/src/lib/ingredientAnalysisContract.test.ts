@@ -13,6 +13,8 @@ const analysis = readFileSync(new URL("../components/IngredientAnalysisPanel.tsx
     expect(analysis).toContain("Analyze ingredients");
     expect(analysis).toContain("onAnalyze");
     expect(home).toContain("onAnalyzeIngredients={() => void analyzeIngredients()}");
+    expect(home).toContain("ingredientRequestGeneration");
+    expect(home).toContain("isCurrentRequest");
   });
 
   it("offers counter, visual ingredients, and embedded evidence views", () => {
@@ -26,11 +28,13 @@ const analysis = readFileSync(new URL("../components/IngredientAnalysisPanel.tsx
     expect(evidence).toContain("Coordinates detected but withheld");
     expect(evidence).toContain("values remain private by default");
     expect(evidence).toContain("Show generalized terrain");
-    expect(evidence).toContain("terrainConsent");
+    expect(evidence).toContain("consentedSourceDigest");
+    expect(evidence).toContain("analysis.source.byte_sha256");
     expect(evidence).toContain("no coordinates displayed");
     expect(evidence).toContain("<GeneralizedTerrain terrain={analysis.terrain}");
     expect(terrain).toContain("three");
-    expect(terrain).toContain("Generalized GPS-seeded terrain representation");
+    expect(terrain).toContain("Generalized coarse terrain representation");
+    expect(terrain).toContain("prefers-reduced-motion");
     expect(evidence).not.toContain("analysis.evidence.gpsValue");
   });
 

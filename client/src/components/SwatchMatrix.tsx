@@ -63,9 +63,8 @@ export default function SwatchMatrix({ swatches, seed, active, resetKey, alt }: 
     let slots: Cell[][] = [];
     let width = 1;
     let height = 1;
-    let cellSize = 1;
-    let gridLeft = 0;
-    let gridTop = 0;
+    let cellWidth = 1;
+    let cellHeight = 1;
     let moveNumber = 0;
     const choreography = splitMix32(seed ^ 0x6d2b79f5);
     const k = colours.length;
@@ -82,15 +81,13 @@ export default function SwatchMatrix({ swatches, seed, active, resetKey, alt }: 
       const rect = host.getBoundingClientRect();
       width = Math.max(1, Math.floor(rect.width));
       height = Math.max(1, Math.floor(rect.height));
-      const side = Math.min(width, height);
-      cellSize = side / k;
-      gridLeft = (width - side) / 2;
-      gridTop = (height - side) / 2;
+      cellWidth = width / k;
+      cellHeight = height / k;
       const rowPermutations = Array.from({ length: k }, (_, row) => seededPermutation(k, (seed + row) >>> 0));
       slots = rowPermutations.map((row, rowIndex) => row.map((index, columnIndex) => ({
         index,
-        x: gridLeft + columnIndex * cellSize,
-        y: gridTop + rowIndex * cellSize,
+        x: columnIndex * cellWidth,
+        y: rowIndex * cellHeight,
       })));
     };
 
@@ -107,8 +104,8 @@ export default function SwatchMatrix({ swatches, seed, active, resetKey, alt }: 
           scheduleNext();
         },
       });
-      firstRow.forEach(cell => animation?.to(cell, { y: gridTop + second * cellSize }, 0));
-      secondRow.forEach(cell => animation?.to(cell, { y: gridTop + first * cellSize }, 0));
+      firstRow.forEach(cell => animation?.to(cell, { y: second * cellHeight }, 0));
+      secondRow.forEach(cell => animation?.to(cell, { y: first * cellHeight }, 0));
     };
 
     const swapColumns = (first: number, second: number) => {
@@ -125,8 +122,8 @@ export default function SwatchMatrix({ swatches, seed, active, resetKey, alt }: 
           scheduleNext();
         },
       });
-      firstColumn.forEach(cell => animation?.to(cell, { x: gridLeft + second * cellSize }, 0));
-      secondColumn.forEach(cell => animation?.to(cell, { x: gridLeft + first * cellSize }, 0));
+      firstColumn.forEach(cell => animation?.to(cell, { x: second * cellWidth }, 0));
+      secondColumn.forEach(cell => animation?.to(cell, { x: first * cellWidth }, 0));
     };
 
     const startMove = () => {
@@ -188,7 +185,7 @@ export default function SwatchMatrix({ swatches, seed, active, resetKey, alt }: 
         slots.forEach(row => row.forEach(cell => {
           const colour = colours[cell.index] ?? [0, 0, 0];
           instance.fill(...colour);
-          instance.rect(cell.x, cell.y, cellSize + 0.5, cellSize + 0.5);
+          instance.rect(cell.x, cell.y, cellWidth + 0.5, cellHeight + 0.5);
         }));
       };
     }, host);
