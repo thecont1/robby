@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { createCompileController, type CompileDeps } from "./compileController";
+import { createCompileController, waitForPresentationDelay, type CompileDeps } from "./compileController";
 import type { CompileEvent, CompileRequest } from "./compileEvents";
 import type { IntakeManifest, RobbyIr } from "./robbyCompiler";
 
@@ -178,6 +178,9 @@ function deps(overrides: Partial<CompileDeps> = {}): CompileDeps & { calls: stri
     },
     compilerVersion: "robby-compiler-v0.1.0",
     rendererVersion: "robby-render-manifest-v1",
+    // Station pacing is a wall-clock presentation concern; tests assert event
+    // ordering, not real elapsed time, so the rail pace is disabled here.
+    stationPaceMs: 0,
     ...overrides,
   };
   return base;
@@ -186,6 +189,30 @@ function deps(overrides: Partial<CompileDeps> = {}): CompileDeps & { calls: stri
 describe("CompileController", () => {
   afterEach(() => {
     vi.restoreAllMocks();
+  });
+
+  it("keeps explainability pacing cancellable and separate from compile work", async () => {
+    vi.useFakeTimers();
+    const controller = new AbortController();
+    let settled = false;
+    const delayed = waitForPresentationDelay(120, controller.signal).then(() => { settled = true; });
+    await vi.advanceTimersByTimeAsync(119);
+    expect(settled).toBe(false);
+    await vi.advanceTimersByTimeAsync(1);
+    await delayed;
+    expect(settled).toBe(true);
+
+    const cancelledController = new AbortController();
+    const cancelled = waitForPresentationDelay(120, cancelledController.signal);
+    cancelledController.abort();
+    await expect(cancelled).rejects.toMatchObject({ name: "AbortError" });
+    vi.useRealTimers();
+  });
+
+  it("rejects an already-aborted zero-delay wait", async () => {
+    const controller = new AbortController();
+    controller.abort();
+    await expect(waitForPresentationDelay(0, controller.signal)).rejects.toMatchObject({ name: "AbortError" });
   });
 
   it("does no compile work until an explicit compile request", () => {
@@ -297,8 +324,8 @@ describe("CompileController", () => {
     const second = await controller.compile(request());
     expect(first.id).toMatch(/^run-/);
     expect(second.id).not.toBe(first.id);
-    expect(first.events.map(event => event.compileRunId).every(id => id === first.id)).toBe(true);
-    const sequences = first.events.map(event => event.sequence);
+    expect(first.events.map((event: CompileEvent) => event.compileRunId).every((id: string) => id === first.id)).toBe(true);
+    const sequences = first.events.map((event: CompileEvent) => event.sequence);
     expect(sequences).toEqual([...sequences].sort((a, b) => a - b));
     expect(new Set(sequences).size).toBe(sequences.length);
     expect(COMPILE_STAGES_PRESENT(first.events)).toEqual([
@@ -322,8 +349,8 @@ describe("CompileController", () => {
     // hash (ir.meta.script_sha256) is the source-text digest and must remain
     // a separate identity domain (Plan 9A / ADR-003).
     expect(first.result?.identity.canonicalRecipeSha256).not.toBe(ir.meta.script_sha256);
-    expect(first.events.find(event => event.stage === "measure" && event.status === "completed")?.payload).toMatchObject({ pixelSha256: "pixels".padEnd(64, "a") });
-    expect(first.events.find(event => event.stage === "bind" && event.status === "completed")?.payload.objectBinding).toBe(first.result?.identity.objectBinding);
+    expect(first.events.find((event: CompileEvent) => event.stage === "measure" && event.status === "completed")?.payload).toMatchObject({ pixelSha256: "pixels".padEnd(64, "a") });
+    expect(first.events.find((event: CompileEvent) => event.stage === "bind" && event.status === "completed")?.payload.objectBinding).toBe(first.result?.identity.objectBinding);
   });
 
   it("does not start a second run while one is already running for the same selection", async () => {
@@ -433,7 +460,7 @@ describe("CompileController", () => {
     const later = await controller.compile(request({ galleryItemId: "item-b", sourceName: "other.jpg" }));
     expect(later.galleryItemId).toBe("item-b");
     expect(later.status).toBe("completed");
-    expect(later.events.every(event => event.compileRunId === later.id)).toBe(true);
+    expect(later.events.every((event: CompileEvent) => event.compileRunId === later.id)).toBe(true);
   });
 
   it("reuses a session-valid orio instead of re-rendering, and recompile forces a new run", async () => {
@@ -608,7 +635,7 @@ describe("CompileController", () => {
     await waitFor(() => environment.calls.includes("renderReverse"));
     controller.cancelActive();
     await Promise.resolve();
-    releaseRender?.();
+    releaseRender!();
     const cancelled = await pending;
     expect(cancelled.status).toBe("cancelled");
     expect(cancelled.result).toBeUndefined();

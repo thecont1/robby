@@ -68,6 +68,26 @@ fn parses_and_lowers_the_single_image_recipe() {
 }
 
 #[test]
+fn accepts_documented_evidence_alias_and_quoted_private_gps() {
+    let documented = RECIPE
+        .replace("inspect {", "evidence {")
+        .replace("gps: private", "gps: \"private\"")
+        .replace("method: median_cut", "method: \"median-cut\"")
+        .replace("reverse palette_grid {", "reverse \"palette-grid\" {")
+        .replace("arrange: seeded_shuffle", "arrange: \"seeded-shuffle\"")
+        .replace("seed: object_binding", "seed: \"object-binding\"")
+        .replace("border: source_palette", "border: \"source-palette\"")
+        .replace("gps: remove", "gps: \"remove\"")
+        .replace("c2pa: summary", "c2pa: \"summary\"")
+        .replace("manifest: public_safe", "manifest: \"public-safe\"");
+    let ir = compile_recipe_source(&documented).expect("documented recipe should compile");
+    assert_eq!(ir.inspect.get("gps").map(String::as_str), Some("private"));
+    assert_eq!(ir.reverse.mode, "palette_grid");
+    assert_eq!(ir.reverse.seed, "object-binding");
+    assert_eq!(ir.publish.get("gps").map(String::as_str), Some("remove"));
+}
+
+#[test]
 fn formatting_only_changes_preserve_recipe_hash() {
     let compact = RECIPE.replace('\n', " ");
     assert_eq!(

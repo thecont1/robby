@@ -15,6 +15,7 @@ export type C2paEvidence = {
   verificationMethod: string;
   note: string;
   claimGenerator?: string;
+  credentialKey?: string;
 };
 
 export function c2paEvidenceFromCredential(credential: CredentialSignature, inspectedAt: string): C2paEvidence {
@@ -48,6 +49,7 @@ export function c2paEvidenceFromCredential(credential: CredentialSignature, insp
     verificationMethod: credential.verificationMethod,
     note,
     claimGenerator: credential.claimGenerator,
+    credentialKey: credential.credentialKey,
   };
 }
 

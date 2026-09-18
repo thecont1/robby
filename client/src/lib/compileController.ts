@@ -5,6 +5,7 @@ import { buildObservabilitySheetFacts, type ObservabilitySheetFacts } from "@/li
 import {
   COMPILE_STAGES,
   STATION_LABELS,
+  STATION_PACE_MS,
   identityTupleMatches,
   sessionCacheKey,
   type CompileEvent,
@@ -69,11 +70,42 @@ export type CompileDeps = {
   revokeObjectUrl: (url: string) => void;
   compilerVersion: string;
   rendererVersion: string;
+  /** UI-only pause between station events; zero keeps tests and non-UI callers immediate. */
+  presentationDelayMs?: number;
+  /**
+   * Minimum wall-clock time each station stays open so the counter rail can
+   * traverse the cell before the next station begins. Defaults to
+   * STATION_PACE_MS; zero disables pacing (tests, non-UI callers).
+   */
+  stationPaceMs?: number;
 };
 
 export type CompileOptions = {
   force?: boolean;
 };
+
+/**
+ * Give the observation deck time to show a station changing state. This never
+ * changes compiler inputs, outputs, hashes, or cache keys, and is abortable so
+ * a specimen switch does not leave a delayed run alive in the background.
+ */
+export function waitForPresentationDelay(milliseconds: number | undefined, signal: AbortSignal): Promise<void> {
+  const delay = Math.max(0, Math.floor(milliseconds ?? 0));
+  if (signal.aborted) return Promise.reject(new DOMException("Aborted", "AbortError"));
+  if (delay === 0) return Promise.resolve();
+  return new Promise((resolve, reject) => {
+    const timer = globalThis.setTimeout(() => {
+      signal.removeEventListener("abort", cancel);
+      resolve();
+    }, delay);
+    const cancel = () => {
+      globalThis.clearTimeout(timer);
+      signal.removeEventListener("abort", cancel);
+      reject(new DOMException("Aborted", "AbortError"));
+    };
+    signal.addEventListener("abort", cancel, { once: true });
+  });
+}
 
 /**
  * Inspects the intake byte snapshot without making C2PA availability a compile
@@ -179,10 +211,18 @@ export function createCompileController(deps: CompileDeps) {
     stage: CompileStage,
     classification: EpistemicClass | undefined,
     work: () => Promise<Record<string, unknown>>,
+    signal: AbortSignal = abort?.signal ?? new AbortController().signal,
   ) => {
+    const beganAt = performance.now();
     emit(run, stage, "started", `${STATION_LABELS[stage]} started`);
+    await waitForPresentationDelay(deps.presentationDelayMs, signal);
     const payload = await work();
     emit(run, stage, "artifact", `${STATION_LABELS[stage]} artifact`, payload, classification);
+    await waitForPresentationDelay(deps.presentationDelayMs, signal);
+    // The counter rail crosses one cell per STATION_PACE_MS. Holding each
+    // station to that minimum keeps the real process in lockstep with the
+    // rail instead of letting completions outrun it.
+    await waitForPresentationDelay((deps.stationPaceMs ?? STATION_PACE_MS) - (performance.now() - beganAt), signal);
     emit(run, stage, "completed", `${STATION_LABELS[stage]} completed`, payload, classification);
     return payload;
   };

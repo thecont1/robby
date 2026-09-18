@@ -5,27 +5,16 @@ export type CounterState = "dormant" | "primed" | "running" | "resolved" | "stal
 
 export type CounterPresentation = {
   showStations: boolean;
-  stationsExpandable: boolean;
-  defaultStationsExpanded: boolean;
 };
 
 /**
- * Hides stations before a run, shows them directly while running or failed,
- * and makes completed or stale station details available in a collapsed
- * disclosure.
+ * The Teppanyaki Counter is an observability station: its eight stages remain
+ * visible even before a run, so the user can see the full route the compiler
+ * will take without opening a secondary disclosure.
  */
 export function counterPresentation(state: CounterState): CounterPresentation {
-  switch (state) {
-    case "dormant":
-    case "primed":
-      return { showStations: false, stationsExpandable: false, defaultStationsExpanded: false };
-    case "resolved":
-    case "stale":
-      return { showStations: true, stationsExpandable: true, defaultStationsExpanded: false };
-    case "running":
-    case "failed":
-      return { showStations: true, stationsExpandable: false, defaultStationsExpanded: true };
-  }
+  void state;
+  return { showStations: true };
 }
 
 export type StationView = {

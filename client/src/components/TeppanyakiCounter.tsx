@@ -1,20 +1,87 @@
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { CircleDotDashed } from "lucide-react";
+import IngredientAnalysisPanel, { type IngredientAnalysisStatus } from "@/components/IngredientAnalysisPanel";
+import EmbeddedEvidencePanel from "@/components/EmbeddedEvidencePanel";
 import type { CompileRun } from "@/lib/compileEvents";
+import type { IngredientAnalysis } from "@/lib/robbyCompiler";
+import { STATION_PACE_MS } from "@/lib/compileEvents";
 import { counterCopy, counterPresentation, deriveCounterState, stationViews, type StationView } from "@/lib/teppanyakiCounter";
 
-function StationList({ stations }: { stations: StationView[] }) {
+// The rail sweeps the station column at the same pace the pipeline holds
+// each station for (STATION_PACE_MS), so the traversal and the real process
+// move in lockstep. It may also only pass a cell once that station has truly
+// finished — cells ahead of the rail head stay dim even if work completed.
+const RAIL_CELLS_PER_SECOND = 1000 / STATION_PACE_MS;
+
+function railGate(stations: StationView[]): number {
+  for (let i = 0; i < stations.length; i++) {
+    const status = stations[i].status;
+    if (status !== "completed" && status !== "failed") {
+      return status === "idle" ? i : i + 1;
+    }
+  }
+  return stations.length;
+}
+
+function useRailProgress(stations: StationView[]): number {
+  const [progress, setProgress] = useState(0);
+  const progressRef = useRef(0);
+  const stationsRef = useRef(stations);
+  const gateKey = stations.map(station => station.status).join("|");
+
+  useEffect(() => {
+    stationsRef.current = stations;
+  }, [gateKey]);
+
+  useEffect(() => {
+    let raf = 0;
+    let last = performance.now();
+    const tick = (now: number) => {
+      const dt = Math.min(0.1, (now - last) / 1000);
+      last = now;
+      const allowed = railGate(stationsRef.current);
+      let next = progressRef.current;
+      if (allowed < next) {
+        next = allowed;
+      } else if (next < allowed) {
+        next = Math.min(next + dt * RAIL_CELLS_PER_SECOND, allowed);
+      }
+      progressRef.current = next;
+      setProgress(next);
+      if (next < allowed) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [gateKey]);
+
+  return progress;
+}
+
+function StationList({ stations, railProgress }: { stations: StationView[]; railProgress: number }) {
   return (
     <ol className="teppanyaki-stations" aria-label="Compilation stations">
-      {stations.map(station => (
-        <li key={station.stage} className={`teppanyaki-station status-${station.status}`} data-stage={station.stage}>
-          <span className="trace-number">{station.index}</span>
-          <div>
-            <strong>{station.name}</strong>
-            <p>{station.label}</p>
-            {station.classification && <em>{station.classification}</em>}
-          </div>
-        </li>
-      ))}
+      {stations.map((station, i) => {
+        const fill = Math.min(Math.max(railProgress - i, 0), 1);
+        const active = station.status === "started" || station.status === "artifact";
+        return (
+          <li
+            key={station.stage}
+            className={`teppanyaki-station status-${station.status}${active ? " is-active" : ""}${fill >= 0.3 ? " rail-covered" : ""}`}
+            style={{ "--rail-fill": fill.toFixed(3) } as CSSProperties}
+            data-stage={station.stage}
+            aria-current={active ? "step" : undefined}
+          >
+            <span className="trace-number">{station.index}</span>
+            <div className="teppanyaki-station-copy">
+              <div className="teppanyaki-station-heading">
+                <strong>{station.name}</strong>
+                {station.classification && <em>{station.classification}</em>}
+              </div>
+              <p>{station.label}</p>
+            </div>
+          </li>
+        );
+      })}
     </ol>
   );
 }
@@ -28,6 +95,13 @@ export default function TeppanyakiCounter({
   paletteK,
   onPaletteKChange,
   previewPalette = [],
+  liveSwatches = [],
+  swatchSeedToken,
+  swatchC2paPresent = false,
+  ingredientStatus,
+  ingredientAnalysis,
+  ingredientError,
+  onAnalyzeIngredients,
 }: {
   run: CompileRun | null;
   recipeChanged: boolean;
@@ -39,19 +113,45 @@ export default function TeppanyakiCounter({
    * counter, not something that only appears after a compile — this is
    * what it shows before the user has ever compiled this specimen, or after
    * switching away from one they compiled a moment ago.
-   */
+  */
   previewPalette?: readonly string[];
+  /**
+   * Rust-derived swatches for the *edited* recipe's k (see Home's live
+   * palette preview). Real colours for a recipe that has not been compiled
+   * yet — same median-cut the Split station will produce.
+   */
+  liveSwatches?: readonly string[];
+  swatchSeedToken?: string;
+  swatchC2paPresent?: boolean;
+  ingredientStatus: IngredientAnalysisStatus;
+  ingredientAnalysis: IngredientAnalysis | null;
+  ingredientError: string | null;
+  onAnalyzeIngredients: () => void;
 }) {
+  const [view, setView] = useState<"counter" | "ingredients" | "evidence">("counter");
   const state = deriveCounterState(run, recipeChanged);
   const copy = counterCopy(state);
   const presentation = counterPresentation(state);
   const stations = stationViews(run?.events ?? []);
+  const railProgress = useRailProgress(stations);
+  const credentialPresence = run?.result?.c2paEvidence.presence;
+  const hasContentCredentials = credentialPresence === "present";
   const splitStation = stations.find(station => station.stage === "split");
   const compiledSwatches = splitStation?.swatches ?? [];
   const swatches = compiledSwatches.length > 0 ? compiledSwatches : previewPalette;
-  const swatchGridLabel = compiledSwatches.length === 0
-    ? `${swatches.length} palette swatches in rows of 8 — default preview at k=8, compile to render this recipe`
-    : `${swatches.length} palette swatches in rows of 8`;
+  // Swatch colours are only real for the recipe they were derived from. Once
+  // the k slider moves (recipeChanged) or the count no longer matches the
+  // current k, the grid falls back to the live Rust preview of the edited
+  // recipe, then to empty slots while that preview is still computing.
+  const paletteMatchesRecipe = !recipeChanged && swatches.length === paletteK;
+  const previewSwatches = !paletteMatchesRecipe && liveSwatches.length === paletteK ? liveSwatches : [];
+  const pendingSlots = paletteMatchesRecipe || previewSwatches.length > 0 ? 0 : paletteK;
+  const gridSwatches = paletteMatchesRecipe ? swatches : previewSwatches;
+  const swatchGridLabel = pendingSlots > 0
+    ? `${paletteK} palette slots reserved — deriving palette`
+    : (paletteMatchesRecipe && compiledSwatches.length === 0
+      ? `${gridSwatches.length} palette swatches in rows of 8 — default preview at k=${paletteK}, compile to render this recipe`
+      : `${gridSwatches.length} palette swatches in rows of 8`);
 
   return (
     <aside className={`teppanyaki-counter state-${state}`} data-state={state} aria-labelledby="teppanyaki-counter-title">
@@ -60,12 +160,22 @@ export default function TeppanyakiCounter({
           <CircleDotDashed size={15} aria-hidden="true" />
           <h2 id="teppanyaki-counter-title" className="mono-label">Teppanyaki counter</h2>
         </div>
-        <span aria-label={`Compilation state: ${state}`}>{state.toUpperCase()}</span>
+        <div className="teppanyaki-heading-status">
+          {hasContentCredentials && <span className="content-credentials-salute" title="Content Credentials found in the source image" aria-label={`Content Credentials ${credentialPresence}`}><img src="/icons/content_credentials_cr.svg" alt="" aria-hidden="true" /><span>CR</span></span>}
+          <span aria-label={`Compilation state: ${state}`}>{state.toUpperCase()}</span>
+        </div>
+      </div>
+      <p className="teppanyaki-shortcuts" aria-label="Keyboard shortcuts">← → TO CYCLE · F TO FLIP · C TO COMPILE</p>
+      <div className="teppanyaki-view-tabs" role="tablist" aria-label="Teppanyaki counter views">
+        <button type="button" role="tab" aria-selected={view === "counter"} className={view === "counter" ? "active" : ""} onClick={() => setView("counter")}>Counter</button>
+        <button type="button" role="tab" aria-selected={view === "ingredients"} className={view === "ingredients" ? "active" : ""} onClick={() => setView("ingredients")}>Visual ingredients</button>
+        <button type="button" role="tab" aria-selected={view === "evidence"} className={view === "evidence" ? "active" : ""} onClick={() => setView("evidence")}>Embedded evidence</button>
       </div>
       <div className="trace-title" role="status" aria-live="polite" aria-atomic="true">
         <p className="eyebrow">{copy.kicker}</p>
         <p className="counter-message">{copy.body}</p>
       </div>
+      {view === "counter" ? <>
       <div className="palette-slider">
         <label htmlFor="palette-k-slider" className="mono-label">Palette k</label>
         <div className="palette-slider-row">
@@ -82,33 +192,23 @@ export default function TeppanyakiCounter({
           <output htmlFor="palette-k-slider" className="palette-k-value">{paletteK}</output>
         </div>
       </div>
-      {swatches.length > 0 && (
+      {(gridSwatches.length > 0 || pendingSlots > 0) && (
         <div className="palette-swatch-grid" role="img" aria-label={swatchGridLabel}>
-          {swatches.map((swatch, index) => (
-            // Median cut averages each colour box independently, so two boxes
-            // can round to the same hex. The index disambiguates those repeats;
-            // a bare hex key would collide and drop swatches from the grid.
-            <i key={`${index}-${swatch}`} style={{ background: swatch }} title={swatch} />
-          ))}
+          {pendingSlots > 0
+            ? Array.from({ length: pendingSlots }, (_, index) => (
+              <i key={`pending-${index}`} className="pending" aria-hidden="true" />
+            ))
+            : gridSwatches.map((swatch, index) => (
+              // Median cut averages each colour box independently, so two boxes
+              // can round to the same hex. The index disambiguates those repeats;
+              // a bare hex key would collide and drop swatches from the grid.
+              <i key={`${index}-${swatch}`} style={{ background: swatch }} title={swatch} />
+            ))}
         </div>
       )}
-      {presentation.showStations && (presentation.stationsExpandable ? (
-        <details className="teppanyaki-station-details" open={presentation.defaultStationsExpanded}>
-          <summary>Inspect all eight stations</summary>
-          <StationList stations={stations} />
-        </details>
-      ) : (
-        <StationList stations={stations} />
-      ))}
-      {run?.result?.disclosure && (
-        <div className="teppanyaki-audit-window" tabIndex={0} aria-label="Disclosure audit, scrollable">
-          <p className="teppanyaki-audit" role="note">
-            {run.result.disclosure.safe
-              ? `Public-safe: omitted ${run.result.disclosure.omitted.join(" · ")}`
-              : `Disclosure warning: ${run.result.disclosure.warnings.join(" · ")}`}
-          </p>
-        </div>
-      )}
+      {swatchSeedToken && <p className="swatch-seed-line">SWATCH SEED <strong>{swatchSeedToken}</strong> · {swatchC2paPresent ? "C2PA" : "NO C2PA"}</p>}
+      {presentation.showStations && <StationList stations={stations} railProgress={railProgress} />}
+      </> : view === "ingredients" ? <IngredientAnalysisPanel status={ingredientStatus} analysis={ingredientAnalysis} error={ingredientError} paletteK={paletteK} onAnalyze={onAnalyzeIngredients} /> : <EmbeddedEvidencePanel analysis={ingredientAnalysis} onAnalyze={onAnalyzeIngredients} running={ingredientStatus === "running"} />}
     </aside>
   );
 }

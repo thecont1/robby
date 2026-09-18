@@ -15,6 +15,14 @@ export const COMPILE_STAGES = [
 
 export type CompileStage = (typeof COMPILE_STAGES)[number];
 
+/**
+ * The counter rail and the station pipeline share one pace: each station
+ * holds for at least this long before completing, and the rail head crosses
+ * one cell in the same interval — so the process itself waits for the rail
+ * instead of letting events outrun it.
+ */
+export const STATION_PACE_MS = 1180;
+
 export type CompileEventStatus = "started" | "artifact" | "warning" | "completed" | "failed";
 
 export type CompileEvent = {

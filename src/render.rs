@@ -574,16 +574,8 @@ pub fn render_reverse(
     // Applying the same EXIF orientation normalization here keeps
     // pixel_sha256, dimensions and layout consistent across both paths;
     // without it a rotated source renders transposed against its own manifest.
-    let decoded = decode_source(source_bytes)?;
-    let orientation = image::guess_format(source_bytes)
-        .ok()
-        .and_then(|format| crate::intake::exif_orientation(source_bytes, format));
-    let decoded = crate::intake::orient(decoded, orientation);
-    let rgb = decoded.to_rgb8();
-    let source_width = rgb.width();
-    let source_height = rgb.height();
-    let pixels: Vec<[u8; 3]> = rgb.pixels().map(|pixel| pixel.0).collect();
-    let palette = median_cut_palette(&pixels, settings.k as usize)?;
+    let (pixels, source_width, source_height) = source_pixels(source_bytes)?;
+    let palette = palette_for_pixels(&pixels, settings.k as usize)?;
     let index_map = palette_index_map(&pixels, &palette);
     let mut rng = SplitMix64::new(seed);
     let image = module.render(
@@ -661,6 +653,36 @@ fn png_dimensions(png: &[u8]) -> (u32, u32) {
     )
 }
 
+/// Decode the source, apply EXIF orientation, and return canonical RGB
+/// pixels plus dimensions — the exact inputs intake hashes and the renderer
+/// measures. Shared so previews and renders can never disagree about pixels.
+pub(crate) fn source_pixels(source_bytes: &[u8]) -> Result<(Vec<[u8; 3]>, u32, u32), RenderError> {
+    let decoded = decode_source(source_bytes)?;
+    let orientation = image::guess_format(source_bytes)
+        .ok()
+        .and_then(|format| crate::intake::exif_orientation(source_bytes, format));
+    let decoded = crate::intake::orient(decoded, orientation);
+    let rgb = decoded.to_rgb8();
+    let pixels: Vec<[u8; 3]> = rgb.pixels().map(|pixel| pixel.0).collect();
+    Ok((pixels, rgb.width(), rgb.height()))
+}
+
+/// Median-cut palette hex swatches for a source at a given k, in manifest
+/// rank order. Same algorithm and ordering as `render_reverse` produces in
+/// `colour_swatches` — a preview of exactly what a compile will derive.
+pub fn palette_preview(source_bytes: &[u8], k: u8) -> Result<Vec<String>, RenderError> {
+    if !(3..=64).contains(&k) {
+        return Err(RenderError(
+            "palette k must be an integer between 3 and 64".into(),
+        ));
+    }
+    let (pixels, _, _) = source_pixels(source_bytes)?;
+    Ok(palette_for_pixels(&pixels, k as usize)?
+        .iter()
+        .map(|entry| entry.hex.clone())
+        .collect())
+}
+
 fn decode_source(source_bytes: &[u8]) -> Result<DynamicImage, RenderError> {
     if source_bytes.starts_with(&[0xff, 0xd8, 0xff]) {
         let options = DecoderOptions::default()
@@ -687,7 +709,10 @@ struct ColourBox {
     ordinal: usize,
 }
 
-fn median_cut_palette(pixels: &[[u8; 3]], k: usize) -> Result<Vec<PaletteEntry>, RenderError> {
+pub(crate) fn palette_for_pixels(
+    pixels: &[[u8; 3]],
+    k: usize,
+) -> Result<Vec<PaletteEntry>, RenderError> {
     if pixels.len() < k {
         return Err(RenderError(
             "source image has fewer pixels than palette k".into(),
@@ -802,7 +827,7 @@ fn widest_channel(pixels: &[[u8; 3]]) -> usize {
         .unwrap_or(0)
 }
 
-fn nearest_palette_index(pixel: &[u8; 3], palette: &[PaletteEntry]) -> usize {
+pub(crate) fn nearest_palette_index(pixel: &[u8; 3], palette: &[PaletteEntry]) -> usize {
     palette
         .iter()
         .enumerate()
@@ -811,7 +836,7 @@ fn nearest_palette_index(pixel: &[u8; 3], palette: &[PaletteEntry]) -> usize {
         .unwrap_or(0)
 }
 
-fn palette_index_map(pixels: &[[u8; 3]], palette: &[PaletteEntry]) -> Vec<u8> {
+pub(crate) fn palette_index_map(pixels: &[[u8; 3]], palette: &[PaletteEntry]) -> Vec<u8> {
     pixels
         .iter()
         .map(|pixel| nearest_palette_index(pixel, palette) as u8)

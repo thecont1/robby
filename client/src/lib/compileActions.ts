@@ -46,8 +46,9 @@ export function shouldAcceptPaletteEdit(value: number, min = 3, max = 64): boole
 }
 
 /**
- * A delayed palette recompile is current only while its captured specimen and
- * authored source still match the live authority.
+ * Retained as a small authority predicate for callers that schedule work
+ * outside the slider. Palette edits in the observation deck no longer schedule
+ * a recompile; they invalidate immediately and wait for an explicit click.
  */
 export function isPaletteReprocessCurrent(
   scheduled: { specimenId: string; source: string },
@@ -61,6 +62,7 @@ export function compileActions(input: {
   recipeChanged: boolean;
   face: ObjectFace;
   isRendering: boolean;
+  forceFresh?: boolean;
 }): CompileActions {
   const completed = input.run?.status === "completed" && Boolean(input.run.result);
   const running = input.isRendering || input.run?.status === "running";
@@ -101,7 +103,7 @@ export function compileActions(input: {
   return {
     compileLabel: "Compile Orio",
     compileEnabled: true,
-    compileForce: false,
+    compileForce: Boolean(input.forceFresh),
     turnLabel: input.face === "inverse" ? "Return to obverse" : "Turn to inverse",
     turnEnabled: input.face === "inverse",
     showCancel: false,

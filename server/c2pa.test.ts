@@ -29,6 +29,7 @@ describe("credentialFromReaderSummary", () => {
     const result = credentialFromReaderSummary(sha256, {
       embedded: true,
       active: { claim_generator: "lightroom_classic/15.1" },
+      credentialKey: "urn:uuid:credential-one",
       validationState: "Valid",
       validationStatus: [{ code: "signingCredential.untrusted", explanation: "signing certificate untrusted" }],
     });
@@ -37,6 +38,7 @@ describe("credentialFromReaderSummary", () => {
       status: "present",
       sourceSha256: sha256,
       claimGenerator: "lightroom_classic/15.1",
+      credentialKey: "urn:uuid:credential-one",
     });
     expect(result.note).toContain("signingCredential.untrusted");
   });

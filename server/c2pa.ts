@@ -12,6 +12,8 @@ export type C2paCredentialInspection = {
   verificationMethod: string;
   note: string;
   claimGenerator?: string;
+  /** Active C2PA manifest label, used only as a deterministic visual seed. */
+  credentialKey?: string;
 };
 
 type ValidationNotice = { code?: string | null; explanation?: string | null };
@@ -19,6 +21,7 @@ type ValidationNotice = { code?: string | null; explanation?: string | null };
 export type C2paReaderSummary = {
   embedded: boolean;
   active?: { claim_generator?: string | null };
+  credentialKey?: string | null;
   validationState?: "Invalid" | "Valid" | "Trusted" | null;
   validationStatus?: ValidationNotice[] | null;
 };
@@ -67,6 +70,7 @@ export function credentialFromReaderSummary(
       verificationMethod,
       note: `An embedded C2PA manifest was found, but its validation state is Invalid.${suffix}`,
       claimGenerator: summary.active.claim_generator ?? undefined,
+      credentialKey: summary.credentialKey ?? undefined,
     };
   }
 
@@ -76,6 +80,7 @@ export function credentialFromReaderSummary(
     verificationMethod,
     note: `An embedded C2PA manifest was parsed from the exact local JPEG bytes. Validation state: ${summary.validationState ?? "not reported"}.${suffix}`,
     claimGenerator: summary.active.claim_generator ?? undefined,
+    credentialKey: summary.credentialKey ?? undefined,
   };
 }
 
@@ -100,9 +105,11 @@ async function inspectCredentialBytes(
   try {
     const reader = await Reader.fromAsset({ buffer: bytes, mimeType: "image/jpeg" });
     const manifestStore = reader?.json();
+    const credentialKey = typeof manifestStore?.active_manifest === "string" ? manifestStore.active_manifest : undefined;
     return credentialFromReaderSummary(sourceSha256, {
       embedded: Boolean(reader?.isEmbedded()),
       active: reader?.getActive(),
+      credentialKey,
       validationState: manifestStore?.validation_state,
       validationStatus: manifestStore?.validation_status,
     });

@@ -340,13 +340,13 @@ fn validate_entries(
                 format!("Unknown {clause_name} directive `{key}`."),
             ));
         };
-        let Some(value) = value_identifier(&entry.value) else {
+        let Some(value) = value_symbol(&entry.value) else {
             return Err(CompilerError::at(
                 entry.span.line,
                 format!("`{key}` in `{clause_name}` must use a supported directive."),
             ));
         };
-        if !allowed_values.contains(&value) {
+        if !allowed_values.contains(&value.as_str()) {
             return Err(CompilerError::at(
                 entry.span.line,
                 format!("Unsupported {clause_name} directive `{key}: {value}`."),
@@ -410,11 +410,13 @@ fn validate_split(recipe: &crate::ast::Recipe) -> CompileResult<()> {
     }
     validate_clause_keys(clause, &["method", "colours", "order"], "palette")?;
     let values = entry_map(clause);
-    if value_identifier(
+    if value_symbol(
         values
             .get("method")
             .ok_or_else(|| CompilerError::at(clause.span.line, "Missing palette method."))?,
-    ) != Some("median_cut")
+    )
+    .as_deref()
+        != Some("median_cut")
     {
         return Err(CompilerError::at(
             clause.span.line,
@@ -431,11 +433,13 @@ fn validate_split(recipe: &crate::ast::Recipe) -> CompileResult<()> {
             "Palette `colours` must be an integer between 3 and 32.",
         ));
     }
-    if value_identifier(
+    if value_symbol(
         values
             .get("order")
             .ok_or_else(|| CompilerError::at(clause.span.line, "Missing palette order."))?,
-    ) != Some("frequency")
+    )
+    .as_deref()
+        != Some("frequency")
     {
         return Err(CompilerError::at(
             clause.span.line,
@@ -510,8 +514,8 @@ fn validate_bind(recipe: &crate::ast::Recipe) -> CompileResult<()> {
     ];
     for entry in &clause.entries {
         let key = entry.name.as_deref().unwrap_or_default();
-        let value = value_identifier(&entry.value).unwrap_or_default();
-        if !allowed.contains(&(key, value)) {
+        let value = value_symbol(&entry.value).unwrap_or_default();
+        if !allowed.contains(&(key, value.as_str())) {
             return Err(CompilerError::at(
                 entry.span.line,
                 format!("Unsupported binding directive `{key}: {value}`."),
@@ -562,7 +566,7 @@ fn validate_reverse_recipe(recipe: &crate::ast::Recipe) -> CompileResult<()> {
                 format!("Missing reverse directive `{key}`."),
             )
         })?;
-        if value_identifier(value) != Some(*expected) {
+        if value_symbol(value).as_deref() != Some(*expected) {
             return Err(CompilerError::at(
                 clause.span.line,
                 format!(
@@ -613,8 +617,8 @@ fn validate_publish(recipe: &crate::ast::Recipe) -> CompileResult<()> {
     ];
     for entry in &clause.entries {
         let key = entry.name.as_deref().unwrap_or_default();
-        let value = value_identifier(&entry.value).unwrap_or_default();
-        if !allowed.contains(&(key, value)) {
+        let value = value_symbol(&entry.value).unwrap_or_default();
+        if !allowed.contains(&(key, value.as_str())) {
             return Err(CompilerError::at(
                 entry.span.line,
                 format!("Unsupported publish directive `{key}: {value}`."),
@@ -704,6 +708,13 @@ fn entry_map(clause: &crate::ast::Clause) -> HashMap<&str, &Value> {
 fn value_identifier(value: &Value) -> Option<&str> {
     match value {
         Value::Identifier(value) => Some(value),
+        _ => None,
+    }
+}
+
+fn value_symbol(value: &Value) -> Option<String> {
+    match value {
+        Value::Identifier(value) | Value::String(value) => Some(value.replace('-', "_")),
         _ => None,
     }
 }

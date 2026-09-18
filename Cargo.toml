@@ -2,7 +2,7 @@
 name = "robby-compiler"
 version = "0.1.0"
 edition = "2021"
-description = "A portable compiler for Robby visual composition scripts"
+description = "The portable troid compiler engine inside the robby observation deck"
 license = "MIT"
 
 [lib]
@@ -11,6 +11,10 @@ crate-type = ["rlib", "cdylib"]
 
 [[bin]]
 name = "robby"
+path = "src/main.rs"
+
+[[bin]]
+name = "troid"
 path = "src/main.rs"
 
 [features]

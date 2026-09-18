@@ -6,15 +6,18 @@
  */
 
 import SourceEditor from "@/components/SourceEditor";
+import IngredientAnalysisPanel from "@/components/IngredientAnalysisPanel";
+import SwatchMatrix from "@/components/SwatchMatrix";
 import TeppanyakiCounter from "@/components/TeppanyakiCounter";
 import { ProvenanceModule, type RuntimeRecord, type TraceMode } from "@/components/Build06Panels";
 import { loadCompileHistory, persistCompileSnapshot, type CompileSnapshot } from "@/lib/compileHistory";
-import { compileActions, compileActionOrder, isPaletteReprocessCurrent, shouldAcceptPaletteEdit, shouldStartCompileRequest } from "@/lib/compileActions";
+import { compileActions, shouldAcceptPaletteEdit, shouldStartCompileRequest } from "@/lib/compileActions";
 import { browserCompileController } from "@/lib/compileBrowser";
-import type { CompileRun } from "@/lib/compileEvents";
+import type { CompileRun, SessionOrio } from "@/lib/compileEvents";
 import { verifiedCompilerStatus } from "@/lib/compilerStatus";
 import { paletteKFromSource } from "@/lib/paletteSettings";
 import { authoredRecipeForCompile, editPaletteInRecipe, isCompiledSourceCurrent, reverseModeFromSource } from "@/lib/recipeAuthority";
+import { swatchSeed, swatchSeedToken } from "@/lib/swatchSeed";
 
 import {
   DropdownMenu,
@@ -28,7 +31,7 @@ import { type CredentialSignature, type TraceStep, type GalleryItem } from "@/li
 import { useGallery } from "@/lib/useGallery";
 import { createRecipeDraftStore } from "@/lib/recipeDrafts";
 import { footerSocialLinks } from "@/lib/footerLinks";
-import { rustToolchainVersion, type RobbyIr } from "@/lib/robbyCompiler";
+import { analyzeIngredientsWithRust, palettePreviewWithRust, rustToolchainVersion, type IngredientAnalysis, type RobbyIr } from "@/lib/robbyCompiler";
 import { gallerySlideDirection, isImageOnlyExitKey, swipeGalleryOffset, themeControlLabel, type GallerySlideDirection } from "@/lib/visualModes";
 import { artworkModalKeyAction, focusableArtworkSelector } from "@/lib/artworkModal";
 import {
@@ -45,6 +48,8 @@ import {
   Lightbulb,
   Maximize2,
   Minimize2,
+  Presentation,
+  X,
 } from "lucide-react";
 import { Link } from "wouter";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
@@ -77,6 +82,20 @@ function traceFromIr(ir: RobbyIr): TraceStep[] {
   return trace;
 }
 
+function ReverseArtwork({ result, alt, active }: { result?: SessionOrio; alt: string; active: boolean }) {
+  if (!active || !result) return null;
+  const body = result.colourSwatches.length >= 3
+    ? <SwatchMatrix
+      swatches={result.colourSwatches}
+      seed={swatchSeed(result.derivedSeed, result.c2paEvidence.presence)}
+      active={active}
+      resetKey={result.compileRunId}
+      alt={alt}
+    />
+    : <img src={result.reverseObjectUrl} alt={alt} className="object-image" />;
+  return <div className="reverse-face-frame">{body}</div>;
+}
+
 type ProjectionState = "gallery" | "draft" | "compiling" | "error" | "live";
 type SlideTransition = { outgoingId: string; incomingId: string; incomingIndex: number; direction: GallerySlideDirection };
 
@@ -86,7 +105,7 @@ export default function Home() {
   const [face, setFace] = useState<"obverse" | "inverse">("obverse");
   const [isFlipping, setIsFlipping] = useState(false);
   const [compilerState, setCompilerState] = useState<"checking" | "verified" | "error">("checking");
-  const [compilerLabel, setCompilerLabel] = useState("RUST CORE · LOADING");
+  const [compilerLabel, setCompilerLabel] = useState("TROID ENGINE · LOADING");
   const [compiledEdit, setCompiledEdit] = useState<{ specimenId: string; ir: RobbyIr; source: string } | null>(null);
   const [projectionState, setProjectionState] = useState<ProjectionState>("gallery");
   const [traceMode, setTraceMode] = useState<TraceMode>("evidence");
@@ -100,7 +119,21 @@ export default function Home() {
   const [credentialOverride, setCredentialOverride] = useState<CredentialSignature | null>(null);
   const [isRenderingReverse, setIsRenderingReverse] = useState(false);
   const [paletteK, setPaletteK] = useState(8);
+  // Live palette preview: dragging the k slider asks the Rust/WASM compiler
+  // for the median-cut swatches of the edited recipe, so the counter shows
+  // real colours — not placeholders — before Compile Orio runs. Keyed by
+  // specimen + k so a stale result can never paint the wrong grid.
+  const [livePalette, setLivePalette] = useState<{ specimenId: string; k: number; swatches: string[] } | null>(null);
+  const palettePreviewSeq = useRef(0);
+  const sourceBytesCache = useRef<Record<string, Promise<Uint8Array>>>({});
   const [compileRun, setCompileRun] = useState<CompileRun | null>(null);
+  const [ingredientStatus, setIngredientStatus] = useState<"idle" | "running" | "ready" | "error">("idle");
+  const [ingredientAnalysis, setIngredientAnalysis] = useState<{ specimenId: string; paletteK: number; value: IngredientAnalysis } | null>(null);
+  const [ingredientError, setIngredientError] = useState<string | null>(null);
+  const ingredientCache = useRef<Record<string, IngredientAnalysis>>({});
+  const faceBySpecimen = useRef<Record<string, "obverse" | "inverse">>({});
+  const invalidatedSpecimens = useRef(new Set<string>());
+  const runBySpecimen = useRef<Record<string, CompileRun>>({});
   // The draft store is a ref (see `selectedDraft` below) so reads during render
   // never lag a commit. A ref mutation does not re-render on its own, so every
   // write to the store must bump this revision to commit the new authored text
@@ -128,18 +161,11 @@ export default function Home() {
   const compileHistory = useRef<Record<string, CompileSnapshot[]>>({});
   const selectedIdRef = useRef("");
   const selectedRecipeRef = useRef({ specimenId: "", source: "" });
-  const paletteReprocessTimer = useRef<number | null>(null);
+  const ingredientRequestGeneration = useRef(0);
+  const ingredientAuthorityRef = useRef({ specimenId: "", paletteK: 0 });
   const compileGeneration = useRef(0);
-  const mountedRef = useRef(true);
   const discardReverseAfterFlip = useRef(false);
   const { theme, toggleTheme } = useTheme();
-
-  const clearPaletteReprocessTimer = () => {
-    if (paletteReprocessTimer.current !== null) {
-      window.clearTimeout(paletteReprocessTimer.current);
-      paletteReprocessTimer.current = null;
-    }
-  };
 
   // Clamp selectedIndex when gallery changes (e.g. images added/removed)
   useEffect(() => {
@@ -162,7 +188,6 @@ export default function Home() {
   const activeFace = face;
   const liveIr = projectionState === "live" && compiledEdit?.specimenId === selected.id ? compiledEdit.ir : null;
   const displayedObverse = selected.obverse;
-  const displayedInverse = compileRun?.galleryItemId === selected.id ? compileRun.result?.reverseObjectUrl : undefined;
   // The draft store is the authority for "what source is this specimen
   // showing". Reading the ref directly by the selected id (rather than
   // mirroring it into state, which would lag a render behind a selection
@@ -175,16 +200,59 @@ export default function Home() {
   // authority for BOTH editor display and Compile Orio input. A previously
   // compiled projection may describe that draft, but must never replace it.
   const activeRecipe = selectedDraft;
-  const recipeChanged = Boolean(compileRun?.result && compileRun.recipeSource !== activeRecipe);
+  const recipeChanged = Boolean(
+    invalidatedSpecimens.current.has(selected.id)
+      || (compileRun?.result && compileRun.recipeSource !== activeRecipe),
+  );
+  // A completed run is a live projection only while its authored recipe still
+  // matches the editor. This prevents an old reverse, seed, or C2PA badge from
+  // surviving a palette-k edit while the revised recipe is awaiting compile.
+  const activeCompileRun = compileRun?.galleryItemId === selected.id && !recipeChanged ? compileRun : null;
+  const displayedReverseResult = activeCompileRun?.result;
+  const displayedSwatchSeedToken = displayedReverseResult
+    ? swatchSeedToken(displayedReverseResult.derivedSeed, displayedReverseResult.c2paEvidence.presence)
+    : undefined;
+  // Live palette preview: when the recipe's k no longer matches the palette
+  // the counter would display (compiled swatches for the active recipe, else
+  // the server k=8 preview), ask the Rust/WASM compiler for the real
+  // median-cut swatches of the edited recipe — debounced, and keyed by
+  // specimen + k so a stale result can never paint the wrong grid.
+  const displayedPaletteCount = recipeChanged
+    ? 0
+    : (compileRun?.galleryItemId === selected.id ? compileRun.result?.colourSwatches?.length ?? 0 : selected.palette.length);
+  const needsPalettePreview = displayedPaletteCount !== paletteK;
+  useEffect(() => {
+    if (!needsPalettePreview || !selected.id) {
+      setLivePalette(null);
+      return;
+    }
+    const specimenId = selected.id;
+    const sourceUrl = selected.obverse;
+    const seq = ++palettePreviewSeq.current;
+    const timer = window.setTimeout(() => {
+      const bytesPromise = sourceBytesCache.current[specimenId] ??= fetch(sourceUrl, { cache: "no-store" })
+        .then(response => {
+          if (!response.ok) throw new Error(`Could not read source bytes for ${sourceUrl}.`);
+          return response.arrayBuffer().then(buffer => new Uint8Array(buffer));
+        });
+      void bytesPromise
+        .then(bytes => palettePreviewWithRust(bytes, paletteK))
+        .then(swatches => {
+          if (palettePreviewSeq.current === seq) setLivePalette({ specimenId, k: paletteK, swatches });
+        })
+        .catch(() => {
+          // Preview failure leaves the empty slots in place — the counter
+          // never shows colours for a palette it could not derive.
+        });
+    }, 220);
+    return () => window.clearTimeout(timer);
+  }, [needsPalettePreview, paletteK, selected.id, selected.obverse]);
   const actions = compileActions({
     run: compileRun?.galleryItemId === selected.id ? compileRun : null,
     recipeChanged,
     face,
     isRendering: isRenderingReverse,
-  });
-  const [firstStageAction] = compileActionOrder({
-    completed: compileRun?.galleryItemId === selected.id && compileRun.status === "completed" && Boolean(compileRun.result),
-    recipeChanged,
+    forceFresh: invalidatedSpecimens.current.has(selected.id),
   });
   const projectionUnavailable = projectionState === "draft" || projectionState === "compiling" || projectionState === "error";
   const trace = projectionUnavailable ? [] : liveIr ? traceFromIr(liveIr) : selected.trace;
@@ -205,13 +273,29 @@ export default function Home() {
     selectedRecipeRef.current = { specimenId: selected.id, source: activeRecipe };
   }, [selected.id, activeRecipe]);
 
+  useLayoutEffect(() => {
+    ingredientRequestGeneration.current += 1;
+    ingredientAuthorityRef.current = { specimenId: selected.id, paletteK };
+  }, [selected.id, paletteK]);
+
   useEffect(() => {
     const draft = draftStore.current.get(selected.id, selected.script);
     setPaletteKFromDraft(draft, 8);
     bumpDraftRevision();
-    setCompileRun(current => current?.galleryItemId === selected.id ? current : null);
+    const savedRun = runBySpecimen.current[selected.id];
+    setCompileRun(savedRun ?? null);
+    setFace(savedRun?.result && faceBySpecimen.current[selected.id] === "inverse" ? "inverse" : "obverse");
     setCredentialOverride(null);
+    setIngredientStatus("idle");
+    setIngredientAnalysis(null);
+    setIngredientError(null);
   }, [selected.id, selected.script, setPaletteKFromDraft, bumpDraftRevision]);
+
+  useEffect(() => {
+    setIngredientStatus("idle");
+    setIngredientAnalysis(null);
+    setIngredientError(null);
+  }, [paletteK]);
 
   const hashValue = async (value: string) => {
     const bytes = new TextEncoder().encode(value);
@@ -221,12 +305,12 @@ export default function Home() {
 
   const discardSessionReverse = () => {
     browserCompileController.cancelActive();
-    setCompileRun(null);
     setIsRenderingReverse(false);
   };
 
   useEffect(() => browserCompileController.subscribe(run => {
     if (run.galleryItemId !== selectedIdRef.current) return;
+    if (run.status === "completed" && run.result) runBySpecimen.current[run.galleryItemId] = run;
     setCompileRun(run);
     if (run.status === "running") setIsRenderingReverse(true);
     if (run.status !== "running") setIsRenderingReverse(false);
@@ -235,10 +319,7 @@ export default function Home() {
   // Plan 9B: on unmount, cancel any running compile and revoke every session
   // Blob URL so nothing leaks across navigation.
   useEffect(() => {
-    mountedRef.current = true;
     return () => {
-      mountedRef.current = false;
-      clearPaletteReprocessTimer();
       browserCompileController.dispose();
     };
   }, []);
@@ -263,7 +344,6 @@ export default function Home() {
   }, [gallery.length > 0]);
 
   const commitSelection = (nextIndex: number) => {
-    clearPaletteReprocessTimer();
     discardSessionReverse();
     // Reject outgoing notifications immediately. The committed render's
     // layout effect installs the real incoming id/source; avoiding an indexed
@@ -271,7 +351,12 @@ export default function Home() {
     selectedIdRef.current = "";
     selectedRecipeRef.current = { specimenId: "", source: "" };
     setSelectedIndex(nextIndex);
-    setFace("obverse");
+    const nextItem = gallery.at(nextIndex);
+    const nextRun = nextItem ? runBySpecimen.current[nextItem.id] : undefined;
+    setCompileRun(nextRun ?? null);
+    const nextFace = nextRun?.result && face === "inverse" ? "inverse" : "obverse";
+    if (nextItem) faceBySpecimen.current[nextItem.id] = nextFace;
+    setFace(nextFace);
     setIsFlipping(false);
     setCompiledEdit(null);
     setProjectionState("gallery");
@@ -297,11 +382,16 @@ export default function Home() {
   };
 
   const compileOrio = async (force = false) => {
-    clearPaletteReprocessTimer();
     if (!shouldStartCompileRequest({ isFlipping, isRendering: isRenderingReverse, supersedeInflight: true })) return;
     const compiledSpecimenId = selected.id;
     const source = authoredRecipeForCompile(activeRecipe);
     const generation = ++compileGeneration.current;
+    delete runBySpecimen.current[compiledSpecimenId];
+    invalidatedSpecimens.current.delete(compiledSpecimenId);
+    faceBySpecimen.current[compiledSpecimenId] = "obverse";
+    setFace("obverse");
+    setCompileRun(null);
+    clearCurrentRuntime();
     setFailureMessage(null);
     setIsRenderingReverse(true);
     setProjectionState("compiling");
@@ -322,11 +412,15 @@ export default function Home() {
     }
     const orio = run.result;
     setProjectionState("live");
+    runBySpecimen.current[compiledSpecimenId] = run;
+    faceBySpecimen.current[compiledSpecimenId] = "inverse";
+    setFace("inverse");
     setRuntimeRecord(current => ({
       compiledAt: orio.createdAt,
       irHash: orio.canonicalRecipeHash,
       toolchain: current?.toolchain ?? "RUST/WASM",
       c2paEvidence: orio.c2paEvidence,
+      disclosure: orio.disclosure,
       transientReverse: {
         generatedAt: orio.createdAt,
         outputSha256: orio.reverseOutputSha256,
@@ -339,6 +433,49 @@ export default function Home() {
     }));
   };
 
+  const clearCurrentRuntime = () => {
+    setCredentialOverride(null);
+    setRuntimeRecord(current => current ? { compiledAt: "", irHash: "", toolchain: current.toolchain } : null);
+  };
+
+  const analyzeIngredients = useCallback(async () => {
+    if (ingredientStatus === "running" || !selected.id) return;
+    const specimenId = selected.id;
+    const analysisK = paletteK;
+    const requestGeneration = ++ingredientRequestGeneration.current;
+    const isCurrentRequest = () => ingredientRequestGeneration.current === requestGeneration
+      && ingredientAuthorityRef.current.specimenId === specimenId
+      && ingredientAuthorityRef.current.paletteK === analysisK
+      && selectedIdRef.current === specimenId;
+    const cacheKey = `${specimenId}:${analysisK}`;
+    const cached = ingredientCache.current[cacheKey];
+    if (cached) {
+      if (!isCurrentRequest()) return;
+      setIngredientAnalysis({ specimenId, paletteK: analysisK, value: cached });
+      setIngredientStatus("ready");
+      setIngredientError(null);
+      return;
+    }
+    setIngredientStatus("running");
+    setIngredientError(null);
+    try {
+      const bytes = await (sourceBytesCache.current[specimenId] ??= fetch(selected.obverse, { cache: "no-store" })
+        .then(response => {
+          if (!response.ok) throw new Error(`Could not read source bytes for ${selected.source}.`);
+          return response.arrayBuffer().then(buffer => new Uint8Array(buffer));
+        }));
+      const value = await analyzeIngredientsWithRust(bytes, analysisK);
+      if (!isCurrentRequest()) return;
+      ingredientCache.current[cacheKey] = value;
+      setIngredientAnalysis({ specimenId, paletteK: analysisK, value });
+      setIngredientStatus("ready");
+    } catch (error) {
+      if (!isCurrentRequest()) return;
+      setIngredientStatus("error");
+      setIngredientError(error instanceof Error ? error.message : String(error));
+    }
+  }, [ingredientStatus, paletteK, selected.id, selected.obverse, selected.source]);
+
   // Memoized so the keydown effect below re-binds whenever the compilation
   // state this handler captures changes. Without it, the F shortcut keeps
   // calling a closure created before the run completed and silently no-ops.
@@ -348,11 +485,13 @@ export default function Home() {
       discardReverseAfterFlip.current = false;
       setIsFlipping(true);
       setFace("obverse");
+      faceBySpecimen.current[selected.id] = "obverse";
       return;
     }
     if (!compileRun?.result) return;
     setIsFlipping(true);
     setFace("inverse");
+    faceBySpecimen.current[selected.id] = "inverse";
   }, [isFlipping, actions.turnEnabled, face, compileRun?.result]);
 
   const settleFlip = (event: React.TransitionEvent<HTMLDivElement>) => {
@@ -438,15 +577,19 @@ export default function Home() {
       if (event.key === "ArrowLeft") selectImage(selectedIndex - 1);
       if (event.key === "ArrowRight") selectImage(selectedIndex + 1);
       if (event.key.toLowerCase() === "f") turnOver();
+      if (event.key.toLowerCase() === "c" && actions.compileEnabled) {
+        event.preventDefault();
+        void compileOrio(actions.compileForce);
+      }
     };
     document.addEventListener("keydown", onKeyDown, true);
     return () => document.removeEventListener("keydown", onKeyDown, true);
-  }, [selectedIndex, isFlipping, slideTransition, imageOnly, artworkView, turnOver]);
+  }, [selectedIndex, isFlipping, slideTransition, imageOnly, artworkView, turnOver, actions.compileEnabled, actions.compileForce]);
 
   useEffect(() => {
     let active = true;
     setCompilerState("checking");
-    setCompilerLabel("RUST CORE · READY");
+    setCompilerLabel("TROID ENGINE · READY");
     rustToolchainVersion()
       .then(toolchain => {
         if (!active) return;
@@ -457,7 +600,7 @@ export default function Home() {
       .catch(() => {
         if (!active) return;
         setCompilerState("error");
-        setCompilerLabel("RUST CORE · CHECK FAILED");
+        setCompilerLabel("TROID ENGINE · CHECK FAILED");
       });
     return () => {
       active = false;
@@ -490,47 +633,55 @@ export default function Home() {
   };
 
   const clearLiveProjection = () => {
-    clearPaletteReprocessTimer();
     setCompiledEdit(null);
+    setCompileRun(null);
+    clearCurrentRuntime();
     setProjectionState("compiling");
     setFailureMessage(null);
   };
 
   const markProjectionUnavailable = (message: string) => {
     setCompiledEdit(null);
+    setCompileRun(null);
+    clearCurrentRuntime();
     setProjectionState("error");
     setFailureMessage(message);
   };
 
   const markDraftProjectionUnavailable = (draft: string) => {
-    clearPaletteReprocessTimer();
     draftStore.current.set(selected.id, draft);
     selectedRecipeRef.current = { specimenId: selected.id, source: draft };
+    invalidatedSpecimens.current.add(selected.id);
     // No fallback: keep the last valid structured value while the source is
     // mid-edit and temporarily unparseable.
     setPaletteKFromDraft(draft);
     bumpDraftRevision();
     setCompiledEdit(null);
+    setCompileRun(null);
+    clearCurrentRuntime();
     setProjectionState("draft");
     setFailureMessage(null);
   };
 
   const resetLiveProjection = () => {
-    clearPaletteReprocessTimer();
     draftStore.current.clear(selected.id);
     selectedRecipeRef.current = { specimenId: selected.id, source: selected.script };
     setPaletteKFromDraft(selected.script, 8);
     bumpDraftRevision();
+    browserCompileController.cancelActive();
+    delete runBySpecimen.current[selected.id];
+    invalidatedSpecimens.current.add(selected.id);
+    faceBySpecimen.current[selected.id] = "obverse";
+    setFace("obverse");
     setCompiledEdit(null);
+    setCompileRun(null);
+    clearCurrentRuntime();
     setProjectionState("gallery");
     setFailureMessage(null);
   };
 
-  // The counter slider rewrites the authored recipe and recompiles after a
-  // short pause; direct recipe edits remain explicit via Compile Orio.
-  // The edit is admitted on value alone: refusing it while a reverse renders
-  // would snap this controlled slider back and leave the authored recipe on the
-  // old k. The delayed compile supersedes any inflight run.
+  // The counter slider rewrites the authored recipe and invalidates the current
+  // Orio. Compilation remains an explicit action via Compile Orio.
   const editPaletteK = (value: number) => {
     if (!shouldAcceptPaletteEdit(value)) return;
     try {
@@ -539,18 +690,17 @@ export default function Home() {
       selectedRecipeRef.current = { specimenId: selected.id, source: nextRecipe };
       bumpDraftRevision();
       setPaletteK(value);
+      setLivePalette(null);
+      browserCompileController.cancelActive();
+      delete runBySpecimen.current[selected.id];
+      invalidatedSpecimens.current.add(selected.id);
+      faceBySpecimen.current[selected.id] = "obverse";
+      setFace("obverse");
+      setCompileRun(null);
       setCompiledEdit(null);
+      clearCurrentRuntime();
       setProjectionState("draft");
       setFailureMessage(null);
-      clearPaletteReprocessTimer();
-      const scheduledAuthority = { specimenId: selected.id, source: nextRecipe };
-      paletteReprocessTimer.current = window.setTimeout(() => {
-        paletteReprocessTimer.current = null;
-        if (!mountedRef.current) return;
-        const currentAuthority = selectedRecipeRef.current;
-        if (!isPaletteReprocessCurrent(scheduledAuthority, currentAuthority)) return;
-        void compileOrio(true);
-      }, 320);
     } catch (error) {
       setFailureMessage(error instanceof Error ? error.message : String(error));
     }
@@ -626,8 +776,9 @@ export default function Home() {
 
               <DropdownMenuItem asChild><Link href="/brief/hackathon"><FileText size={17} /> Hackathon brief</Link></DropdownMenuItem>
               <DropdownMenuItem asChild><Link href="/brief/image-object"><Lightbulb size={17} /> Image-object concept</Link></DropdownMenuItem>
+              <DropdownMenuItem asChild><a href="/deck/"><Presentation size={17} /> Presentation deck</a></DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem asChild><a href="https://github.com/thecont1/robby/archive/refs/heads/main.zip" target="_blank" rel="noreferrer"><Download size={17} /> Download Rust source</a></DropdownMenuItem>
+              <DropdownMenuItem asChild><a href="https://github.com/thecont1/robby/archive/refs/heads/dev/harleen.zip" target="_blank" rel="noreferrer"><Download size={17} /> Download troid / Rust source</a></DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
@@ -640,7 +791,6 @@ export default function Home() {
         <div className="intro-note">
           <span className="note-rule" />
           <p>What if a digital image could be a two-sided image-object, like a postcard or a coin?</p>
-          <div className="intro-tools"><span className="mono text-[10px] tracking-[0.13em]">← → TO CYCLE · F TO FLIP</span></div>
         </div>
       </section>
 
@@ -653,6 +803,8 @@ export default function Home() {
                 const outgoing = gallery.find(item => item.id === slideTransition.outgoingId);
                 const incoming = gallery.find(item => item.id === slideTransition.incomingId);
                 if (!outgoing || !incoming) return null;
+                const incomingRun = runBySpecimen.current[incoming.id];
+                const incomingFace = incomingRun?.result && face === "inverse" ? "inverse" : "obverse";
                 return (
                 <div className={`slide-track slide-track-${slideTransition.direction}`} onAnimationEnd={settleStageSlide}>
                   {slideTransition.direction === "forward" ? (
@@ -663,28 +815,30 @@ export default function Home() {
                             <img src={displayedObverse} alt="" className="object-image" />
                           </div>
                           <div className="object-face object-face-inverse" aria-hidden={face !== "inverse"}>
-                            {displayedInverse && <img src={displayedInverse} alt="" className="object-image" />}
+                            <ReverseArtwork result={displayedReverseResult} alt="" active={face === "inverse"} />
                           </div>
                         </div>
                       </div>
-                      <div className={`two-sided-object ${incoming.ratio} slide-track-item`} aria-busy>
-                        <div className="object-turner" data-face="obverse">
-                          <div className="object-face object-face-obverse" aria-hidden={false}>
+                      <div className={`two-sided-object ${incoming.ratio} slide-track-item`} aria-busy={!incomingRun?.result}>
+                        <div className="object-turner" data-face={incomingFace}>
+                          <div className="object-face object-face-obverse" aria-hidden={incomingFace !== "obverse"}>
                             <img src={incoming.obverse} alt={`${incoming.title} obverse`} className="object-image" />
                           </div>
-                          <div className="object-face object-face-inverse" aria-hidden={true}>
+                          <div className="object-face object-face-inverse" aria-hidden={incomingFace !== "inverse"}>
+                            <ReverseArtwork result={incomingRun?.result} alt={`${incoming.title} inverse`} active={incomingFace === "inverse"} />
                           </div>
                         </div>
                       </div>
                     </>
                   ) : (
                     <>
-                      <div className={`two-sided-object ${incoming.ratio} slide-track-item`} aria-busy>
-                        <div className="object-turner" data-face="obverse">
-                          <div className="object-face object-face-obverse" aria-hidden={false}>
+                      <div className={`two-sided-object ${incoming.ratio} slide-track-item`} aria-busy={!incomingRun?.result}>
+                        <div className="object-turner" data-face={incomingFace}>
+                          <div className="object-face object-face-obverse" aria-hidden={incomingFace !== "obverse"}>
                             <img src={incoming.obverse} alt={`${incoming.title} obverse`} className="object-image" />
                           </div>
-                          <div className="object-face object-face-inverse" aria-hidden={true}>
+                          <div className="object-face object-face-inverse" aria-hidden={incomingFace !== "inverse"}>
+                            <ReverseArtwork result={incomingRun?.result} alt={`${incoming.title} inverse`} active={incomingFace === "inverse"} />
                           </div>
                         </div>
                       </div>
@@ -694,7 +848,7 @@ export default function Home() {
                             <img src={displayedObverse} alt="" className="object-image" />
                           </div>
                           <div className="object-face object-face-inverse" aria-hidden={face !== "inverse"}>
-                            {displayedInverse && <img src={displayedInverse} alt="" className="object-image" />}
+                            <ReverseArtwork result={displayedReverseResult} alt="" active={face === "inverse"} />
                           </div>
                         </div>
                       </div>
@@ -709,7 +863,7 @@ export default function Home() {
                       <img src={displayedObverse} alt={`${selected.title} obverse`} className="object-image" />
                     </div>
                     <div className="object-face object-face-inverse" aria-hidden={face !== "inverse"}>
-                      {displayedInverse && <img src={displayedInverse} alt={`${selected.title} inverse: ${selected.reverseDescription}`} className="object-image" />}
+                      <ReverseArtwork result={displayedReverseResult} alt={`${selected.title} inverse: ${selected.reverseDescription}`} active={face === "inverse"} />
                     </div>
                   </div>
                 </div>
@@ -725,25 +879,21 @@ export default function Home() {
                   <button ref={artworkOpenerRef} type="button" className="artwork-view-control" onClick={() => setArtworkView(true)} aria-label={`Open ${selected.title} in full-bleed artwork view`} title="Open full-bleed artwork view"><Maximize2 size={15} /></button>
                 </div>
               </div>
-              <div className="caption-turn" data-primary-action={firstStageAction}>
-                {firstStageAction === "turn" && (
-                  <button type="button" className="flip-control" onClick={() => void turnOver()} disabled={!actions.turnEnabled || isFlipping} aria-label={face === "inverse" ? `Return ${selected.title} to its obverse` : `Turn ${selected.title} to its inverse`}>
-                    {face === "inverse" ? <RotateCcw size={18} /> : <FlipHorizontal2 size={18} />}<span>{isFlipping ? "Turning object" : actions.turnLabel}</span><small>F</small>
+              <div className="caption-turn" data-primary-action={actions.turnEnabled ? "turn" : "compile"}>
+                <div className="compile-orio-slot">
+                  <button
+                    type="button"
+                    className={`compile-orio-control${actions.showCancel ? " is-cancel" : ""}`}
+                    onClick={() => actions.showCancel ? browserCompileController.cancelActive() : void compileOrio(actions.compileForce)}
+                    disabled={!actions.showCancel && (!actions.compileEnabled || isFlipping)}
+                    aria-label={`${actions.showCancel ? "Cancel compile" : actions.compileLabel} for ${selected.title}`}
+                  >
+                    {actions.showCancel ? <X size={16} /> : <CircleDotDashed size={16} />}<span>{actions.showCancel ? "Cancel" : actions.compileLabel}</span>
                   </button>
-                )}
-                <button type="button" className="compile-orio-control" onClick={() => void compileOrio(actions.compileForce)} disabled={!actions.compileEnabled || isFlipping} aria-label={`${actions.compileLabel} for ${selected.title}`}>
-                  <CircleDotDashed size={16} /><span>{actions.compileLabel}</span>
+                </div>
+                <button type="button" className="flip-control" onClick={() => void turnOver()} disabled={!actions.turnEnabled || isFlipping} aria-label={face === "inverse" ? `Return ${selected.title} to its obverse` : `Turn ${selected.title} to its inverse`}>
+                  {face === "inverse" ? <RotateCcw size={18} /> : <FlipHorizontal2 size={18} />}<span>{isFlipping ? "Turning object" : actions.turnLabel}</span><small>F</small>
                 </button>
-                {actions.showCancel && (
-                  <button type="button" className="compile-orio-control" onClick={() => browserCompileController.cancelActive()} aria-label={`Cancel compile for ${selected.title}`}>
-                    <span>Cancel</span>
-                  </button>
-                )}
-                {firstStageAction === "compile" && (
-                  <button type="button" className="flip-control" onClick={() => void turnOver()} disabled={!actions.turnEnabled || isFlipping} aria-label={face === "inverse" ? `Return ${selected.title} to its obverse` : `Turn ${selected.title} to its inverse`}>
-                    {face === "inverse" ? <RotateCcw size={18} /> : <FlipHorizontal2 size={18} />}<span>{isFlipping ? "Turning object" : actions.turnLabel}</span><small>F</small>
-                  </button>
-                )}
               </div>
               <div className="caption-navigation">
                 <div className="object-navigation"><button type="button" onClick={() => selectImage(selectedIndex - 1)} disabled={isFlipping} aria-label="Previous image"><ChevronLeft size={17} /> Previous</button><span className="navigation-current">{selected.serial}</span><button type="button" onClick={() => selectImage(selectedIndex + 1)} disabled={isFlipping} aria-label="Next image">Next <ChevronRight size={17} /></button></div>
@@ -787,11 +937,19 @@ export default function Home() {
         </div>
         <div className="counter-column" inert={imageOnly}>
           <TeppanyakiCounter
-            run={compileRun?.galleryItemId === selected.id ? compileRun : null}
+            key={selected.id}
+            run={activeCompileRun}
             recipeChanged={recipeChanged}
             paletteK={paletteK}
             onPaletteKChange={editPaletteK}
             previewPalette={selected.palette}
+            liveSwatches={livePalette?.specimenId === selected.id && livePalette.k === paletteK ? livePalette.swatches : []}
+            swatchSeedToken={displayedSwatchSeedToken}
+            swatchC2paPresent={displayedReverseResult?.c2paEvidence.presence === "present"}
+            ingredientStatus={ingredientStatus}
+            ingredientAnalysis={ingredientAnalysis?.specimenId === selected.id && ingredientAnalysis.paletteK === paletteK ? ingredientAnalysis.value : null}
+            ingredientError={ingredientError}
+            onAnalyzeIngredients={() => void analyzeIngredients()}
           />
         </div>
       </section>
@@ -817,7 +975,7 @@ export default function Home() {
           <div className="artwork-view-image-viewport">
             {face === "obverse"
               ? <img src={displayedObverse} alt={`${selected.title} obverse`} />
-              : displayedInverse && <img src={displayedInverse} alt={`${selected.title} inverse`} />}
+              : <ReverseArtwork result={displayedReverseResult} alt={`${selected.title} inverse`} active={face === "inverse"} />}
           </div>
           <div className="artwork-view-controls"><div className="artwork-view-meta"><span>{selected.title} / {face}</span><span>SWIPE TO BROWSE · ESC TO CLOSE</span></div><button type="button" onClick={closeArtworkView} aria-label="Close full-bleed artwork view" title="Close full-bleed artwork view"><Minimize2 size={19} /></button></div>
         </div>

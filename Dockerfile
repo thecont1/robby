@@ -7,6 +7,7 @@ RUN cargo build --release --locked
 FROM node:22-bookworm-slim AS web-builder
 WORKDIR /app
 COPY package.json pnpm-lock.yaml ./
+COPY patches ./patches
 RUN npm install --global corepack@latest \
     && corepack enable \
     && corepack pnpm install --frozen-lockfile
@@ -18,6 +19,7 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV ROBBY_BINARY=/usr/local/bin/robby
 COPY package.json pnpm-lock.yaml ./
+COPY patches ./patches
 RUN npm install --global corepack@latest \
     && corepack enable \
     && corepack pnpm install --prod --frozen-lockfile \

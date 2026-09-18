@@ -7,9 +7,12 @@
 import initRobbyCompiler, {
   binding_request_v1_json,
   build_binding_json,
+  analyze_ingredients_json,
+  compile_recipe_json,
   compile_source_json,
   compiler_version,
   inspect_image_json,
+  palette_preview_json,
   rust_toolchain,
 } from "../wasm/robby_compiler";
 
@@ -22,6 +25,19 @@ export type RobbyIr = {
   reverse: { mode: RobbyReverseMode };
   output: { obverse: string; reverse: string; manifest: string };
   meta: { script_sha256: string };
+};
+
+export type RobbyRecipeIr = {
+  version: "robby-ir-v2";
+  object: { name: string; input: string };
+  inspect: Record<string, string>;
+  context: Record<string, unknown>;
+  split_palette: { method: string; colours: number; order: string };
+  measure: Record<string, unknown>;
+  bind: Record<string, string>;
+  reverse: { mode: string; cell: number; arrange: string; seed: string; border: string };
+  publish: Record<string, string>;
+  recipe_sha256: string;
 };
 
 /** Public-safe intake manifest as produced by the shared Rust `inspect_image`. */
@@ -47,6 +63,47 @@ export type IntakeManifest = {
   };
 };
 
+export type IngredientAnalysis = {
+  schema_version: "robby-ingredients-v1";
+  source: {
+    byte_sha256: string;
+    pixel_sha256: string;
+    byte_size: number;
+    width: number;
+    height: number;
+    aspect_ratio: number;
+    orientation: number | null;
+    colour_profile: string | null;
+  };
+  evidence: {
+    exif: string;
+    iptc: string;
+    xmp: string;
+    gps: string;
+    c2pa: string;
+  };
+  palette: {
+    requested_k: number;
+    method: string;
+    ordering: string;
+    entries: Array<{ hex: string; rgb: [number, number, number]; pixels: number; share_percent: number; rank: number }>;
+    index_map_sha256: string;
+  };
+  structure: {
+    grid_size: number;
+    luminance_bands: number[];
+    spatial_cells: Array<{ dominant_palette_rank: number; palette_mix: number[]; mean_luminance: number; texture: number }>;
+    edge_field: number[];
+    texture_field: number[];
+  };
+  identity: { perceptual_hash: string };
+  terrain: {
+    representation: string;
+    grid_size: number;
+    heights: number[];
+  } | null;
+};
+
 let initialize: Promise<void> | null = null;
 
 async function ensureRustCompiler() {
@@ -70,10 +127,25 @@ export async function compileWithRust(source: string): Promise<RobbyIr> {
   return ir;
 }
 
+export async function compileRecipeWithRust(source: string): Promise<RobbyRecipeIr> {
+  await ensureRustCompiler();
+  const ir = JSON.parse(compile_recipe_json(source)) as RobbyRecipeIr;
+  if (ir.version !== "robby-ir-v2") {
+    throw new Error("Rust compiler returned an unexpected recipe IR version.");
+  }
+  return ir;
+}
+
 /** Inspect raw source bytes with the same Rust intake used natively (public-safe). */
 export async function inspectWithRust(originalName: string, bytes: Uint8Array): Promise<IntakeManifest> {
   await ensureRustCompiler();
   return JSON.parse(inspect_image_json(originalName, bytes)) as IntakeManifest;
+}
+
+/** Run bounded visual-ingredient analysis without rendering or persisting an image. */
+export async function analyzeIngredientsWithRust(bytes: Uint8Array, paletteK: number): Promise<IngredientAnalysis> {
+  await ensureRustCompiler();
+  return JSON.parse(analyze_ingredients_json(bytes, paletteK)) as IngredientAnalysis;
 }
 
 /** The authoritative Rust-produced binding record for a v1 gallery compile. */
@@ -125,6 +197,16 @@ export async function buildCanonicalBindingWithRust(
     rendererVersion,
   );
   return JSON.parse(build_binding_json(requestJson)) as RustBindingRecord;
+}
+
+/**
+ * Rust median-cut palette hexes for a source at a given k — the same list a
+ * compile reports as `colour_swatches`, with no PNG rendered. Powers the
+ * counter's live swatch preview when the k slider edits the recipe.
+ */
+export async function palettePreviewWithRust(bytes: Uint8Array, k: number): Promise<string[]> {
+  await ensureRustCompiler();
+  return JSON.parse(palette_preview_json(bytes, k)) as string[];
 }
 
 export async function rustCompilerVersion() {

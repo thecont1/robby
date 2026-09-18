@@ -7,7 +7,7 @@ import { resolve } from "node:path";
 import { registerLiveRenderRoutes } from "../liveRender";
 import { registerC2paRoutes } from "../c2pa";
 import { registerGalleryRoutes } from "../galleryWatcher";
-import { serveStatic, setupVite } from "./vite";
+import { serveStatic } from "./static";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -47,6 +47,7 @@ async function startServer() {
   const app = createApp();
   const server = createServer(app);
   if (process.env.NODE_ENV === "development") {
+    const { setupVite } = await import("./vite");
     await setupVite(app, server);
   }
 

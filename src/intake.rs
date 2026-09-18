@@ -130,7 +130,7 @@ pub fn inspect_image(original_name: &str, bytes: &[u8]) -> CompileResult<Ingredi
     let (xmp_state, xmp_value) =
         extract_marker_map(bytes, b"http://ns.adobe.com/xap/1.0/", b"<x:xmpmeta");
     let c2pa = normalize_c2pa(bytes);
-    let gps = absent_field("No GPS coordinates were found in the source bytes.");
+    let gps = gps_field(bytes, format);
     Ok(IngredientManifest {
         schema_version: "0.2".to_string(),
         obverse: Obverse {
@@ -272,6 +272,25 @@ fn empty_field<T>(state: ExtractionState, note: &str) -> EvidenceField<T> {
 fn absent_field<T>(note: &str) -> EvidenceField<T> {
     empty_field(ExtractionState::Absent, note)
 }
+
+fn gps_field(bytes: &[u8], format: ImageFormat) -> EvidenceField<BTreeMap<String, f64>> {
+    match gps_extraction_state(bytes, format) {
+        ExtractionState::Present => empty_field(
+            ExtractionState::Present,
+            "GPS metadata block detected; coordinates remain private by default.",
+        ),
+        ExtractionState::Corrupt => empty_field(
+            ExtractionState::Corrupt,
+            "GPS metadata pointer was present but unreadable; coordinates remain private.",
+        ),
+        ExtractionState::Unsupported => empty_field(
+            ExtractionState::Unsupported,
+            "GPS encoding is unsupported; coordinates remain private.",
+        ),
+        ExtractionState::Absent => absent_field("No GPS metadata block was detected."),
+    }
+}
+
 fn field_from_state(
     state: ExtractionState,
     value: Option<BTreeMap<String, String>>,
@@ -418,6 +437,158 @@ pub fn exif_orientation(bytes: &[u8], format: ImageFormat) -> Option<u16> {
     extract_exif(bytes, format).0
 }
 
+/// Convert an embedded EXIF GPS coordinate into a coarse deterministic seed.
+/// Raw coordinates never leave this module or enter a public manifest.
+pub(crate) fn generalized_gps_seed(bytes: &[u8], format: ImageFormat) -> Option<u64> {
+    let tiff = match format {
+        ImageFormat::Jpeg => jpeg_exif_payload(bytes)?,
+        ImageFormat::Png => png_exif_payload(bytes)?,
+        _ => return None,
+    };
+    let (latitude, longitude) = parse_gps_coordinates(tiff).ok().flatten()?;
+
+    Some(coarse_gps_seed(latitude, longitude))
+}
+
+fn coarse_gps_seed(latitude: f64, longitude: f64) -> u64 {
+    // Ten-degree cells are intentionally coarse: this internal token cannot
+    // be used to recover a photograph's fine-grained GPS position.
+    let lat_band = (latitude / 10.0).floor() as i16;
+    let lon_band = (longitude / 10.0).floor() as i16;
+    let mut seed = 0xcbf29ce484222325_u64;
+    for byte in lat_band
+        .to_le_bytes()
+        .into_iter()
+        .chain(lon_band.to_le_bytes())
+    {
+        seed ^= u64::from(byte);
+        seed = seed.wrapping_mul(0x100000001b3);
+    }
+    seed
+}
+fn parse_gps_coordinates(tiff: &[u8]) -> Result<Option<(f64, f64)>, ()> {
+    let (little, ifd) = tiff_header(tiff).ok_or(())?;
+    let Some((kind, count, value_at)) = tiff_entry(tiff, little, ifd, 0x8825) else {
+        return Ok(None);
+    };
+    if kind != 4 || count != 1 {
+        return Err(());
+    }
+    let gps_ifd = tiff_u32(tiff, little, value_at).ok_or(())? as usize;
+    let latitude_ref = tiff_ascii_tag(tiff, little, gps_ifd, 1).ok_or(())?;
+    let longitude_ref = tiff_ascii_tag(tiff, little, gps_ifd, 3).ok_or(())?;
+    let mut latitude = tiff_rational_triplet(tiff, little, gps_ifd, 2).ok_or(())?;
+    let mut longitude = tiff_rational_triplet(tiff, little, gps_ifd, 4).ok_or(())?;
+    if !matches!(latitude_ref.as_str(), "N" | "S") || !matches!(longitude_ref.as_str(), "E" | "W") {
+        return Err(());
+    }
+    if latitude_ref == "S" {
+        latitude = -latitude;
+    }
+    if longitude_ref == "W" {
+        longitude = -longitude;
+    }
+    if !latitude.is_finite()
+        || !longitude.is_finite()
+        || !(-90.0..=90.0).contains(&latitude)
+        || !(-180.0..=180.0).contains(&longitude)
+    {
+        return Err(());
+    }
+    Ok(Some((latitude, longitude)))
+}
+
+fn tiff_header(bytes: &[u8]) -> Option<(bool, usize)> {
+    let little = match bytes.get(0..2)? {
+        b"II" => true,
+        b"MM" => false,
+        _ => return None,
+    };
+    let u16_at = |at: usize| tiff_u16(bytes, little, at);
+    if u16_at(2)? != 42 {
+        return None;
+    }
+    Some((little, tiff_u32(bytes, little, 4)? as usize))
+}
+
+fn tiff_u16(bytes: &[u8], little: bool, at: usize) -> Option<u16> {
+    let part = bytes.get(at..at + 2)?;
+    Some(if little {
+        u16::from_le_bytes([part[0], part[1]])
+    } else {
+        u16::from_be_bytes([part[0], part[1]])
+    })
+}
+
+fn tiff_u32(bytes: &[u8], little: bool, at: usize) -> Option<u32> {
+    let part = bytes.get(at..at + 4)?;
+    Some(if little {
+        u32::from_le_bytes([part[0], part[1], part[2], part[3]])
+    } else {
+        u32::from_be_bytes([part[0], part[1], part[2], part[3]])
+    })
+}
+
+fn tiff_entry(bytes: &[u8], little: bool, ifd: usize, tag: u16) -> Option<(u16, u32, usize)> {
+    let count = usize::from(tiff_u16(bytes, little, ifd)?);
+    for index in 0..count {
+        let at = ifd.checked_add(2 + index * 12)?;
+        if tiff_u16(bytes, little, at)? == tag {
+            return Some((
+                tiff_u16(bytes, little, at + 2)?,
+                tiff_u32(bytes, little, at + 4)?,
+                at + 8,
+            ));
+        }
+    }
+    None
+}
+
+fn tiff_u32_tag(bytes: &[u8], little: bool, ifd: usize, tag: u16) -> Option<u32> {
+    let (kind, count, value_at) = tiff_entry(bytes, little, ifd, tag)?;
+    if kind != 4 || count != 1 {
+        return None;
+    }
+    tiff_u32(bytes, little, value_at)
+}
+
+fn tiff_ascii_tag(bytes: &[u8], little: bool, ifd: usize, tag: u16) -> Option<String> {
+    let (kind, count, value_at) = tiff_entry(bytes, little, ifd, tag)?;
+    if kind != 2 || count < 1 {
+        return None;
+    }
+    let offset = if count <= 4 {
+        value_at
+    } else {
+        tiff_u32(bytes, little, value_at)? as usize
+    };
+    let value = bytes.get(offset..offset + count as usize)?;
+    Some(
+        String::from_utf8_lossy(value)
+            .trim_matches('\0')
+            .to_string(),
+    )
+}
+
+fn tiff_rational_triplet(bytes: &[u8], little: bool, ifd: usize, tag: u16) -> Option<f64> {
+    let (kind, count, value_at) = tiff_entry(bytes, little, ifd, tag)?;
+    if kind != 5 || count != 3 {
+        return None;
+    }
+    let offset = tiff_u32(bytes, little, value_at)? as usize;
+    let mut result = 0.0;
+    for index in 0..3 {
+        let at = offset.checked_add(index * 8)?;
+        let numerator = f64::from(tiff_u32(bytes, little, at)?);
+        let denominator = f64::from(tiff_u32(bytes, little, at + 4)?);
+        if denominator == 0.0 {
+            return None;
+        }
+        result += numerator / denominator / 60_f64.powi(index as i32);
+    }
+    Some(result)
+}
+
 fn extract_exif(
     bytes: &[u8],
     format: ImageFormat,
@@ -450,6 +621,23 @@ fn extract_exif(
     let mut map = BTreeMap::new();
     map.insert("orientation".to_string(), orientation.to_string());
     (Some(orientation), ExtractionState::Present, Some(map))
+}
+
+/// Detect the EXIF GPSInfo pointer without reading or exposing coordinates.
+fn gps_extraction_state(bytes: &[u8], format: ImageFormat) -> ExtractionState {
+    let tiff = match format {
+        ImageFormat::Jpeg => jpeg_exif_payload(bytes),
+        ImageFormat::Png => png_exif_payload(bytes),
+        _ => None,
+    };
+    let Some(tiff) = tiff else {
+        return ExtractionState::Absent;
+    };
+    match parse_gps_coordinates(tiff) {
+        Ok(Some(_)) => ExtractionState::Present,
+        Ok(None) => ExtractionState::Absent,
+        Err(()) => ExtractionState::Corrupt,
+    }
 }
 
 fn parse_orientation(bytes: &[u8]) -> Option<u16> {
@@ -519,5 +707,45 @@ fn normalize_c2pa(bytes: &[u8]) -> C2paEvidence {
         validation_method: Some(C2PA_METHOD.to_string()),
         claim_generator: None,
         selected_evidence_digest: None,
+    }
+}
+
+#[cfg(test)]
+mod gps_tests {
+    use super::{coarse_gps_seed, gps_extraction_state, parse_gps_coordinates, ExtractionState};
+    use image::ImageFormat;
+
+    #[test]
+    fn coarse_seed_collapses_coordinates_into_ten_degree_cells() {
+        assert_eq!(coarse_gps_seed(12.34, 56.78), coarse_gps_seed(19.99, 59.99));
+        assert_ne!(coarse_gps_seed(12.34, 56.78), coarse_gps_seed(20.0, 60.0));
+    }
+
+    #[test]
+    fn malformed_gps_pointer_is_not_reported_as_present() {
+        let mut tiff = vec![0_u8; 22];
+        tiff[0..2].copy_from_slice(b"II");
+        tiff[2..4].copy_from_slice(&42_u16.to_le_bytes());
+        tiff[4..8].copy_from_slice(&8_u32.to_le_bytes());
+        tiff[8..10].copy_from_slice(&1_u16.to_le_bytes());
+        tiff[10..12].copy_from_slice(&0x8825_u16.to_le_bytes());
+        tiff[12..14].copy_from_slice(&4_u16.to_le_bytes());
+        tiff[14..18].copy_from_slice(&1_u32.to_le_bytes());
+        tiff[18..22].copy_from_slice(&200_u32.to_le_bytes());
+        assert_eq!(parse_gps_coordinates(&tiff), Err(()));
+    }
+
+    #[test]
+    fn gps_pointer_absence_is_absent_not_corrupt() {
+        let mut tiff = vec![0_u8; 10];
+        tiff[0..2].copy_from_slice(b"II");
+        tiff[2..4].copy_from_slice(&42_u16.to_le_bytes());
+        tiff[4..8].copy_from_slice(&8_u32.to_le_bytes());
+        tiff[8..10].copy_from_slice(&0_u16.to_le_bytes());
+        assert_eq!(parse_gps_coordinates(&tiff), Ok(None));
+        assert_eq!(
+            gps_extraction_state(b"not-jpeg", ImageFormat::Jpeg),
+            ExtractionState::Absent
+        );
     }
 }

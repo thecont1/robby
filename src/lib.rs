@@ -1,8 +1,9 @@
-//! `robby-compiler` is the portable source of truth for Robby v1.
+//! `troid` is the portable compiler engine and source of truth inside robby.
 //!
 //! The same lexer, parser, validator, and IR lowerer power the native CLI and
 //! the optional WebAssembly adapter used by the browser showcase.
 
+pub mod analysis;
 pub mod ast;
 pub mod binding;
 pub mod error;
@@ -46,6 +47,12 @@ pub fn inspect_image_json(original_name: &str, bytes: &[u8]) -> CompileResult<St
     serde_json::to_string(&public).map_err(|error| {
         CompilerError::plain(format!("Unable to serialize intake manifest: {error}"))
     })
+}
+
+/// Calculate the bounded visual-ingredient record used by the optional
+/// Ingredients tab. This performs no image rendering and stores no derivative.
+pub fn analyze_ingredients_json(bytes: &[u8], palette_k: u8) -> CompileResult<String> {
+    analysis::analyze_image_json(bytes, palette_k)
 }
 
 /// Build the authoritative `BindingRecord` for a v1 gallery compile from a
@@ -113,10 +120,11 @@ pub const RUST_TOOLCHAIN: &str = env!("ROBBY_RUST_TOOLCHAIN");
 mod wasm {
     use wasm_bindgen::prelude::*;
 
-    use crate::render::{render_reverse, RenderSettings};
+    use crate::render::{self, render_reverse, RenderSettings};
     use crate::{
+        analysis::analyze_image_json as analyze_ingredients,
         binding_request_v1_json as build_v1_request,
-        build_binding_json as build_binding_record_json, compile_source,
+        build_binding_json as build_binding_record_json, compile_recipe_source, compile_source,
         inspect_image_json as inspect, COMPILER_VERSION, RUST_TOOLCHAIN,
     };
 
@@ -124,6 +132,14 @@ mod wasm {
     #[wasm_bindgen]
     pub fn compile_source_json(source: &str) -> Result<String, JsValue> {
         let ir = compile_source(source).map_err(|error| JsValue::from_str(&error.to_string()))?;
+        serde_json::to_string(&ir).map_err(|error| JsValue::from_str(&error.to_string()))
+    }
+
+    /// Compile the versioned object-block recipe language in the browser.
+    #[wasm_bindgen]
+    pub fn compile_recipe_json(source: &str) -> Result<String, JsValue> {
+        let ir =
+            compile_recipe_source(source).map_err(|error| JsValue::from_str(&error.to_string()))?;
         serde_json::to_string(&ir).map_err(|error| JsValue::from_str(&error.to_string()))
     }
 
@@ -163,6 +179,14 @@ mod wasm {
         inspect(original_name, bytes).map_err(|error| JsValue::from_str(&error.to_string()))
     }
 
+    /// Calculate the bounded visual-ingredient record on demand. No reverse
+    /// image or persistent derivative is produced by this call.
+    #[wasm_bindgen]
+    pub fn analyze_ingredients_json(source_bytes: &[u8], palette_k: u8) -> Result<String, JsValue> {
+        analyze_ingredients(source_bytes, palette_k)
+            .map_err(|error| JsValue::from_str(&error.to_string()))
+    }
+
     #[wasm_bindgen]
     pub fn compiler_version() -> String {
         COMPILER_VERSION.to_string()
@@ -171,6 +195,16 @@ mod wasm {
     #[wasm_bindgen]
     pub fn rust_toolchain() -> String {
         RUST_TOOLCHAIN.to_string()
+    }
+
+    /// Median-cut palette hex swatches for a source at a given k — the exact
+    /// list `render_reverse` reports as `colour_swatches`, without rendering a
+    /// PNG. Used for live recipe previews (palette slider).
+    #[wasm_bindgen]
+    pub fn palette_preview_json(source_bytes: &[u8], k: u8) -> Result<String, JsValue> {
+        let swatches = render::palette_preview(source_bytes, k)
+            .map_err(|error| JsValue::from_str(&error.to_string()))?;
+        serde_json::to_string(&swatches).map_err(|error| JsValue::from_str(&error.to_string()))
     }
 
     /// Render through the same Rust implementation used by the native binary.
