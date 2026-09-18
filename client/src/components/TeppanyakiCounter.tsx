@@ -93,6 +93,7 @@ export default function TeppanyakiCounter({
         </div>
       )}
       {presentation.showStations && <StationList stations={stations} />}
+      <p className="teppanyaki-shortcuts" aria-label="Keyboard shortcuts">← → TO CYCLE · F TO FLIP · C TO COMPILE</p>
       {run?.result?.disclosure && (
         <div className="teppanyaki-audit-window" tabIndex={0} aria-label="Disclosure audit, scrollable">
           <p className="teppanyaki-audit" role="note">

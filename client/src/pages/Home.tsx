@@ -449,10 +449,14 @@ export default function Home() {
       if (event.key === "ArrowLeft") selectImage(selectedIndex - 1);
       if (event.key === "ArrowRight") selectImage(selectedIndex + 1);
       if (event.key.toLowerCase() === "f") turnOver();
+      if (event.key.toLowerCase() === "c" && actions.compileEnabled) {
+        event.preventDefault();
+        void compileOrio(actions.compileForce);
+      }
     };
     document.addEventListener("keydown", onKeyDown, true);
     return () => document.removeEventListener("keydown", onKeyDown, true);
-  }, [selectedIndex, isFlipping, slideTransition, imageOnly, artworkView, turnOver]);
+  }, [selectedIndex, isFlipping, slideTransition, imageOnly, artworkView, turnOver, actions.compileEnabled, actions.compileForce]);
 
   useEffect(() => {
     let active = true;
@@ -642,7 +646,6 @@ export default function Home() {
         <div className="intro-note">
           <span className="note-rule" />
           <p>What if a digital image could be a two-sided image-object, like a postcard or a coin?</p>
-          <div className="intro-tools"><span className="mono text-[10px] tracking-[0.13em]">← → TO CYCLE · F TO FLIP</span></div>
         </div>
       </section>
 
@@ -655,6 +658,8 @@ export default function Home() {
                 const outgoing = gallery.find(item => item.id === slideTransition.outgoingId);
                 const incoming = gallery.find(item => item.id === slideTransition.incomingId);
                 if (!outgoing || !incoming) return null;
+                const incomingRun = runBySpecimen.current[incoming.id];
+                const incomingFace = incomingRun?.result && faceBySpecimen.current[incoming.id] === "inverse" ? "inverse" : "obverse";
                 return (
                 <div className={`slide-track slide-track-${slideTransition.direction}`} onAnimationEnd={settleStageSlide}>
                   {slideTransition.direction === "forward" ? (
@@ -669,24 +674,26 @@ export default function Home() {
                           </div>
                         </div>
                       </div>
-                      <div className={`two-sided-object ${incoming.ratio} slide-track-item`} aria-busy>
-                        <div className="object-turner" data-face="obverse">
-                          <div className="object-face object-face-obverse" aria-hidden={false}>
+                      <div className={`two-sided-object ${incoming.ratio} slide-track-item`} aria-busy={!incomingRun?.result}>
+                        <div className="object-turner" data-face={incomingFace}>
+                          <div className="object-face object-face-obverse" aria-hidden={incomingFace !== "obverse"}>
                             <img src={incoming.obverse} alt={`${incoming.title} obverse`} className="object-image" />
                           </div>
-                          <div className="object-face object-face-inverse" aria-hidden={true}>
+                          <div className="object-face object-face-inverse" aria-hidden={incomingFace !== "inverse"}>
+                            <ReverseArtwork result={incomingRun?.result} alt={`${incoming.title} inverse`} />
                           </div>
                         </div>
                       </div>
                     </>
                   ) : (
                     <>
-                      <div className={`two-sided-object ${incoming.ratio} slide-track-item`} aria-busy>
-                        <div className="object-turner" data-face="obverse">
-                          <div className="object-face object-face-obverse" aria-hidden={false}>
+                      <div className={`two-sided-object ${incoming.ratio} slide-track-item`} aria-busy={!incomingRun?.result}>
+                        <div className="object-turner" data-face={incomingFace}>
+                          <div className="object-face object-face-obverse" aria-hidden={incomingFace !== "obverse"}>
                             <img src={incoming.obverse} alt={`${incoming.title} obverse`} className="object-image" />
                           </div>
-                          <div className="object-face object-face-inverse" aria-hidden={true}>
+                          <div className="object-face object-face-inverse" aria-hidden={incomingFace !== "inverse"}>
+                            <ReverseArtwork result={incomingRun?.result} alt={`${incoming.title} inverse`} />
                           </div>
                         </div>
                       </div>

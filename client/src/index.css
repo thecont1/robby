@@ -376,6 +376,7 @@
  * a glance, height frozen so it never pushes the counter's layout around,
  * and internally scrollable so a long disclosure is still fully reachable. */
 .teppanyaki-audit-window { border-top:1px solid rgba(244,239,225,.22); margin-top:12px; max-height:92px; overflow-y:auto; padding-top:10px; }
+.teppanyaki-shortcuts { border-top:1px solid rgba(244,239,225,.18); color:#e8a394; font-family:"DM Mono",monospace; font-size:9px; letter-spacing:.1em; margin:12px 0 0; padding-top:12px; text-transform:uppercase; }
 .teppanyaki-audit-window:focus-visible { outline:2px solid #e3442f; outline-offset:2px; }
 .teppanyaki-audit { color:#b8ada0; font-family:"DM Mono",monospace; font-size:13px; letter-spacing:.04em; line-height:1.5; margin:0; text-transform:uppercase; }
 .dark .teppanyaki-counter { background:#000; border-color:#e3442f; color:#f7efe0; }
