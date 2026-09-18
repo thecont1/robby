@@ -27,8 +27,11 @@ function useRailProgress(stations: StationView[]): number {
   const [progress, setProgress] = useState(0);
   const progressRef = useRef(0);
   const stationsRef = useRef(stations);
-  stationsRef.current = stations;
   const gateKey = stations.map(station => station.status).join("|");
+
+  useEffect(() => {
+    stationsRef.current = stations;
+  }, [gateKey]);
 
   useEffect(() => {
     let raf = 0;
