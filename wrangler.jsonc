@@ -1,0 +1,25 @@
+{
+  "name": "robby",
+  "main": "worker/index.ts",
+  "compatibility_date": "2026-09-01",
+  "containers": [
+    {
+      "class_name": "RobbyContainer",
+      "image": "./Dockerfile",
+      "instance_type": "standard-1",
+      "max_instances": 2
+    }
+  ],
+  "durable_objects": {
+    "bindings": [
+      { "name": "ROBBY", "class_name": "RobbyContainer" }
+    ]
+  },
+  "migrations": [
+    { "tag": "v1", "new_sqlite_classes": ["RobbyContainer"] }
+  ],
+  "routes": [
+    { "pattern": "robby.thecontrarian.in/*", "zone_name": "thecontrarian.in" }
+  ],
+  "observability": { "enabled": true }
+}
