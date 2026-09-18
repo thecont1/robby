@@ -204,12 +204,13 @@ export function createCompileController(deps: CompileDeps) {
     stage: CompileStage,
     classification: EpistemicClass | undefined,
     work: () => Promise<Record<string, unknown>>,
+    signal: AbortSignal = abort?.signal ?? new AbortController().signal,
   ) => {
     emit(run, stage, "started", `${STATION_LABELS[stage]} started`);
-    await waitForPresentationDelay(deps.presentationDelayMs, abort?.signal ?? new AbortController().signal);
+    await waitForPresentationDelay(deps.presentationDelayMs, signal);
     const payload = await work();
     emit(run, stage, "artifact", `${STATION_LABELS[stage]} artifact`, payload, classification);
-    await waitForPresentationDelay(deps.presentationDelayMs, abort?.signal ?? new AbortController().signal);
+    await waitForPresentationDelay(deps.presentationDelayMs, signal);
     emit(run, stage, "completed", `${STATION_LABELS[stage]} completed`, payload, classification);
     return payload;
   };

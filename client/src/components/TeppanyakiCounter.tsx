@@ -6,7 +6,7 @@ function StationList({ stations }: { stations: StationView[] }) {
   return (
     <ol className="teppanyaki-stations" aria-label="Compilation stations">
       {stations.map(station => (
-        <li key={station.stage} className={`teppanyaki-station status-${station.status}`} data-stage={station.stage}>
+        <li key={station.stage} className={`teppanyaki-station status-${station.status}${station.status === "started" || station.status === "artifact" ? " is-active" : ""}`} data-stage={station.stage} aria-current={station.status === "started" || station.status === "artifact" ? "step" : undefined}>
           <span className="trace-number">{station.index}</span>
           <div>
             <strong>{station.name}</strong>

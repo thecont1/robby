@@ -247,6 +247,9 @@
 .stage-caption { display:block; padding:10px 0 12px; }.stage-control-row { align-items:center; display:grid; grid-template-columns:minmax(0,1fr) auto minmax(0,1fr); width:100%; }.stage-control-row .stage-metadata { grid-column:1; justify-content:flex-start; padding:0; }.stage-control-row .caption-turn { align-items:center; display:flex; gap:8px; grid-column:2; justify-self:center; }.palette-k-control { align-items:center; border:1px solid rgba(28,26,25,.38); display:flex; font-family:"DM Mono",monospace; font-size:9px; gap:4px; height:38px; padding:0 7px; text-transform:uppercase; }.palette-k-control span { color:#6b665e; font-weight:700; }.palette-k-control input { appearance:textfield; background:transparent; border:0; color:#1c1a19; font-family:inherit; font-size:11px; font-weight:700; outline:0; padding:0; text-align:center; width:26px; }.palette-k-control input::-webkit-inner-spin-button { opacity:1; }.dark .palette-k-control { border-color:#e3442f; }.dark .palette-k-control input { color:#f7efe0; }.stage-control-row .caption-navigation { grid-column:3; justify-self:end; }.stage-display-tools { gap:7px !important; }.stage-face-record { align-items:baseline; display:inline-flex; gap:6px; white-space:nowrap; }.stage-control-row .navigation-current { color:#e3442f; font-size:10px; font-weight:700; letter-spacing:.14em; }.dark .stage-control-row .navigation-current { color:#e3442f; }
 @media (max-width:560px) { .stage-caption { padding:10px 0 12px; }.stage-control-row { grid-template-columns:minmax(0,1fr) auto; row-gap:8px; }.stage-control-row .stage-metadata { grid-column:1; grid-row:1; min-width:0; }.stage-control-row .caption-turn { grid-column:2; grid-row:1; }.stage-control-row .caption-navigation { grid-column:1 / -1; grid-row:2; justify-self:stretch; }.stage-control-row .object-navigation { justify-content:space-between; width:100%; }.stage-control-row .stage-display-tools { min-width:0; }.stage-control-row .stage-face-record { gap:4px; overflow:hidden; text-overflow:ellipsis; }.stage-control-row .stage-dimensions { font-size:8px; } }
 
+@media (max-width:560px) { .compile-orio-slot { width:168px; }.compile-orio-slot > .compile-orio-control { width:168px; }.compile-cancel-control { left:auto; right:0; top:calc(100% + 4px); width:76px !important; } }
+@media (max-width:560px) { .stage-control-row { grid-template-columns:1fr; }.stage-control-row .stage-metadata { grid-column:1; grid-row:1; }.stage-control-row .caption-turn { grid-column:1; grid-row:2; justify-self:center; }.stage-control-row .caption-navigation { grid-column:1; grid-row:3; justify-self:stretch; } }
+
 /* Subfooter tabs carry the same stronger weight; active state is a box, not a
  * typographic jump, so the fixed tab rail remains visually and spatially calm. */
 .provenance-tablist button { font-weight:800; letter-spacing:.1em; }.provenance-tablist button.active { box-shadow:inset 0 0 0 1px #1c1a19; }.dark .provenance-tablist button.active { box-shadow:inset 0 0 0 1px #e3442f; }
@@ -356,6 +359,8 @@
 .teppanyaki-station.status-artifact,
 .teppanyaki-station.status-completed,
 .teppanyaki-station.status-failed { color:#f4efe1; }
+.teppanyaki-station.is-active { background:rgba(227,68,47,.18); box-shadow:inset 3px 0 0 #e3442f; transition:background-color .18s ease, box-shadow .18s ease; }
+.teppanyaki-station.is-active .trace-number { background:#e3442f; color:#1c1a19; }
 .teppanyaki-station strong { display:block; font-size:13px; }
 .teppanyaki-station p { color:#b8ada0; font-family:"DM Mono",monospace; font-size:11px; line-height:1.35; margin:4px 0 0; }
 .teppanyaki-station em { color:#e8a394; display:block; font-family:"DM Mono",monospace; font-size:10px; font-style:normal; letter-spacing:.08em; margin-top:4px; text-transform:uppercase; }
@@ -364,6 +369,9 @@
 .compile-orio-control { align-items:center; background:#7c3024; border:1px solid #7c3024; color:#fffaf0; display:inline-flex; font-family:"DM Mono",monospace; font-size:10px; font-weight:700; gap:7px; letter-spacing:.1em; min-height:44px; padding:0 12px; text-transform:uppercase; }
 .compile-orio-control:disabled { cursor:wait; opacity:.54; }
 .caption-turn { align-items:center; display:flex; gap:8px; }
+.compile-orio-slot { position:relative; width:190px; }
+.compile-orio-slot > .compile-orio-control { justify-content:center; width:190px; }
+.compile-cancel-control { left:calc(100% + 8px); position:absolute; top:0; width:76px !important; }
 /* The disclosure bar is a window into the lab: text large enough to read at
  * a glance, height frozen so it never pushes the counter's layout around,
  * and internally scrollable so a long disclosure is still fully reachable. */
@@ -375,6 +383,7 @@
 .dark .teppanyaki-counter .trace-heading > div,.dark .teppanyaki-counter .trace-heading .mono-label,.dark .teppanyaki-counter .counter-message,.dark .teppanyaki-station.status-started,.dark .teppanyaki-station.status-artifact,.dark .teppanyaki-station.status-completed,.dark .teppanyaki-station.status-failed { color:#f7efe0; }
 .dark .teppanyaki-counter .trace-heading > span,.dark .teppanyaki-counter .trace-title .eyebrow,.dark .teppanyaki-station em { color:#e8a394; }
 .dark .teppanyaki-station { border-bottom-color:#e3442f; }.dark .teppanyaki-station.status-idle,.dark .teppanyaki-station p,.dark .teppanyaki-audit { color:#d79a8d; }.dark .teppanyaki-swatches i { border-color:#e3442f; }
+.dark .teppanyaki-station.is-active { background:rgba(227,68,47,.26); box-shadow:inset 3px 0 0 #e3442f; }
 .dark .teppanyaki-audit-window { border-top-color:#e3442f; }
 .image-only .teppanyaki-counter { pointer-events:none; visibility:hidden; }
 

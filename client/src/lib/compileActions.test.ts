@@ -56,6 +56,19 @@ describe("compileActions", () => {
     expect(actions.showCancel).toBe(false);
   });
 
+  it("marks an invalidated recipe for a fresh compile only on explicit request", () => {
+    const actions = compileActions({
+      run: null,
+      recipeChanged: false,
+      face: "obverse",
+      isRendering: false,
+      forceFresh: true,
+    });
+    expect(actions.compileLabel).toBe("Compile Orio");
+    expect(actions.compileForce).toBe(true);
+    expect(compileActions({ run: null, recipeChanged: false, face: "obverse", isRendering: false }).compileForce).toBe(false);
+  });
+
   it("uses Turn to Inverse only after a resolved orio, with Recompile as the compile action", () => {
     const actions = compileActions({
       run: run("completed"),

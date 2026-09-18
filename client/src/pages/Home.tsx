@@ -10,7 +10,7 @@ import PaletteMosaicCanvas from "@/components/PaletteMosaicCanvas";
 import TeppanyakiCounter from "@/components/TeppanyakiCounter";
 import { ProvenanceModule, type RuntimeRecord, type TraceMode } from "@/components/Build06Panels";
 import { loadCompileHistory, persistCompileSnapshot, type CompileSnapshot } from "@/lib/compileHistory";
-import { compileActions, compileActionOrder, isPaletteReprocessCurrent, shouldAcceptPaletteEdit, shouldStartCompileRequest } from "@/lib/compileActions";
+import { compileActions, shouldAcceptPaletteEdit, shouldStartCompileRequest } from "@/lib/compileActions";
 import { browserCompileController } from "@/lib/compileBrowser";
 import type { CompileRun, SessionOrio } from "@/lib/compileEvents";
 import { verifiedCompilerStatus } from "@/lib/compilerStatus";
@@ -110,6 +110,9 @@ export default function Home() {
   const [isRenderingReverse, setIsRenderingReverse] = useState(false);
   const [paletteK, setPaletteK] = useState(8);
   const [compileRun, setCompileRun] = useState<CompileRun | null>(null);
+  const faceBySpecimen = useRef<Record<string, "obverse" | "inverse">>({});
+  const invalidatedSpecimens = useRef(new Set<string>());
+  const runBySpecimen = useRef<Record<string, CompileRun>>({});
   // The draft store is a ref (see `selectedDraft` below) so reads during render
   // never lag a commit. A ref mutation does not re-render on its own, so every
   // write to the store must bump this revision to commit the new authored text
@@ -137,18 +140,9 @@ export default function Home() {
   const compileHistory = useRef<Record<string, CompileSnapshot[]>>({});
   const selectedIdRef = useRef("");
   const selectedRecipeRef = useRef({ specimenId: "", source: "" });
-  const paletteReprocessTimer = useRef<number | null>(null);
   const compileGeneration = useRef(0);
-  const mountedRef = useRef(true);
   const discardReverseAfterFlip = useRef(false);
   const { theme, toggleTheme } = useTheme();
-
-  const clearPaletteReprocessTimer = () => {
-    if (paletteReprocessTimer.current !== null) {
-      window.clearTimeout(paletteReprocessTimer.current);
-      paletteReprocessTimer.current = null;
-    }
-  };
 
   // Clamp selectedIndex when gallery changes (e.g. images added/removed)
   useEffect(() => {
@@ -190,10 +184,7 @@ export default function Home() {
     recipeChanged,
     face,
     isRendering: isRenderingReverse,
-  });
-  const [firstStageAction] = compileActionOrder({
-    completed: compileRun?.galleryItemId === selected.id && compileRun.status === "completed" && Boolean(compileRun.result),
-    recipeChanged,
+    forceFresh: invalidatedSpecimens.current.has(selected.id),
   });
   const projectionUnavailable = projectionState === "draft" || projectionState === "compiling" || projectionState === "error";
   const trace = projectionUnavailable ? [] : liveIr ? traceFromIr(liveIr) : selected.trace;
@@ -218,7 +209,9 @@ export default function Home() {
     const draft = draftStore.current.get(selected.id, selected.script);
     setPaletteKFromDraft(draft, 8);
     bumpDraftRevision();
-    setCompileRun(current => current?.galleryItemId === selected.id ? current : null);
+    const savedRun = runBySpecimen.current[selected.id];
+    setCompileRun(savedRun ?? null);
+    setFace(savedRun?.result && faceBySpecimen.current[selected.id] === "inverse" ? "inverse" : "obverse");
     setCredentialOverride(null);
   }, [selected.id, selected.script, setPaletteKFromDraft, bumpDraftRevision]);
 
@@ -230,12 +223,12 @@ export default function Home() {
 
   const discardSessionReverse = () => {
     browserCompileController.cancelActive();
-    setCompileRun(null);
     setIsRenderingReverse(false);
   };
 
   useEffect(() => browserCompileController.subscribe(run => {
     if (run.galleryItemId !== selectedIdRef.current) return;
+    if (run.status === "completed" && run.result) runBySpecimen.current[run.galleryItemId] = run;
     setCompileRun(run);
     if (run.status === "running") setIsRenderingReverse(true);
     if (run.status !== "running") setIsRenderingReverse(false);
@@ -244,10 +237,7 @@ export default function Home() {
   // Plan 9B: on unmount, cancel any running compile and revoke every session
   // Blob URL so nothing leaks across navigation.
   useEffect(() => {
-    mountedRef.current = true;
     return () => {
-      mountedRef.current = false;
-      clearPaletteReprocessTimer();
       browserCompileController.dispose();
     };
   }, []);
@@ -272,7 +262,6 @@ export default function Home() {
   }, [gallery.length > 0]);
 
   const commitSelection = (nextIndex: number) => {
-    clearPaletteReprocessTimer();
     discardSessionReverse();
     // Reject outgoing notifications immediately. The committed render's
     // layout effect installs the real incoming id/source; avoiding an indexed
@@ -280,7 +269,10 @@ export default function Home() {
     selectedIdRef.current = "";
     selectedRecipeRef.current = { specimenId: "", source: "" };
     setSelectedIndex(nextIndex);
-    setFace("obverse");
+    const nextItem = gallery.at(nextIndex);
+    const nextRun = nextItem ? runBySpecimen.current[nextItem.id] : undefined;
+    setCompileRun(nextRun ?? null);
+    setFace(nextRun?.result && nextItem && faceBySpecimen.current[nextItem.id] === "inverse" ? "inverse" : "obverse");
     setIsFlipping(false);
     setCompiledEdit(null);
     setProjectionState("gallery");
@@ -306,11 +298,15 @@ export default function Home() {
   };
 
   const compileOrio = async (force = false) => {
-    clearPaletteReprocessTimer();
     if (!shouldStartCompileRequest({ isFlipping, isRendering: isRenderingReverse, supersedeInflight: true })) return;
     const compiledSpecimenId = selected.id;
     const source = authoredRecipeForCompile(activeRecipe);
     const generation = ++compileGeneration.current;
+    delete runBySpecimen.current[compiledSpecimenId];
+    invalidatedSpecimens.current.delete(compiledSpecimenId);
+    faceBySpecimen.current[compiledSpecimenId] = "obverse";
+    setFace("obverse");
+    setCompileRun(null);
     setFailureMessage(null);
     setIsRenderingReverse(true);
     setProjectionState("compiling");
@@ -331,6 +327,9 @@ export default function Home() {
     }
     const orio = run.result;
     setProjectionState("live");
+    runBySpecimen.current[compiledSpecimenId] = run;
+    faceBySpecimen.current[compiledSpecimenId] = "inverse";
+    setFace("inverse");
     setRuntimeRecord(current => ({
       compiledAt: orio.createdAt,
       irHash: orio.canonicalRecipeHash,
@@ -357,11 +356,13 @@ export default function Home() {
       discardReverseAfterFlip.current = false;
       setIsFlipping(true);
       setFace("obverse");
+      faceBySpecimen.current[selected.id] = "obverse";
       return;
     }
     if (!compileRun?.result) return;
     setIsFlipping(true);
     setFace("inverse");
+    faceBySpecimen.current[selected.id] = "inverse";
   }, [isFlipping, actions.turnEnabled, face, compileRun?.result]);
 
   const settleFlip = (event: React.TransitionEvent<HTMLDivElement>) => {
@@ -499,7 +500,6 @@ export default function Home() {
   };
 
   const clearLiveProjection = () => {
-    clearPaletteReprocessTimer();
     setCompiledEdit(null);
     setProjectionState("compiling");
     setFailureMessage(null);
@@ -512,7 +512,6 @@ export default function Home() {
   };
 
   const markDraftProjectionUnavailable = (draft: string) => {
-    clearPaletteReprocessTimer();
     draftStore.current.set(selected.id, draft);
     selectedRecipeRef.current = { specimenId: selected.id, source: draft };
     // No fallback: keep the last valid structured value while the source is
@@ -525,7 +524,6 @@ export default function Home() {
   };
 
   const resetLiveProjection = () => {
-    clearPaletteReprocessTimer();
     draftStore.current.clear(selected.id);
     selectedRecipeRef.current = { specimenId: selected.id, source: selected.script };
     setPaletteKFromDraft(selected.script, 8);
@@ -535,11 +533,8 @@ export default function Home() {
     setFailureMessage(null);
   };
 
-  // The counter slider rewrites the authored recipe and recompiles after a
-  // short pause; direct recipe edits remain explicit via Compile Orio.
-  // The edit is admitted on value alone: refusing it while a reverse renders
-  // would snap this controlled slider back and leave the authored recipe on the
-  // old k. The delayed compile supersedes any inflight run.
+  // The counter slider rewrites the authored recipe and invalidates the current
+  // Orio. Compilation remains an explicit action via Compile Orio.
   const editPaletteK = (value: number) => {
     if (!shouldAcceptPaletteEdit(value)) return;
     try {
@@ -548,18 +543,15 @@ export default function Home() {
       selectedRecipeRef.current = { specimenId: selected.id, source: nextRecipe };
       bumpDraftRevision();
       setPaletteK(value);
+      browserCompileController.cancelActive();
+      delete runBySpecimen.current[selected.id];
+      invalidatedSpecimens.current.add(selected.id);
+      faceBySpecimen.current[selected.id] = "obverse";
+      setFace("obverse");
+      setCompileRun(null);
       setCompiledEdit(null);
       setProjectionState("draft");
       setFailureMessage(null);
-      clearPaletteReprocessTimer();
-      const scheduledAuthority = { specimenId: selected.id, source: nextRecipe };
-      paletteReprocessTimer.current = window.setTimeout(() => {
-        paletteReprocessTimer.current = null;
-        if (!mountedRef.current) return;
-        const currentAuthority = selectedRecipeRef.current;
-        if (!isPaletteReprocessCurrent(scheduledAuthority, currentAuthority)) return;
-        void compileOrio(true);
-      }, 320);
     } catch (error) {
       setFailureMessage(error instanceof Error ? error.message : String(error));
     }
@@ -734,25 +726,20 @@ export default function Home() {
                   <button ref={artworkOpenerRef} type="button" className="artwork-view-control" onClick={() => setArtworkView(true)} aria-label={`Open ${selected.title} in full-bleed artwork view`} title="Open full-bleed artwork view"><Maximize2 size={15} /></button>
                 </div>
               </div>
-              <div className="caption-turn" data-primary-action={firstStageAction}>
-                {firstStageAction === "turn" && (
-                  <button type="button" className="flip-control" onClick={() => void turnOver()} disabled={!actions.turnEnabled || isFlipping} aria-label={face === "inverse" ? `Return ${selected.title} to its obverse` : `Turn ${selected.title} to its inverse`}>
-                    {face === "inverse" ? <RotateCcw size={18} /> : <FlipHorizontal2 size={18} />}<span>{isFlipping ? "Turning object" : actions.turnLabel}</span><small>F</small>
+              <div className="caption-turn" data-primary-action={actions.turnEnabled ? "turn" : "compile"}>
+                <div className="compile-orio-slot">
+                  <button type="button" className="compile-orio-control" onClick={() => void compileOrio(actions.compileForce)} disabled={!actions.compileEnabled || isFlipping} aria-label={`${actions.compileLabel} for ${selected.title}`}>
+                    <CircleDotDashed size={16} /><span>{actions.compileLabel}</span>
                   </button>
-                )}
-                <button type="button" className="compile-orio-control" onClick={() => void compileOrio(actions.compileForce)} disabled={!actions.compileEnabled || isFlipping} aria-label={`${actions.compileLabel} for ${selected.title}`}>
-                  <CircleDotDashed size={16} /><span>{actions.compileLabel}</span>
+                  {actions.showCancel && (
+                    <button type="button" className="compile-orio-control compile-cancel-control" onClick={() => browserCompileController.cancelActive()} aria-label={`Cancel compile for ${selected.title}`}>
+                      <span>Cancel</span>
+                    </button>
+                  )}
+                </div>
+                <button type="button" className="flip-control" onClick={() => void turnOver()} disabled={!actions.turnEnabled || isFlipping} aria-label={face === "inverse" ? `Return ${selected.title} to its obverse` : `Turn ${selected.title} to its inverse`}>
+                  {face === "inverse" ? <RotateCcw size={18} /> : <FlipHorizontal2 size={18} />}<span>{isFlipping ? "Turning object" : actions.turnLabel}</span><small>F</small>
                 </button>
-                {actions.showCancel && (
-                  <button type="button" className="compile-orio-control" onClick={() => browserCompileController.cancelActive()} aria-label={`Cancel compile for ${selected.title}`}>
-                    <span>Cancel</span>
-                  </button>
-                )}
-                {firstStageAction === "compile" && (
-                  <button type="button" className="flip-control" onClick={() => void turnOver()} disabled={!actions.turnEnabled || isFlipping} aria-label={face === "inverse" ? `Return ${selected.title} to its obverse` : `Turn ${selected.title} to its inverse`}>
-                    {face === "inverse" ? <RotateCcw size={18} /> : <FlipHorizontal2 size={18} />}<span>{isFlipping ? "Turning object" : actions.turnLabel}</span><small>F</small>
-                  </button>
-                )}
               </div>
               <div className="caption-navigation">
                 <div className="object-navigation"><button type="button" onClick={() => selectImage(selectedIndex - 1)} disabled={isFlipping} aria-label="Previous image"><ChevronLeft size={17} /> Previous</button><span className="navigation-current">{selected.serial}</span><button type="button" onClick={() => selectImage(selectedIndex + 1)} disabled={isFlipping} aria-label="Next image">Next <ChevronRight size={17} /></button></div>
