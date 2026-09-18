@@ -192,7 +192,10 @@ export default function Home() {
   // authority for BOTH editor display and Compile Orio input. A previously
   // compiled projection may describe that draft, but must never replace it.
   const activeRecipe = selectedDraft;
-  const recipeChanged = Boolean(compileRun?.result && compileRun.recipeSource !== activeRecipe);
+  const recipeChanged = Boolean(
+    invalidatedSpecimens.current.has(selected.id)
+      || (compileRun?.result && compileRun.recipeSource !== activeRecipe),
+  );
   // A completed run is a live projection only while its authored recipe still
   // matches the editor. This prevents an old reverse, seed, or C2PA badge from
   // surviving a palette-k edit while the revised recipe is awaiting compile.
@@ -366,6 +369,7 @@ export default function Home() {
     faceBySpecimen.current[compiledSpecimenId] = "obverse";
     setFace("obverse");
     setCompileRun(null);
+    clearCurrentRuntime();
     setFailureMessage(null);
     setIsRenderingReverse(true);
     setProjectionState("compiling");
@@ -405,6 +409,11 @@ export default function Home() {
         swatches: orio.colourSwatches,
       },
     }));
+  };
+
+  const clearCurrentRuntime = () => {
+    setCredentialOverride(null);
+    setRuntimeRecord(current => current ? { compiledAt: "", irHash: "", toolchain: current.toolchain } : null);
   };
 
   // Memoized so the keydown effect below re-binds whenever the compilation
@@ -565,12 +574,16 @@ export default function Home() {
 
   const clearLiveProjection = () => {
     setCompiledEdit(null);
+    setCompileRun(null);
+    clearCurrentRuntime();
     setProjectionState("compiling");
     setFailureMessage(null);
   };
 
   const markProjectionUnavailable = (message: string) => {
     setCompiledEdit(null);
+    setCompileRun(null);
+    clearCurrentRuntime();
     setProjectionState("error");
     setFailureMessage(message);
   };
@@ -578,11 +591,14 @@ export default function Home() {
   const markDraftProjectionUnavailable = (draft: string) => {
     draftStore.current.set(selected.id, draft);
     selectedRecipeRef.current = { specimenId: selected.id, source: draft };
+    invalidatedSpecimens.current.add(selected.id);
     // No fallback: keep the last valid structured value while the source is
     // mid-edit and temporarily unparseable.
     setPaletteKFromDraft(draft);
     bumpDraftRevision();
     setCompiledEdit(null);
+    setCompileRun(null);
+    clearCurrentRuntime();
     setProjectionState("draft");
     setFailureMessage(null);
   };
@@ -592,7 +608,14 @@ export default function Home() {
     selectedRecipeRef.current = { specimenId: selected.id, source: selected.script };
     setPaletteKFromDraft(selected.script, 8);
     bumpDraftRevision();
+    browserCompileController.cancelActive();
+    delete runBySpecimen.current[selected.id];
+    invalidatedSpecimens.current.add(selected.id);
+    faceBySpecimen.current[selected.id] = "obverse";
+    setFace("obverse");
     setCompiledEdit(null);
+    setCompileRun(null);
+    clearCurrentRuntime();
     setProjectionState("gallery");
     setFailureMessage(null);
   };
@@ -615,8 +638,7 @@ export default function Home() {
       setFace("obverse");
       setCompileRun(null);
       setCompiledEdit(null);
-      setCredentialOverride(null);
-      setRuntimeRecord(current => current ? { compiledAt: "", irHash: "", toolchain: current.toolchain } : null);
+      clearCurrentRuntime();
       setProjectionState("draft");
       setFailureMessage(null);
     } catch (error) {

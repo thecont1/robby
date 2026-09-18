@@ -74,6 +74,7 @@ describe("palette control and authored recipe stay synchronised", () => {
   });
 
   it("does not expose a completed reverse while its authored recipe is stale", () => {
+    expect(HOME_SOURCE).toContain("invalidatedSpecimens.current.has(selected.id)");
     expect(HOME_SOURCE).toContain("const activeCompileRun = compileRun?.galleryItemId === selected.id && !recipeChanged ? compileRun : null;");
     expect(HOME_SOURCE).toContain("const displayedReverseResult = activeCompileRun?.result;");
     expect(HOME_SOURCE).toContain("run={activeCompileRun}");
@@ -81,9 +82,24 @@ describe("palette control and authored recipe stay synchronised", () => {
 
   it("clears runtime evidence and the seed line when Palette K invalidates Orio", () => {
     const editBody = HOME_SOURCE.match(/const editPaletteK = \(value: number\) => \{([\s\S]*?)\n  \};/)?.[1] ?? "";
-    expect(editBody).toContain("setCredentialOverride(null)");
-    expect(editBody).toContain('setRuntimeRecord(current => current ? { compiledAt: "", irHash: "", toolchain: current.toolchain } : null)');
+    expect(editBody).toContain("clearCurrentRuntime();");
+    expect(HOME_SOURCE).toContain("const clearCurrentRuntime = () => {");
+    expect(editBody).toContain("clearCurrentRuntime();");
     expect(HOME_SOURCE).toContain("liveSwatches={livePalette?.specimenId === selected.id && livePalette.k === paletteK ? livePalette.swatches : []}");
+  });
+
+  it("clears stale runtime state for typed drafts, resets, and compile starts", () => {
+    const draftBody = HOME_SOURCE.match(/const markDraftProjectionUnavailable = \(draft: string\) => \{([\s\S]*?)\n  \};/)?.[1] ?? "";
+    const resetBody = HOME_SOURCE.match(/const resetLiveProjection = \(\) => \{([\s\S]*?)\n  \};/)?.[1] ?? "";
+    const compileBody = HOME_SOURCE.match(/const compileOrio = async \(force = false\) => \{([\s\S]*?)\n  \};/)?.[1] ?? "";
+    expect(draftBody).toContain("setCompileRun(null)");
+    expect(draftBody).toContain("invalidatedSpecimens.current.add(selected.id)");
+    expect(draftBody).toContain("clearCurrentRuntime();");
+    expect(resetBody).toContain("browserCompileController.cancelActive();");
+    expect(resetBody).toContain("setCompileRun(null);");
+    expect(resetBody).toContain("clearCurrentRuntime();");
+    expect(compileBody).toContain("setCompileRun(null);");
+    expect(compileBody).toContain("clearCurrentRuntime();");
   });
 
   it("re-seeds outside source changes before the browser paints", () => {
