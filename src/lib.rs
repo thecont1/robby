@@ -113,7 +113,7 @@ pub const RUST_TOOLCHAIN: &str = env!("ROBBY_RUST_TOOLCHAIN");
 mod wasm {
     use wasm_bindgen::prelude::*;
 
-    use crate::render::{render_reverse, RenderSettings};
+    use crate::render::{self, render_reverse, RenderSettings};
     use crate::{
         binding_request_v1_json as build_v1_request,
         build_binding_json as build_binding_record_json, compile_source,
@@ -171,6 +171,16 @@ mod wasm {
     #[wasm_bindgen]
     pub fn rust_toolchain() -> String {
         RUST_TOOLCHAIN.to_string()
+    }
+
+    /// Median-cut palette hex swatches for a source at a given k — the exact
+    /// list `render_reverse` reports as `colour_swatches`, without rendering a
+    /// PNG. Used for live recipe previews (palette slider).
+    #[wasm_bindgen]
+    pub fn palette_preview_json(source_bytes: &[u8], k: u8) -> Result<String, JsValue> {
+        let swatches = render::palette_preview(source_bytes, k)
+            .map_err(|error| JsValue::from_str(&error.to_string()))?;
+        serde_json::to_string(&swatches).map_err(|error| JsValue::from_str(&error.to_string()))
     }
 
     /// Render through the same Rust implementation used by the native binary.

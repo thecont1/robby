@@ -574,15 +574,7 @@ pub fn render_reverse(
     // Applying the same EXIF orientation normalization here keeps
     // pixel_sha256, dimensions and layout consistent across both paths;
     // without it a rotated source renders transposed against its own manifest.
-    let decoded = decode_source(source_bytes)?;
-    let orientation = image::guess_format(source_bytes)
-        .ok()
-        .and_then(|format| crate::intake::exif_orientation(source_bytes, format));
-    let decoded = crate::intake::orient(decoded, orientation);
-    let rgb = decoded.to_rgb8();
-    let source_width = rgb.width();
-    let source_height = rgb.height();
-    let pixels: Vec<[u8; 3]> = rgb.pixels().map(|pixel| pixel.0).collect();
+    let (pixels, source_width, source_height) = source_pixels(source_bytes)?;
     let palette = median_cut_palette(&pixels, settings.k as usize)?;
     let index_map = palette_index_map(&pixels, &palette);
     let mut rng = SplitMix64::new(seed);
@@ -659,6 +651,36 @@ fn png_dimensions(png: &[u8]) -> (u32, u32) {
         u32::from_be_bytes(png[16..20].try_into().expect("png width")),
         u32::from_be_bytes(png[20..24].try_into().expect("png height")),
     )
+}
+
+/// Decode the source, apply EXIF orientation, and return canonical RGB
+/// pixels plus dimensions — the exact inputs intake hashes and the renderer
+/// measures. Shared so previews and renders can never disagree about pixels.
+fn source_pixels(source_bytes: &[u8]) -> Result<(Vec<[u8; 3]>, u32, u32), RenderError> {
+    let decoded = decode_source(source_bytes)?;
+    let orientation = image::guess_format(source_bytes)
+        .ok()
+        .and_then(|format| crate::intake::exif_orientation(source_bytes, format));
+    let decoded = crate::intake::orient(decoded, orientation);
+    let rgb = decoded.to_rgb8();
+    let pixels: Vec<[u8; 3]> = rgb.pixels().map(|pixel| pixel.0).collect();
+    Ok((pixels, rgb.width(), rgb.height()))
+}
+
+/// Median-cut palette hex swatches for a source at a given k, in manifest
+/// rank order. Same algorithm and ordering as `render_reverse` produces in
+/// `colour_swatches` — a preview of exactly what a compile will derive.
+pub fn palette_preview(source_bytes: &[u8], k: u8) -> Result<Vec<String>, RenderError> {
+    if !(3..=64).contains(&k) {
+        return Err(RenderError(
+            "palette k must be an integer between 3 and 64".into(),
+        ));
+    }
+    let (pixels, _, _) = source_pixels(source_bytes)?;
+    Ok(median_cut_palette(&pixels, k as usize)?
+        .iter()
+        .map(|entry| entry.hex.clone())
+        .collect())
 }
 
 fn decode_source(source_bytes: &[u8]) -> Result<DynamicImage, RenderError> {

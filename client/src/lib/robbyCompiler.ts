@@ -10,6 +10,7 @@ import initRobbyCompiler, {
   compile_source_json,
   compiler_version,
   inspect_image_json,
+  palette_preview_json,
   rust_toolchain,
 } from "../wasm/robby_compiler";
 
@@ -125,6 +126,16 @@ export async function buildCanonicalBindingWithRust(
     rendererVersion,
   );
   return JSON.parse(build_binding_json(requestJson)) as RustBindingRecord;
+}
+
+/**
+ * Rust median-cut palette hexes for a source at a given k — the same list a
+ * compile reports as `colour_swatches`, with no PNG rendered. Powers the
+ * counter's live swatch preview when the k slider edits the recipe.
+ */
+export async function palettePreviewWithRust(bytes: Uint8Array, k: number): Promise<string[]> {
+  await ensureRustCompiler();
+  return JSON.parse(palette_preview_json(bytes, k)) as string[];
 }
 
 export async function rustCompilerVersion() {

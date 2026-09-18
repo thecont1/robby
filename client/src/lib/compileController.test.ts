@@ -178,6 +178,9 @@ function deps(overrides: Partial<CompileDeps> = {}): CompileDeps & { calls: stri
     },
     compilerVersion: "robby-compiler-v0.1.0",
     rendererVersion: "robby-render-manifest-v1",
+    // Station pacing is a wall-clock presentation concern; tests assert event
+    // ordering, not real elapsed time, so the rail pace is disabled here.
+    stationPaceMs: 0,
     ...overrides,
   };
   return base;
@@ -315,8 +318,8 @@ describe("CompileController", () => {
     const second = await controller.compile(request());
     expect(first.id).toMatch(/^run-/);
     expect(second.id).not.toBe(first.id);
-    expect(first.events.map(event => event.compileRunId).every(id => id === first.id)).toBe(true);
-    const sequences = first.events.map(event => event.sequence);
+    expect(first.events.map((event: CompileEvent) => event.compileRunId).every((id: string) => id === first.id)).toBe(true);
+    const sequences = first.events.map((event: CompileEvent) => event.sequence);
     expect(sequences).toEqual([...sequences].sort((a, b) => a - b));
     expect(new Set(sequences).size).toBe(sequences.length);
     expect(COMPILE_STAGES_PRESENT(first.events)).toEqual([
@@ -340,8 +343,8 @@ describe("CompileController", () => {
     // hash (ir.meta.script_sha256) is the source-text digest and must remain
     // a separate identity domain (Plan 9A / ADR-003).
     expect(first.result?.identity.canonicalRecipeSha256).not.toBe(ir.meta.script_sha256);
-    expect(first.events.find(event => event.stage === "measure" && event.status === "completed")?.payload).toMatchObject({ pixelSha256: "pixels".padEnd(64, "a") });
-    expect(first.events.find(event => event.stage === "bind" && event.status === "completed")?.payload.objectBinding).toBe(first.result?.identity.objectBinding);
+    expect(first.events.find((event: CompileEvent) => event.stage === "measure" && event.status === "completed")?.payload).toMatchObject({ pixelSha256: "pixels".padEnd(64, "a") });
+    expect(first.events.find((event: CompileEvent) => event.stage === "bind" && event.status === "completed")?.payload.objectBinding).toBe(first.result?.identity.objectBinding);
   });
 
   it("does not start a second run while one is already running for the same selection", async () => {
@@ -451,7 +454,7 @@ describe("CompileController", () => {
     const later = await controller.compile(request({ galleryItemId: "item-b", sourceName: "other.jpg" }));
     expect(later.galleryItemId).toBe("item-b");
     expect(later.status).toBe("completed");
-    expect(later.events.every(event => event.compileRunId === later.id)).toBe(true);
+    expect(later.events.every((event: CompileEvent) => event.compileRunId === later.id)).toBe(true);
   });
 
   it("reuses a session-valid orio instead of re-rendering, and recompile forces a new run", async () => {
@@ -626,7 +629,7 @@ describe("CompileController", () => {
     await waitFor(() => environment.calls.includes("renderReverse"));
     controller.cancelActive();
     await Promise.resolve();
-    releaseRender?.();
+    releaseRender!();
     const cancelled = await pending;
     expect(cancelled.status).toBe("cancelled");
     expect(cancelled.result).toBeUndefined();

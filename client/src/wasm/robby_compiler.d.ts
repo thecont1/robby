@@ -42,6 +42,15 @@ export function compiler_version(): string;
 */
 export function rust_toolchain(): string;
 /**
+* Median-cut palette hex swatches for a source at a given k — the exact
+* list `render_reverse` reports as `colour_swatches`, without rendering a
+* PNG. Used for live recipe previews (palette slider).
+* @param {Uint8Array} source_bytes
+* @param {number} k
+* @returns {string}
+*/
+export function palette_preview_json(source_bytes: Uint8Array, k: number): string;
+/**
 * Render through the same Rust implementation used by the native binary.
 * The JSON result carries PNG bytes and the deterministic manifest.
 * @param {Uint8Array} source_bytes
@@ -59,6 +68,7 @@ export interface InitOutput {
   readonly compile_source_json: (a: number, b: number, c: number) => void;
   readonly compiler_version: (a: number) => void;
   readonly inspect_image_json: (a: number, b: number, c: number, d: number, e: number) => void;
+  readonly palette_preview_json: (a: number, b: number, c: number, d: number) => void;
   readonly render_reverse_json: (a: number, b: number, c: number, d: number, e: number) => void;
   readonly rust_toolchain: (a: number) => void;
   readonly __wbindgen_add_to_stack_pointer: (a: number) => number;
