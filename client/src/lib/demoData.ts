@@ -21,6 +21,7 @@ export type CredentialSignature = {
   verificationMethod: string;
   note: string;
   claimGenerator?: string;
+  credentialKey?: string;
 };
 
 export type ColourSignature = {

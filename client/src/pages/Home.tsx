@@ -16,6 +16,7 @@ import type { CompileRun, SessionOrio } from "@/lib/compileEvents";
 import { verifiedCompilerStatus } from "@/lib/compilerStatus";
 import { paletteKFromSource } from "@/lib/paletteSettings";
 import { authoredRecipeForCompile, editPaletteInRecipe, isCompiledSourceCurrent, reverseModeFromSource } from "@/lib/recipeAuthority";
+import { reverseMotionSeed } from "@/lib/reverseSeed";
 
 import {
   DropdownMenu,
@@ -81,7 +82,7 @@ function traceFromIr(ir: RobbyIr): TraceStep[] {
 function ReverseArtwork({ result, alt }: { result?: SessionOrio; alt: string }) {
   if (!result) return null;
   if (result.renderModule === "palette_grid") {
-    return <PaletteMosaicCanvas palette={result.colourSwatches} seed={result.derivedSeed} fallbackUrl={result.reverseObjectUrl} alt={alt} />;
+    return <PaletteMosaicCanvas palette={result.colourSwatches} seed={reverseMotionSeed(result.c2paEvidence)} fallbackUrl={result.reverseObjectUrl} alt={alt} />;
   }
   return <img src={result.reverseObjectUrl} alt={alt} className="object-image" />;
 }

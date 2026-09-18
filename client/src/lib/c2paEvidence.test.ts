@@ -8,9 +8,11 @@ describe("run-bound C2PA evidence", () => {
       sourceSha256: "a".repeat(64),
       verificationMethod: "Official CAI C2PA Node SDK validation",
       note: "Validation state: Valid. Validation notices: signingCredential.untrusted: signing certificate untrusted.",
+      credentialKey: "urn:uuid:credential-one",
     }, "2026-09-13T22:00:00.000Z");
     expect(evidence.validation).toBe("valid");
     expect(evidence.signerTrust).toBe("untrusted");
+    expect(evidence.credentialKey).toBe("urn:uuid:credential-one");
     expect(c2paEvidenceLabel(evidence)).toBe("C2PA PRESENT · VALID · UNTRUSTED SIGNER");
   });
 
