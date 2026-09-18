@@ -11,6 +11,6 @@ export const briefSummaries: Record<BriefKind, { menuLabel: string; route: strin
     menuLabel: "Image-object concept",
     route: "/brief/image-object",
     title: "Even Better Than the Real Thing?",
-    source: "Source: 2023 MFA PHT 805 Project Report · pp. 8–10",
+    source: "Source: 2023 MFA PHT 805 Project Report · pp. 8, 16, 18, 20–24",
   },
 };
