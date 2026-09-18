@@ -437,6 +437,135 @@ pub fn exif_orientation(bytes: &[u8], format: ImageFormat) -> Option<u16> {
     extract_exif(bytes, format).0
 }
 
+/// Convert an embedded EXIF GPS coordinate into a coarse deterministic seed.
+/// Raw coordinates never leave this module or enter a public manifest.
+pub(crate) fn generalized_gps_seed(bytes: &[u8], format: ImageFormat) -> Option<u64> {
+    let tiff = match format {
+        ImageFormat::Jpeg => jpeg_exif_payload(bytes)?,
+        ImageFormat::Png => png_exif_payload(bytes)?,
+        _ => return None,
+    };
+    let (little, ifd) = tiff_header(tiff)?;
+    let gps_ifd = tiff_u32_tag(tiff, little, ifd, 0x8825)? as usize;
+    let latitude_ref = tiff_ascii_tag(tiff, little, gps_ifd, 1)?;
+    let longitude_ref = tiff_ascii_tag(tiff, little, gps_ifd, 3)?;
+    let latitude = tiff_rational_triplet(tiff, little, gps_ifd, 2)?;
+    let longitude = tiff_rational_triplet(tiff, little, gps_ifd, 4)?;
+    let latitude = if latitude_ref == "S" {
+        -latitude
+    } else {
+        latitude
+    };
+    let longitude = if longitude_ref == "W" {
+        -longitude
+    } else {
+        longitude
+    };
+    let lat_band = (latitude * 100.0).round() as i64;
+    let lon_band = (longitude * 100.0).round() as i64;
+    let mut seed = 0xcbf29ce484222325_u64;
+    for byte in lat_band
+        .to_le_bytes()
+        .into_iter()
+        .chain(lon_band.to_le_bytes())
+    {
+        seed ^= u64::from(byte);
+        seed = seed.wrapping_mul(0x100000001b3);
+    }
+    Some(seed)
+}
+
+fn tiff_header(bytes: &[u8]) -> Option<(bool, usize)> {
+    let little = match bytes.get(0..2)? {
+        b"II" => true,
+        b"MM" => false,
+        _ => return None,
+    };
+    let u16_at = |at: usize| tiff_u16(bytes, little, at);
+    if u16_at(2)? != 42 {
+        return None;
+    }
+    Some((little, tiff_u32(bytes, little, 4)? as usize))
+}
+
+fn tiff_u16(bytes: &[u8], little: bool, at: usize) -> Option<u16> {
+    let part = bytes.get(at..at + 2)?;
+    Some(if little {
+        u16::from_le_bytes([part[0], part[1]])
+    } else {
+        u16::from_be_bytes([part[0], part[1]])
+    })
+}
+
+fn tiff_u32(bytes: &[u8], little: bool, at: usize) -> Option<u32> {
+    let part = bytes.get(at..at + 4)?;
+    Some(if little {
+        u32::from_le_bytes([part[0], part[1], part[2], part[3]])
+    } else {
+        u32::from_be_bytes([part[0], part[1], part[2], part[3]])
+    })
+}
+
+fn tiff_entry(bytes: &[u8], little: bool, ifd: usize, tag: u16) -> Option<(u16, u32, usize)> {
+    let count = usize::from(tiff_u16(bytes, little, ifd)?);
+    for index in 0..count {
+        let at = ifd.checked_add(2 + index * 12)?;
+        if tiff_u16(bytes, little, at)? == tag {
+            return Some((
+                tiff_u16(bytes, little, at + 2)?,
+                tiff_u32(bytes, little, at + 4)?,
+                at + 8,
+            ));
+        }
+    }
+    None
+}
+
+fn tiff_u32_tag(bytes: &[u8], little: bool, ifd: usize, tag: u16) -> Option<u32> {
+    let (kind, count, value_at) = tiff_entry(bytes, little, ifd, tag)?;
+    if kind != 4 || count != 1 {
+        return None;
+    }
+    tiff_u32(bytes, little, value_at)
+}
+
+fn tiff_ascii_tag(bytes: &[u8], little: bool, ifd: usize, tag: u16) -> Option<String> {
+    let (kind, count, value_at) = tiff_entry(bytes, little, ifd, tag)?;
+    if kind != 2 || count < 1 {
+        return None;
+    }
+    let offset = if count <= 4 {
+        value_at
+    } else {
+        tiff_u32(bytes, little, value_at)? as usize
+    };
+    let value = bytes.get(offset..offset + count as usize)?;
+    Some(
+        String::from_utf8_lossy(value)
+            .trim_matches('\0')
+            .to_string(),
+    )
+}
+
+fn tiff_rational_triplet(bytes: &[u8], little: bool, ifd: usize, tag: u16) -> Option<f64> {
+    let (kind, count, value_at) = tiff_entry(bytes, little, ifd, tag)?;
+    if kind != 5 || count != 3 {
+        return None;
+    }
+    let offset = tiff_u32(bytes, little, value_at)? as usize;
+    let mut result = 0.0;
+    for index in 0..3 {
+        let at = offset.checked_add(index * 8)?;
+        let numerator = f64::from(tiff_u32(bytes, little, at)?);
+        let denominator = f64::from(tiff_u32(bytes, little, at + 4)?);
+        if denominator == 0.0 {
+            return None;
+        }
+        result += numerator / denominator / 60_f64.powi(index as i32);
+    }
+    Some(result)
+}
+
 fn extract_exif(
     bytes: &[u8],
     format: ImageFormat,

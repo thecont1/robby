@@ -8,6 +8,7 @@ import initRobbyCompiler, {
   binding_request_v1_json,
   build_binding_json,
   analyze_ingredients_json,
+  compile_recipe_json,
   compile_source_json,
   compiler_version,
   inspect_image_json,
@@ -24,6 +25,19 @@ export type RobbyIr = {
   reverse: { mode: RobbyReverseMode };
   output: { obverse: string; reverse: string; manifest: string };
   meta: { script_sha256: string };
+};
+
+export type RobbyRecipeIr = {
+  version: "robby-ir-v2";
+  object: { name: string; input: string };
+  inspect: Record<string, string>;
+  context: Record<string, unknown>;
+  split_palette: { method: string; colours: number; order: string };
+  measure: Record<string, unknown>;
+  bind: Record<string, string>;
+  reverse: { mode: string; cell: number; arrange: string; seed: string; border: string };
+  publish: Record<string, string>;
+  recipe_sha256: string;
 };
 
 /** Public-safe intake manifest as produced by the shared Rust `inspect_image`. */
@@ -83,6 +97,12 @@ export type IngredientAnalysis = {
     texture_field: number[];
   };
   identity: { perceptual_hash: string };
+  terrain: {
+    representation: string;
+    seed_token: string;
+    grid_size: number;
+    heights: number[];
+  } | null;
 };
 
 let initialize: Promise<void> | null = null;
@@ -104,6 +124,15 @@ export async function compileWithRust(source: string): Promise<RobbyIr> {
   const ir = JSON.parse(compile_source_json(source)) as RobbyIr;
   if (ir.version !== "robby-ir-v1") {
     throw new Error("Rust compiler returned an unexpected IR version.");
+  }
+  return ir;
+}
+
+export async function compileRecipeWithRust(source: string): Promise<RobbyRecipeIr> {
+  await ensureRustCompiler();
+  const ir = JSON.parse(compile_recipe_json(source)) as RobbyRecipeIr;
+  if (ir.version !== "robby-ir-v2") {
+    throw new Error("Rust compiler returned an unexpected recipe IR version.");
   }
   return ir;
 }

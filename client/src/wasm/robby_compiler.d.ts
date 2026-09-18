@@ -7,6 +7,12 @@
 */
 export function compile_source_json(source: string): string;
 /**
+* Compile the versioned object-block recipe language in the browser.
+* @param {string} source
+* @returns {string}
+*/
+export function compile_recipe_json(source: string): string;
+/**
 * Build the authoritative canonical `BindingRecord` from a JSON
 * `CanonicalBindingRequest`. One algorithm, shared with the native CLI.
 * @param {string} request_json
@@ -74,6 +80,7 @@ export interface InitOutput {
   readonly analyze_ingredients_json: (a: number, b: number, c: number, d: number) => void;
   readonly binding_request_v1_json: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number) => void;
   readonly build_binding_json: (a: number, b: number, c: number) => void;
+  readonly compile_recipe_json: (a: number, b: number, c: number) => void;
   readonly compile_source_json: (a: number, b: number, c: number) => void;
   readonly compiler_version: (a: number) => void;
   readonly inspect_image_json: (a: number, b: number, c: number, d: number, e: number) => void;

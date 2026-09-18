@@ -8,11 +8,13 @@ use std::path::PathBuf;
 use robby_compiler::build_binding_json;
 use robby_compiler::inspect_image_json;
 use robby_compiler::render::{render_reverse, RenderSettings};
-use robby_compiler::{analyze_ingredients_json, compile_source, COMPILER_VERSION};
+use robby_compiler::{
+    analyze_ingredients_json, compile_recipe_source, compile_source, COMPILER_VERSION,
+};
 
 fn usage() {
     eprintln!(
-        "{COMPILER_VERSION}\n\nUsage (troid engine; `robby` remains a compatibility alias):\n  troid compile <script.robby> --out <ir.json>\n  troid check <script.robby>\n  troid render <source-image> --settings <json>\n  troid inspect <source-image> <original-name>\n  troid ingredients <source-image> --k <3..64>\n  troid bind <binding-request.json>\n  troid version"
+        "{COMPILER_VERSION}\n\nUsage (troid engine; `robby` remains a compatibility alias):\n  troid compile <script.robby> --out <ir.json>\n  troid check <script.robby>\n  troid recipe-compile <recipe.robby> --out <ir.json>\n  troid recipe-check <recipe.robby>\n  troid render <source-image> --settings <json>\n  troid inspect <source-image> <original-name>\n  troid ingredients <source-image> --k <3..64>\n  troid bind <binding-request.json>\n  troid version"
     );
 }
 
@@ -99,7 +101,14 @@ fn main() {
             return;
         }
     }
+    let recipe_mode = arguments
+        .first()
+        .is_some_and(|command| command.starts_with("recipe-"));
     let (script_path, output_path) = match arguments.as_slice() {
+        [command, script] if command == "recipe-check" => (script, None),
+        [command, script, flag, output] if command == "recipe-compile" && flag == "--out" => {
+            (script, Some(PathBuf::from(output)))
+        }
         [command, script] if command == "check" => (script, None),
         [command, script, flag, output] if command == "compile" && flag == "--out" => {
             (script, Some(PathBuf::from(output)))
@@ -116,6 +125,39 @@ fn main() {
             std::process::exit(1);
         }
     };
+    if recipe_mode {
+        let ir = match compile_recipe_source(&source) {
+            Ok(value) => value,
+            Err(error) => {
+                eprintln!("{error}");
+                std::process::exit(1);
+            }
+        };
+        match output_path {
+            None => println!("Valid Robby v2 object recipe: `{script_path}`"),
+            Some(output_path) => {
+                if let Some(parent) = output_path.parent() {
+                    fs::create_dir_all(parent).unwrap_or_else(|error| {
+                        eprintln!("Error: Could not create `{}`: {error}", parent.display());
+                        std::process::exit(1);
+                    });
+                }
+                let json = serde_json::to_string_pretty(&ir).expect("recipe IR should serialize");
+                fs::write(&output_path, format!("{json}\n")).unwrap_or_else(|error| {
+                    eprintln!(
+                        "Error: Could not write `{}`: {error}",
+                        output_path.display()
+                    );
+                    std::process::exit(1);
+                });
+                println!(
+                    "Compiled object recipe `{script_path}` → `{}`",
+                    output_path.display()
+                );
+            }
+        }
+        return;
+    }
     let ir = match compile_source(&source) {
         Ok(value) => value,
         Err(error) => {

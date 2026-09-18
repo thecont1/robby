@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 const home = readFileSync(new URL("../pages/Home.tsx", import.meta.url), "utf8");
 const counter = readFileSync(new URL("../components/TeppanyakiCounter.tsx", import.meta.url), "utf8");
 const evidence = readFileSync(new URL("../components/EmbeddedEvidencePanel.tsx", import.meta.url), "utf8");
+const terrain = readFileSync(new URL("../components/GeneralizedTerrain.tsx", import.meta.url), "utf8");
 const analysis = readFileSync(new URL("../components/IngredientAnalysisPanel.tsx", import.meta.url), "utf8");
 
  describe("ingredient analysis observation contract", () => {
@@ -24,6 +25,12 @@ const analysis = readFileSync(new URL("../components/IngredientAnalysisPanel.tsx
   it("does not expose raw GPS or metadata values in the evidence panel", () => {
     expect(evidence).toContain("Coordinates detected but withheld");
     expect(evidence).toContain("values remain private by default");
+    expect(evidence).toContain("Show generalized terrain");
+    expect(evidence).toContain("terrainConsent");
+    expect(evidence).toContain("no coordinates displayed");
+    expect(evidence).toContain("<GeneralizedTerrain terrain={analysis.terrain}");
+    expect(terrain).toContain("three");
+    expect(terrain).toContain("Generalized GPS-seeded terrain representation");
     expect(evidence).not.toContain("analysis.evidence.gpsValue");
   });
 

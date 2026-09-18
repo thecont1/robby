@@ -23,6 +23,7 @@ pub struct IngredientAnalysis {
     pub palette: PaletteIngredients,
     pub structure: StructureIngredients,
     pub identity: IdentityIngredients,
+    pub terrain: Option<TerrainIngredients>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -86,6 +87,14 @@ pub struct IdentityIngredients {
     pub perceptual_hash: String,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct TerrainIngredients {
+    pub representation: String,
+    pub seed_token: String,
+    pub grid_size: usize,
+    pub heights: Vec<u8>,
+}
+
 /// Analyse the source bytes without producing or persisting an image derivative.
 /// The output is intentionally bounded to 8×8 fields so the browser can inspect
 /// it immediately without moving a full raster through the UI.
@@ -97,6 +106,11 @@ pub fn analyze_image_json(bytes: &[u8], requested_k: u8) -> CompileResult<String
     }
 
     let intake = inspect_image("analysis-source", bytes)?;
+    let format = image::ImageReader::new(std::io::Cursor::new(bytes))
+        .with_guessed_format()
+        .map_err(|error| CompilerError::plain(error.to_string()))?
+        .format()
+        .ok_or_else(|| CompilerError::plain("Unsupported image format"))?;
     let (pixels, width, height) =
         source_pixels(bytes).map_err(|error| CompilerError::plain(error.to_string()))?;
     let (analysis_pixels, analysis_width, analysis_height) = bounded_sample(&pixels, width, height);
@@ -148,6 +162,7 @@ pub fn analyze_image_json(bytes: &[u8], requested_k: u8) -> CompileResult<String
         identity: IdentityIngredients {
             perceptual_hash: average_hash(&analysis_pixels, analysis_width, analysis_height),
         },
+        terrain: crate::intake::generalized_gps_seed(bytes, format).map(generalized_terrain),
         structure,
     };
     serde_json::to_string(&analysis).map_err(|error| {
@@ -157,6 +172,27 @@ pub fn analyze_image_json(bytes: &[u8], requested_k: u8) -> CompileResult<String
 
 /// Reduce only expensive visual measurements to a deterministic bounded sample.
 /// Full source and canonical-pixel hashes still use every pixel above.
+fn generalized_terrain(seed: u64) -> TerrainIngredients {
+    let grid_size = 16;
+    let mut state = seed;
+    let heights = (0..grid_size * grid_size)
+        .map(|index| {
+            state ^= state << 13;
+            state ^= state >> 7;
+            state ^= state << 17;
+            let distance = ((index % grid_size) as i32 - (grid_size / 2) as i32).unsigned_abs()
+                + ((index / grid_size) as i32 - (grid_size / 2) as i32).unsigned_abs();
+            ((state as u8).saturating_add((distance as u8).saturating_mul(3))) / 2
+        })
+        .collect();
+    TerrainIngredients {
+        representation: "coarse-gps-seeded-terrain".to_string(),
+        seed_token: format!("{:08X}", seed as u32),
+        grid_size,
+        heights,
+    }
+}
+
 fn bounded_sample(pixels: &[[u8; 3]], width: u32, height: u32) -> (Vec<[u8; 3]>, u32, u32) {
     if pixels.len() <= MAX_ANALYSIS_PIXELS {
         return (pixels.to_vec(), width, height);

@@ -237,6 +237,8 @@
 .swatch-matrix-host canvas { display:block; height:100% !important; width:100% !important; }
 .artwork-view-image-viewport .swatch-matrix-host { height:100%; max-width:calc(100% - 48px); width:100%; }
 .dark .swatch-matrix-host { background:#000; }
+.reverse-face-frame { border:1px solid rgba(28,26,25,.45); box-sizing:border-box; height:100%; padding:0; width:100%; }
+.dark .reverse-face-frame { border-color:#e3442f; }
 .swatch-seed-line { color:#a89e91; font-family:"DM Mono",ui-monospace,monospace; font-size:8px; letter-spacing:.1em; margin:10px 0 13px; text-transform:uppercase; }
 .swatch-seed-line strong { color:#f4efe1; font-weight:700; }
 .dark .swatch-seed-line { color:#d79a8d; }
@@ -472,3 +474,9 @@
 .embedded-evidence-policy { border:1px solid rgba(232,163,148,.45); margin-top:15px; padding:10px; }
 .embedded-evidence-policy strong { color:#e8a394; font-family:"DM Mono",monospace; font-size:8px; letter-spacing:.1em; }
 .embedded-evidence-policy p { color:#d8cebc; font-family:"DM Mono",monospace; font-size:8px; line-height:1.45; margin:6px 0 0; }
+
+.terrain-evidence-block { border-top:1px solid rgba(244,239,225,.18); margin-top:16px; padding-top:14px; }
+.terrain-evidence-note,.terrain-evidence-block p { color:#bdb5a8; font-family:"DM Mono",monospace; font-size:10px; line-height:1.5; margin:10px 0; }
+.terrain-evidence-unavailable { color:#e3442f; font-family:"DM Mono",monospace; font-size:10px; letter-spacing:.08em; text-transform:uppercase; }
+.generalized-terrain { border:1px solid #e3442f; height:230px; margin-top:12px; overflow:hidden; width:100%; }
+.generalized-terrain canvas { display:block; height:100%; width:100%; }

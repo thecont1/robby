@@ -6,7 +6,7 @@ Robby still produces **one reverse artwork per obverse**. The optional **Visual 
 
 The analysis is triggered explicitly from Teppanyaki Counter. It reads the exact immutable source bytes through the existing browser Rust/WASM bridge and returns a bounded `robby-ingredients-v1` record. The current record contains source and pixel hashes, dimensions, orientation, colour-profile presence, median-cut palette entries and shares, a perceptual average hash, luminance bands, an 8 × 8 spatial palette field, an edge-contrast field, a local texture field, and privacy-safe metadata/C2PA extraction states.
 
-The analysis is intentionally bounded. It does not transfer a full raster into React state, persist a derivative, expose raw GPS coordinates, or publish EXIF/IPTC/XMP values. A GPS state may be `present`, but the coordinate itself remains private. Any future terrain representation must be generalized and require a separate consent decision; it is not part of the current reverse artwork.
+The analysis is intentionally bounded. It does not transfer a full raster into React state, persist a derivative, expose raw GPS coordinates, or publish EXIF/IPTC/XMP values. A GPS state may be `present`, but the coordinate itself remains private. When GPS is present, Rust derives a coarse seed and a bounded height field; the **Embedded evidence** view requires a separate user click before rendering that generalized terrain surface with Three.js. The terrain is an evidence visualization, not a second reverse artwork.
 
 ## How the three counter views relate
 
@@ -15,10 +15,11 @@ The analysis is intentionally bounded. It does not transfer a full raster into R
 | **Counter** | Existing compilation actions | Eight live compiler stations and the one reverse result | Existing public-safe trace and transient output rules |
 | **Visual ingredients** | `Analyze ingredients` | Palette, hashes, luminance, spatial, edge, texture, and perceptual fields | Measurements only; no image derivative |
 | **Embedded evidence** | `Inspect evidence` | EXIF, IPTC, XMP, GPS, and C2PA extraction states | Raw values withheld; GPS coordinates never displayed |
+| **Generalized terrain** | `Show generalized terrain` after GPS evidence inspection | Coarse seed-derived Three.js surface | Explicit consent; only a seed token and height field cross the Rust/WASM boundary |
 
 ## Proposed language direction: v2, not silently enabled in v1
 
-The richer object-oriented language is a useful next design target. It should be introduced through a versioned grammar rather than by accepting undocumented commands in the current parser.
+The richer object-oriented language is implemented as versioned `robby-ir-v2` recipe syntax. It is available independently from the v1 line-oriented syntax through `troid recipe-check` and `troid recipe-compile`.
 
 ```text
 object "bangalore-night-001" {
@@ -80,3 +81,17 @@ source language
 ```
 
 The crucial invariant remains: **analysis may become an explicit, inspectable compiler input, but it must not become an implicit semantic interpretation of what the photograph depicts.**
+
+## CLI examples
+
+```sh
+troid recipe-check gallery/example.robby
+troid recipe-compile gallery/example.robby --out /tmp/example-ir.json
+```
+
+The older commands remain available for the v1 language:
+
+```sh
+troid check gallery/example-v1.robby
+troid compile gallery/example-v1.robby --out /tmp/example-v1-ir.json
+```

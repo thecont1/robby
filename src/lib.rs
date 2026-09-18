@@ -124,7 +124,7 @@ mod wasm {
     use crate::{
         analysis::analyze_image_json as analyze_ingredients,
         binding_request_v1_json as build_v1_request,
-        build_binding_json as build_binding_record_json, compile_source,
+        build_binding_json as build_binding_record_json, compile_recipe_source, compile_source,
         inspect_image_json as inspect, COMPILER_VERSION, RUST_TOOLCHAIN,
     };
 
@@ -132,6 +132,14 @@ mod wasm {
     #[wasm_bindgen]
     pub fn compile_source_json(source: &str) -> Result<String, JsValue> {
         let ir = compile_source(source).map_err(|error| JsValue::from_str(&error.to_string()))?;
+        serde_json::to_string(&ir).map_err(|error| JsValue::from_str(&error.to_string()))
+    }
+
+    /// Compile the versioned object-block recipe language in the browser.
+    #[wasm_bindgen]
+    pub fn compile_recipe_json(source: &str) -> Result<String, JsValue> {
+        let ir =
+            compile_recipe_source(source).map_err(|error| JsValue::from_str(&error.to_string()))?;
         serde_json::to_string(&ir).map_err(|error| JsValue::from_str(&error.to_string()))
     }
 
