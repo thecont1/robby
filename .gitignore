@@ -119,6 +119,4 @@ temp/
 # Playwright MCP browser inspection artifacts (console logs, page snapshots)
 .playwright-mcp/
 
-# Local gallery originals are runtime inputs; keep only explicit fixtures.
-gallery/*
-!gallery/.gitkeep
+# Gallery originals are committed so CI deploys can bake them into the image.
