@@ -8,11 +8,11 @@ use std::path::PathBuf;
 use robby_compiler::build_binding_json;
 use robby_compiler::inspect_image_json;
 use robby_compiler::render::{render_reverse, RenderSettings};
-use robby_compiler::{compile_source, COMPILER_VERSION};
+use robby_compiler::{analyze_ingredients_json, compile_source, COMPILER_VERSION};
 
 fn usage() {
     eprintln!(
-        "{COMPILER_VERSION}\n\nUsage (troid engine; `robby` remains a compatibility alias):\n  troid compile <script.robby> --out <ir.json>\n  troid check <script.robby>\n  troid render <source-image> --settings <json>\n  troid inspect <source-image> <original-name>\n  troid bind <binding-request.json>\n  troid version"
+        "{COMPILER_VERSION}\n\nUsage (troid engine; `robby` remains a compatibility alias):\n  troid compile <script.robby> --out <ir.json>\n  troid check <script.robby>\n  troid render <source-image> --settings <json>\n  troid inspect <source-image> <original-name>\n  troid ingredients <source-image> --k <3..64>\n  troid bind <binding-request.json>\n  troid version"
     );
 }
 
@@ -63,6 +63,24 @@ fn main() {
                     std::process::exit(1);
                 });
             println!("{manifest}");
+            return;
+        }
+    }
+    if let [command, source_path, flag, k] = arguments.as_slice() {
+        if command == "ingredients" && flag == "--k" {
+            let source_bytes = fs::read(source_path).unwrap_or_else(|error| {
+                eprintln!("Error: Could not read `{source_path}`: {error}");
+                std::process::exit(1);
+            });
+            let palette_k = k.parse::<u8>().unwrap_or_else(|_| {
+                eprintln!("Error: palette k must be an integer between 3 and 64");
+                std::process::exit(1);
+            });
+            let analysis = analyze_ingredients_json(&source_bytes, palette_k).unwrap_or_else(|error| {
+                eprintln!("Error: {error}");
+                std::process::exit(1);
+            });
+            println!("{analysis}");
             return;
         }
     }

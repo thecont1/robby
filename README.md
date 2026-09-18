@@ -22,7 +22,7 @@ This isn't a photo editor, compositor, or masking tool. It's a compiler — with
 
 ## The core idea, in one sentence
 
-**The obverse is never analyzed. The reverse is generated purely from the obverse's cryptographic identity, its raw colour statistics, and a set of explicit settings you control — never from any attempt to understand what is actually depicted in the photograph.**
+**The obverse is never semantically interpreted.** Robby may now perform an explicit, user-triggered measurement pass over the source bytes—palette, luminance, texture, spatial colour, hashes, and embedded-evidence states—but it does not attempt to identify or understand what the photograph depicts. The reverse remains generated from explicit, inspectable inputs.
 
 This is a deliberate, load-bearing rule, not an implementation detail. See [`TECH-SPEC.md`](./TECH-SPEC.md) for exactly what that does and does not permit.
 
@@ -73,6 +73,10 @@ The live site doesn't just show you the obverse and reverse — it shows the com
 | **Failure**   | What a compile error looks like, and why it happened.                               |
 
 There's also a live, in-browser source editor: you can edit the script for any specimen and recompile it against the real Rust compiler core — not a simulated preview.
+
+The Teppanyaki Counter also has three views: **Counter** shows the live compilation stations; **Visual ingredients** runs a bounded Rust/WASM analysis only when requested and exposes the palette, hashes, luminance, spatial, edge, texture, and perceptual fields; **Embedded evidence** reports EXIF, IPTC, XMP, GPS, and C2PA extraction states without exposing raw metadata or GPS coordinates. These views explain the one reverse artwork—they do not generate alternate reverse images.
+
+The proposed evidence-aware object language is documented as a versioned v2 direction in [`docs/ingredients-and-evidence.md`](./docs/ingredients-and-evidence.md). The current v1 parser does not silently accept that future syntax.
 
 ## Running the engine and observation deck
 

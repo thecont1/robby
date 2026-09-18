@@ -6,6 +6,7 @@
  */
 
 import SourceEditor from "@/components/SourceEditor";
+import IngredientAnalysisPanel from "@/components/IngredientAnalysisPanel";
 import SwatchMatrix from "@/components/SwatchMatrix";
 import TeppanyakiCounter from "@/components/TeppanyakiCounter";
 import { ProvenanceModule, type RuntimeRecord, type TraceMode } from "@/components/Build06Panels";
@@ -30,7 +31,7 @@ import { type CredentialSignature, type TraceStep, type GalleryItem } from "@/li
 import { useGallery } from "@/lib/useGallery";
 import { createRecipeDraftStore } from "@/lib/recipeDrafts";
 import { footerSocialLinks } from "@/lib/footerLinks";
-import { palettePreviewWithRust, rustToolchainVersion, type RobbyIr } from "@/lib/robbyCompiler";
+import { analyzeIngredientsWithRust, palettePreviewWithRust, rustToolchainVersion, type IngredientAnalysis, type RobbyIr } from "@/lib/robbyCompiler";
 import { gallerySlideDirection, isImageOnlyExitKey, swipeGalleryOffset, themeControlLabel, type GallerySlideDirection } from "@/lib/visualModes";
 import { artworkModalKeyAction, focusableArtworkSelector } from "@/lib/artworkModal";
 import {
@@ -125,6 +126,10 @@ export default function Home() {
   const palettePreviewSeq = useRef(0);
   const sourceBytesCache = useRef<Record<string, Promise<Uint8Array>>>({});
   const [compileRun, setCompileRun] = useState<CompileRun | null>(null);
+  const [ingredientStatus, setIngredientStatus] = useState<"idle" | "running" | "ready" | "error">("idle");
+  const [ingredientAnalysis, setIngredientAnalysis] = useState<{ specimenId: string; paletteK: number; value: IngredientAnalysis } | null>(null);
+  const [ingredientError, setIngredientError] = useState<string | null>(null);
+  const ingredientCache = useRef<Record<string, IngredientAnalysis>>({});
   const faceBySpecimen = useRef<Record<string, "obverse" | "inverse">>({});
   const invalidatedSpecimens = useRef(new Set<string>());
   const runBySpecimen = useRef<Record<string, CompileRun>>({});
@@ -273,6 +278,9 @@ export default function Home() {
     setCompileRun(savedRun ?? null);
     setFace(savedRun?.result && faceBySpecimen.current[selected.id] === "inverse" ? "inverse" : "obverse");
     setCredentialOverride(null);
+    setIngredientStatus("idle");
+    setIngredientAnalysis(null);
+    setIngredientError(null);
   }, [selected.id, selected.script, setPaletteKFromDraft, bumpDraftRevision]);
 
   const hashValue = async (value: string) => {
@@ -415,6 +423,38 @@ export default function Home() {
     setCredentialOverride(null);
     setRuntimeRecord(current => current ? { compiledAt: "", irHash: "", toolchain: current.toolchain } : null);
   };
+
+  const analyzeIngredients = useCallback(async () => {
+    if (ingredientStatus === "running" || !selected.id) return;
+    const specimenId = selected.id;
+    const analysisK = paletteK;
+    const cacheKey = `${specimenId}:${analysisK}`;
+    const cached = ingredientCache.current[cacheKey];
+    if (cached) {
+      setIngredientAnalysis({ specimenId, paletteK: analysisK, value: cached });
+      setIngredientStatus("ready");
+      setIngredientError(null);
+      return;
+    }
+    setIngredientStatus("running");
+    setIngredientError(null);
+    try {
+      const bytes = await (sourceBytesCache.current[specimenId] ??= fetch(selected.obverse, { cache: "no-store" })
+        .then(response => {
+          if (!response.ok) throw new Error(`Could not read source bytes for ${selected.source}.`);
+          return response.arrayBuffer().then(buffer => new Uint8Array(buffer));
+        }));
+      const value = await analyzeIngredientsWithRust(bytes, analysisK);
+      if (selectedIdRef.current !== specimenId || paletteK !== analysisK) return;
+      ingredientCache.current[cacheKey] = value;
+      setIngredientAnalysis({ specimenId, paletteK: analysisK, value });
+      setIngredientStatus("ready");
+    } catch (error) {
+      if (selectedIdRef.current !== specimenId) return;
+      setIngredientStatus("error");
+      setIngredientError(error instanceof Error ? error.message : String(error));
+    }
+  }, [ingredientStatus, paletteK, selected.id, selected.obverse, selected.source]);
 
   // Memoized so the keydown effect below re-binds whenever the compilation
   // state this handler captures changes. Without it, the F shortcut keeps
@@ -876,6 +916,7 @@ export default function Home() {
         </div>
         <div className="counter-column" inert={imageOnly}>
           <TeppanyakiCounter
+            key={selected.id}
             run={activeCompileRun}
             recipeChanged={recipeChanged}
             paletteK={paletteK}
@@ -884,6 +925,10 @@ export default function Home() {
             liveSwatches={livePalette?.specimenId === selected.id && livePalette.k === paletteK ? livePalette.swatches : []}
             swatchSeedToken={displayedSwatchSeedToken}
             swatchC2paPresent={displayedReverseResult?.c2paEvidence.presence === "present"}
+            ingredientStatus={ingredientStatus}
+            ingredientAnalysis={ingredientAnalysis?.specimenId === selected.id && ingredientAnalysis.paletteK === paletteK ? ingredientAnalysis.value : null}
+            ingredientError={ingredientError}
+            onAnalyzeIngredients={() => void analyzeIngredients()}
           />
         </div>
       </section>

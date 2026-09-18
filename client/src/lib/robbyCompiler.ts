@@ -7,6 +7,7 @@
 import initRobbyCompiler, {
   binding_request_v1_json,
   build_binding_json,
+  analyze_ingredients_json,
   compile_source_json,
   compiler_version,
   inspect_image_json,
@@ -48,6 +49,42 @@ export type IntakeManifest = {
   };
 };
 
+export type IngredientAnalysis = {
+  schema_version: "robby-ingredients-v1";
+  source: {
+    byte_sha256: string;
+    pixel_sha256: string;
+    byte_size: number;
+    width: number;
+    height: number;
+    aspect_ratio: number;
+    orientation: number | null;
+    colour_profile: string | null;
+  };
+  evidence: {
+    exif: string;
+    iptc: string;
+    xmp: string;
+    gps: string;
+    c2pa: string;
+  };
+  palette: {
+    requested_k: number;
+    method: string;
+    ordering: string;
+    entries: Array<{ hex: string; rgb: [number, number, number]; pixels: number; share_percent: number; rank: number }>;
+    index_map_sha256: string;
+  };
+  structure: {
+    grid_size: number;
+    luminance_bands: number[];
+    spatial_cells: Array<{ dominant_palette_rank: number; palette_mix: number[]; mean_luminance: number; texture: number }>;
+    edge_field: number[];
+    texture_field: number[];
+  };
+  identity: { perceptual_hash: string };
+};
+
 let initialize: Promise<void> | null = null;
 
 async function ensureRustCompiler() {
@@ -75,6 +112,12 @@ export async function compileWithRust(source: string): Promise<RobbyIr> {
 export async function inspectWithRust(originalName: string, bytes: Uint8Array): Promise<IntakeManifest> {
   await ensureRustCompiler();
   return JSON.parse(inspect_image_json(originalName, bytes)) as IntakeManifest;
+}
+
+/** Run bounded visual-ingredient analysis without rendering or persisting an image. */
+export async function analyzeIngredientsWithRust(bytes: Uint8Array, paletteK: number): Promise<IngredientAnalysis> {
+  await ensureRustCompiler();
+  return JSON.parse(analyze_ingredients_json(bytes, paletteK)) as IngredientAnalysis;
 }
 
 /** The authoritative Rust-produced binding record for a v1 gallery compile. */

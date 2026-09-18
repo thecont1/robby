@@ -1,6 +1,9 @@
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { CircleDotDashed } from "lucide-react";
+import IngredientAnalysisPanel, { type IngredientAnalysisStatus } from "@/components/IngredientAnalysisPanel";
+import EmbeddedEvidencePanel from "@/components/EmbeddedEvidencePanel";
 import type { CompileRun } from "@/lib/compileEvents";
+import type { IngredientAnalysis } from "@/lib/robbyCompiler";
 import { STATION_PACE_MS } from "@/lib/compileEvents";
 import { counterCopy, counterPresentation, deriveCounterState, stationViews, type StationView } from "@/lib/teppanyakiCounter";
 
@@ -92,6 +95,10 @@ export default function TeppanyakiCounter({
   liveSwatches = [],
   swatchSeedToken,
   swatchC2paPresent = false,
+  ingredientStatus,
+  ingredientAnalysis,
+  ingredientError,
+  onAnalyzeIngredients,
 }: {
   run: CompileRun | null;
   recipeChanged: boolean;
@@ -113,7 +120,12 @@ export default function TeppanyakiCounter({
   liveSwatches?: readonly string[];
   swatchSeedToken?: string;
   swatchC2paPresent?: boolean;
+  ingredientStatus: IngredientAnalysisStatus;
+  ingredientAnalysis: IngredientAnalysis | null;
+  ingredientError: string | null;
+  onAnalyzeIngredients: () => void;
 }) {
+  const [view, setView] = useState<"counter" | "ingredients" | "evidence">("counter");
   const state = deriveCounterState(run, recipeChanged);
   const copy = counterCopy(state);
   const presentation = counterPresentation(state);
@@ -151,10 +163,16 @@ export default function TeppanyakiCounter({
         </div>
       </div>
       <p className="teppanyaki-shortcuts" aria-label="Keyboard shortcuts">← → TO CYCLE · F TO FLIP · C TO COMPILE</p>
+      <div className="teppanyaki-view-tabs" role="tablist" aria-label="Teppanyaki counter views">
+        <button type="button" role="tab" aria-selected={view === "counter"} className={view === "counter" ? "active" : ""} onClick={() => setView("counter")}>Counter</button>
+        <button type="button" role="tab" aria-selected={view === "ingredients"} className={view === "ingredients" ? "active" : ""} onClick={() => setView("ingredients")}>Visual ingredients</button>
+        <button type="button" role="tab" aria-selected={view === "evidence"} className={view === "evidence" ? "active" : ""} onClick={() => setView("evidence")}>Embedded evidence</button>
+      </div>
       <div className="trace-title" role="status" aria-live="polite" aria-atomic="true">
         <p className="eyebrow">{copy.kicker}</p>
         <p className="counter-message">{copy.body}</p>
       </div>
+      {view === "counter" ? <>
       <div className="palette-slider">
         <label htmlFor="palette-k-slider" className="mono-label">Palette k</label>
         <div className="palette-slider-row">
@@ -187,6 +205,7 @@ export default function TeppanyakiCounter({
       )}
       {swatchSeedToken && <p className="swatch-seed-line">SWATCH SEED <strong>{swatchSeedToken}</strong> · {swatchC2paPresent ? "C2PA" : "NO C2PA"}</p>}
       {presentation.showStations && <StationList stations={stations} railProgress={railProgress} />}
+      </> : view === "ingredients" ? <IngredientAnalysisPanel status={ingredientStatus} analysis={ingredientAnalysis} error={ingredientError} paletteK={paletteK} onAnalyze={onAnalyzeIngredients} /> : <EmbeddedEvidencePanel analysis={ingredientAnalysis} onAnalyze={onAnalyzeIngredients} running={ingredientStatus === "running"} />}
     </aside>
   );
 }

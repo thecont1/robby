@@ -34,6 +34,14 @@ export function binding_request_v1_json(intake_json: string, recipe_source: stri
 */
 export function inspect_image_json(original_name: string, bytes: Uint8Array): string;
 /**
+* Calculate the bounded visual-ingredient record on demand. No reverse
+* image or persistent derivative is produced by this call.
+* @param {Uint8Array} source_bytes
+* @param {number} palette_k
+* @returns {string}
+*/
+export function analyze_ingredients_json(source_bytes: Uint8Array, palette_k: number): string;
+/**
 * @returns {string}
 */
 export function compiler_version(): string;
@@ -63,6 +71,7 @@ export type InitInput = RequestInfo | URL | Response | BufferSource | WebAssembl
 
 export interface InitOutput {
   readonly memory: WebAssembly.Memory;
+  readonly analyze_ingredients_json: (a: number, b: number, c: number, d: number) => void;
   readonly binding_request_v1_json: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number) => void;
   readonly build_binding_json: (a: number, b: number, c: number) => void;
   readonly compile_source_json: (a: number, b: number, c: number) => void;

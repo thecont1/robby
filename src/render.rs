@@ -575,7 +575,7 @@ pub fn render_reverse(
     // pixel_sha256, dimensions and layout consistent across both paths;
     // without it a rotated source renders transposed against its own manifest.
     let (pixels, source_width, source_height) = source_pixels(source_bytes)?;
-    let palette = median_cut_palette(&pixels, settings.k as usize)?;
+    let palette = palette_for_pixels(&pixels, settings.k as usize)?;
     let index_map = palette_index_map(&pixels, &palette);
     let mut rng = SplitMix64::new(seed);
     let image = module.render(
@@ -656,7 +656,7 @@ fn png_dimensions(png: &[u8]) -> (u32, u32) {
 /// Decode the source, apply EXIF orientation, and return canonical RGB
 /// pixels plus dimensions — the exact inputs intake hashes and the renderer
 /// measures. Shared so previews and renders can never disagree about pixels.
-fn source_pixels(source_bytes: &[u8]) -> Result<(Vec<[u8; 3]>, u32, u32), RenderError> {
+pub(crate) fn source_pixels(source_bytes: &[u8]) -> Result<(Vec<[u8; 3]>, u32, u32), RenderError> {
     let decoded = decode_source(source_bytes)?;
     let orientation = image::guess_format(source_bytes)
         .ok()
@@ -677,7 +677,7 @@ pub fn palette_preview(source_bytes: &[u8], k: u8) -> Result<Vec<String>, Render
         ));
     }
     let (pixels, _, _) = source_pixels(source_bytes)?;
-    Ok(median_cut_palette(&pixels, k as usize)?
+    Ok(palette_for_pixels(&pixels, k as usize)?
         .iter()
         .map(|entry| entry.hex.clone())
         .collect())
@@ -709,7 +709,10 @@ struct ColourBox {
     ordinal: usize,
 }
 
-fn median_cut_palette(pixels: &[[u8; 3]], k: usize) -> Result<Vec<PaletteEntry>, RenderError> {
+pub(crate) fn palette_for_pixels(
+    pixels: &[[u8; 3]],
+    k: usize,
+) -> Result<Vec<PaletteEntry>, RenderError> {
     if pixels.len() < k {
         return Err(RenderError(
             "source image has fewer pixels than palette k".into(),
@@ -824,7 +827,7 @@ fn widest_channel(pixels: &[[u8; 3]]) -> usize {
         .unwrap_or(0)
 }
 
-fn nearest_palette_index(pixel: &[u8; 3], palette: &[PaletteEntry]) -> usize {
+pub(crate) fn nearest_palette_index(pixel: &[u8; 3], palette: &[PaletteEntry]) -> usize {
     palette
         .iter()
         .enumerate()
@@ -833,7 +836,7 @@ fn nearest_palette_index(pixel: &[u8; 3], palette: &[PaletteEntry]) -> usize {
         .unwrap_or(0)
 }
 
-fn palette_index_map(pixels: &[[u8; 3]], palette: &[PaletteEntry]) -> Vec<u8> {
+pub(crate) fn palette_index_map(pixels: &[[u8; 3]], palette: &[PaletteEntry]) -> Vec<u8> {
     pixels
         .iter()
         .map(|pixel| nearest_palette_index(pixel, palette) as u8)

@@ -421,3 +421,54 @@
 .dark .palette-swatch-grid i.pending { border-color:#e3442f; }
 
 /* Colour signature swatch strip — horizontally scrollable for large palettes */
+
+/* On-demand ingredient analysis: a measured reading surface, not another reverse face. */
+.teppanyaki-view-tabs { display:flex; gap:4px; margin:14px 0 0; }
+.teppanyaki-view-tabs button { background:transparent; border:1px solid rgba(244,239,225,.28); color:#b8ada0; cursor:pointer; flex:1; font-family:"DM Mono",monospace; font-size:9px; font-weight:700; letter-spacing:.1em; padding:8px 7px; text-transform:uppercase; }
+.teppanyaki-view-tabs button.active { background:#e3442f; border-color:#e3442f; color:#1c1a19; }
+.ingredient-analysis-empty { color:#e8a394; padding:18px 0 4px; }
+.ingredient-analysis-empty p { color:#f7efe0; font-family:Georgia,serif; font-size:18px; line-height:1.25; margin:0 0 15px; }
+.ingredient-analysis-empty small { color:#b8ada0; display:block; font-family:"DM Mono",monospace; font-size:9px; letter-spacing:.06em; line-height:1.45; margin-top:10px; text-transform:uppercase; }
+.ingredient-analyze-button,.ingredient-refresh { background:#e3442f; border:1px solid #e3442f; color:#1c1a19; cursor:pointer; font-family:"DM Mono",monospace; font-size:9px; font-weight:700; letter-spacing:.08em; padding:9px 10px; text-transform:uppercase; }
+.ingredient-analysis { padding-top:16px; }
+.ingredient-analysis-head { align-items:flex-start; display:flex; gap:10px; justify-content:space-between; }
+.ingredient-analysis-head .eyebrow { color:#e8a394; margin:0 0 4px; }
+.ingredient-analysis-title { color:#f7efe0; font-family:Georgia,serif; font-size:17px; line-height:1.2; margin:0; }
+.ingredient-refresh { background:transparent; color:#e8a394; flex:0 0 auto; }
+.ingredient-stage-list { list-style:none; margin:16px 0 14px; padding:0; }
+.ingredient-stage { align-items:flex-start; border-top:1px solid rgba(244,239,225,.18); display:grid; gap:9px; grid-template-columns:25px 1fr auto; padding:9px 0; }
+.ingredient-stage-number { color:#e3442f; font-family:"DM Mono",monospace; font-size:10px; font-weight:700; }
+.ingredient-stage strong { color:#f7efe0; display:block; font-size:12px; }
+.ingredient-stage p { color:#b8ada0; font-family:"DM Mono",monospace; font-size:9px; line-height:1.35; margin:3px 0 0; }
+.ingredient-stage em { border:1px solid rgba(232,163,148,.55); border-radius:999px; color:#e8a394; font-family:"DM Mono",monospace; font-size:8px; font-style:normal; letter-spacing:.08em; padding:3px 5px; text-transform:uppercase; }
+.ingredient-stage-pending { opacity:.45; }
+.ingredient-record-grid { border-bottom:1px solid rgba(244,239,225,.18); border-top:1px solid rgba(244,239,225,.18); display:grid; gap:10px; grid-template-columns:1fr 1fr; padding:11px 0; }
+.ingredient-record-grid dt,.ingredient-section-heading strong { color:#a89e91; font-family:"DM Mono",monospace; font-size:8px; font-weight:700; letter-spacing:.08em; }
+.ingredient-record-grid dd { color:#f7efe0; font-family:"DM Mono",monospace; font-size:9px; margin:3px 0 0; overflow-wrap:anywhere; }
+.ingredient-section { margin-top:14px; }
+.ingredient-section-heading { align-items:baseline; display:flex; gap:8px; justify-content:space-between; margin-bottom:7px; }
+.ingredient-section-heading span { color:#b8ada0; font-family:"DM Mono",monospace; font-size:8px; }
+.ingredient-palette-list { display:grid; gap:3px; grid-template-columns:1fr 1fr; }
+.ingredient-palette-row { align-items:center; background:rgba(244,239,225,.06); display:grid; gap:5px; grid-template-columns:14px 1fr auto; padding:4px; }
+.ingredient-palette-row i { border:1px solid rgba(244,239,225,.35); display:block; height:12px; width:12px; }
+.ingredient-palette-row span { color:#d8cebc; font-family:"DM Mono",monospace; font-size:8px; }
+.ingredient-fields { display:grid; gap:13px; grid-template-columns:1fr; margin-top:15px; }
+.ingredient-field-grid { display:grid; gap:2px; grid-template-columns:repeat(8,1fr); }
+.ingredient-field-grid i { aspect-ratio:1; background:rgba(227,68,47,var(--field-value)); border:1px solid rgba(244,239,225,.18); display:block; }
+.ingredient-field-luminance i { background:rgba(247,239,224,var(--field-value)); }
+.ingredient-field-edge i { background:rgba(227,68,47,var(--field-value)); }
+.ingredient-field-texture i { background:rgba(232,163,148,var(--field-value)); }
+.dark .teppanyaki-view-tabs button { border-color:#e3442f; color:#d79a8d; }
+.dark .teppanyaki-view-tabs button.active { color:#1c1a19; }
+@media (max-width:560px) { .ingredient-analysis-title { font-size:15px; } .ingredient-record-grid { gap:8px; } }
+
+.embedded-evidence-panel { padding-top:16px; }
+.embedded-evidence-list { border-top:1px solid rgba(244,239,225,.18); margin:16px 0 0; }
+.embedded-evidence-row { border-bottom:1px solid rgba(244,239,225,.18); display:grid; gap:10px; grid-template-columns:52px 1fr; padding:11px 0; }
+.embedded-evidence-row dt { color:#e3442f; font-family:"DM Mono",monospace; font-size:9px; font-weight:700; letter-spacing:.1em; }
+.embedded-evidence-row dd { margin:0; }
+.embedded-evidence-row dd strong { color:#f7efe0; display:block; font-family:"DM Mono",monospace; font-size:10px; letter-spacing:.08em; }
+.embedded-evidence-row dd span { color:#b8ada0; display:block; font-family:"DM Mono",monospace; font-size:8px; line-height:1.4; margin-top:4px; }
+.embedded-evidence-policy { border:1px solid rgba(232,163,148,.45); margin-top:15px; padding:10px; }
+.embedded-evidence-policy strong { color:#e8a394; font-family:"DM Mono",monospace; font-size:8px; letter-spacing:.1em; }
+.embedded-evidence-policy p { color:#d8cebc; font-family:"DM Mono",monospace; font-size:8px; line-height:1.45; margin:6px 0 0; }

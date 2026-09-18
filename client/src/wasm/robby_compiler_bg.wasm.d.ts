@@ -1,6 +1,7 @@
 /* tslint:disable */
 /* eslint-disable */
 export const memory: WebAssembly.Memory;
+export function analyze_ingredients_json(a: number, b: number, c: number, d: number): void;
 export function binding_request_v1_json(a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number): void;
 export function build_binding_json(a: number, b: number, c: number): void;
 export function compile_source_json(a: number, b: number, c: number): void;
