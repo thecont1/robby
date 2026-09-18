@@ -1,4 +1,4 @@
-import { ArrowLeft, Braces, Coins, FileText, GitBranch, Images, ScanSearch } from "lucide-react";
+import { ArrowLeft, Braces, Coins, ExternalLink, FileText, GitBranch, Images, ScanSearch, Sparkles } from "lucide-react";
 import { Link } from "wouter";
 import { briefSummaries, type BriefKind } from "@/lib/briefContent";
 
@@ -29,12 +29,13 @@ export function ImageObjectBrief() {
           <p className="brief-eyebrow">MFA concept note · 2023</p>
           <h1>{brief.title}</h1>
           <p className="brief-question">
-            A digital image becomes an image-object when its reverse is another image:
-            related, distinct, and mutually exclusive in visibility.
+            A precis — paragraphs from the MFA PHT 805 project report that first
+            articulated the reverse-obverse image duality.
           </p>
           <p className="brief-question brief-question-followup">
-            The compiler becomes a way to <em>reassemble a fictional world more representative
-            of reality than dull reality itself</em> — and to make that reassembly legible.
+            The compiler becomes a way to <em>reassemble a fictional world more
+            representative of reality than dull reality itself</em> — and to make
+            that reassembly legible.
           </p>
         </div>
         <aside className="brief-mark">
@@ -47,46 +48,7 @@ export function ImageObjectBrief() {
         </aside>
       </section>
       <section className="brief-body">
-        <Section index="01" title="When the JPEG forgot the other side">
-          <p>
-            Photographic prints, coins, and currency notes have sides. A print’s obverse may
-            carry the picture, while its reverse carries stamps, edition information, and
-            captions. The two-sided print transforms into an object greater than the sum of
-            its parts. When the physical print gave way to the JPEG as the <em>de facto</em>
-            carrier of the image to the screen, along with it went the obverse-reverse duality
-            that for long we took for granted.
-          </p>
-        </Section>
-        <Section index="02" title="A reverse is another image">
-          <p>
-            To bring that duality back, a redefinition is in order: the reverse of a digital
-            obverse is another image, related but different, and mutually exclusive in
-            visibility. Seen in this way, it becomes possible to programmatically implement
-            such a feature — and to give the relation a shape the JPEG never had.
-          </p>
-        </Section>
-        <Section index="03" title="Surrendering control to a compiler">
-          <p>
-            Pictures come from the process, and that process has always been technical for
-            photographers. <span className="product-name">robby</span> extends that lineage:
-            the author writes a short recipe, the compiler reads it, validates it, lowers it
-            to canonical IR, and renders a deterministic reverse. Just as an algorithmic photo
-            editor once told me where to go and what I could expect to find there,
-            <span className="product-name">robby</span> picks apart the source — not what it
-            depicts, but what it materially is — so that I can reassemble a fictional world
-            more representative of reality than dull reality itself.
-          </p>
-        </Section>
-        <Section index="04" title="Partial truths, inspectable mechanics">
-          <p>
-            The work should evolve into a whole truth comprised of partial truths, which is
-            what photography is good at delivering. The manifest names the computational
-            choices without pretending that software can supply a neutral reading of the
-            photograph. Its evidence is deliberately limited: source bytes, declared settings,
-            seed, module, runtime, and output hashes. Nothing else is claimed.
-          </p>
-        </Section>
-        <Section index="05" title="A platform where the medium is the message">
+        <Section index="01" title="The medium as the message">
           <p>
             There did not exist a platform where the medium itself would serve as the perfect
             message. <span className="product-name">robby</span> proposes one. The compiler’s
@@ -94,19 +56,191 @@ export function ImageObjectBrief() {
             split, the binding — is the visible surface of the tool. What the viewer sees is
             not a simulation of compilation; it is compilation.
           </p>
-        </Section>
-        <Section index="06" title="At the confluence">
           <p>
-            <span className="product-name">robby</span> sits at the confluence of visual
-            theory, media studies, ethical technology, and human rights — with photography at
-            the core. A photograph can stay private if it needs to. Its reverse can travel.
+            <span className="brief-source">Source: 2023 MFA PHT 805 Project Report, p. 8.</span>
           </p>
         </Section>
+
+        <Section index="02" title="Partial truths, whole truths">
+          <p>
+            How does this evolving body of work sit within the realm of documentary? The work
+            should evolve into a whole truth comprised of partial truths which is what
+            photography is good at delivering. Partially true is how the city presents itself
+            to me. What is it like for the most vulnerable class of workers to be out there in
+            the crumbling ‘City Hostile’ so that the rest of us don’t? Also partially true is
+            my truth — the one that I construct using photography’s rhetorical toolbox.
+          </p>
+          <p>
+            <span className="brief-source">Source: 2023 MFA PHT 805 Project Report, p. 9.</span>
+          </p>
+        </Section>
+
+        <Section index="03" title="Surrendering control to the compiler">
+          <p>
+            Just as the delivery company’s app was a form of surrendering control to an
+            algorithmic photo editor that told me where to go and what I can expect to find
+            there, I am now once again surrendering control to Adobe Sensei which picks apart
+            my world and makes sense of it so that I can reassemble a new fictional world
+            more representative of reality than dull reality itself.
+          </p>
+          <p>
+            <span className="product-name">troid</span> &amp; <span className="product-name">robby</span> are the
+            next iteration of that surrender — but with the surface of the compiler made
+            visible, so the user can see the mechanism they have handed their photograph to.
+          </p>
+          <p>
+            <span className="brief-source">Source: 2023 MFA PHT 805 Project Report, p. 18.</span>
+          </p>
+        </Section>
+
+        <Section index="04" title="When the JPEG forgot the other side">
+          <p>
+            Remember the work of visual art before the age of digital distribution? It had
+            sides. Take a currency note or a coin for example. You can pick it up and flip it
+            around only to find another artwork. In the case of a photographic print, usually
+            only one side is used for value whereas the reverse may be used for practical
+            reasons like placing the agency’s or gallery’s stamp, the photographer’s sign and
+            seal, edition information and some caption details. The two-sided print then
+            transforms into an object greater than the sum of its parts.
+          </p>
+          <p>
+            When the physical print gave way to the JPEG as the <em>de facto</em> carrier of
+            the image to the screen, along with it went the obverse-reverse duality that for
+            long we took for granted. For a digital image to graduate to an image-object, it
+            is necessary to bring back that relationship and infuse it with creative
+            possibilities.
+          </p>
+          <p>
+            <span className="brief-source">Source: 2023 MFA PHT 805 Project Report, p. 20.</span>
+          </p>
+        </Section>
+
+        <Section index="05" title="A redefinition of the reverse">
+          <p>
+            But first, what is the reverse of a digital obverse? To answer that, a
+            redefinition is in order: the reverse of an image is another image, related but
+            different, and mutually exclusive in visibility. Seen in this way, it is possible
+            to programmatically implement such a feature.
+          </p>
+          <p>
+            <span className="brief-source">Source: 2023 MFA PHT 805 Project Report, pp. 20–21.</span>
+          </p>
+        </Section>
+
+        <Section index="06" title="At the confluence">
+          <p>
+            With this latest turn, I intend to arrive at work that sits at the confluence of
+            visual theory, media studies, ethical technology and human rights while keeping
+            photography at the core of it all.
+          </p>
+          <p>
+            <span className="brief-source">Source: 2023 MFA PHT 805 Project Report, p. 16.</span>
+          </p>
+        </Section>
+
         <footer className="brief-footer">
           <FileText size={16} />
           <span>{brief.source}</span>
+          <a
+            className="brief-sway-link"
+            href="https://sway.cloud.microsoft/m4okFOpHUOMNhkgh"
+            target="_blank"
+            rel="noreferrer"
+          >
+            <ExternalLink size={14} /> Read the full essay on Microsoft Sway
+          </a>
         </footer>
       </section>
+    </main>
+  );
+}
+
+export function AboutBrief() {
+  const brief = briefSummaries.about;
+  return (
+    <main className="brief-page">
+      <BriefHeader kind="about" />
+      <section className="brief-hero">
+        <div>
+          <p className="brief-eyebrow">About · SegFault 2026 · Explainable compilers</p>
+          <h1>I built <span className="product-name">troid</span> &amp; <span className="product-name">robby</span>.</h1>
+          <p className="brief-question">
+            <span className="product-name">segfault</span> is a two-day hackathon where teams build, then
+            present a working compiler whose inner workings are visible — not hidden behind
+            a glossy UI.
+          </p>
+          <p className="brief-question brief-question-followup">
+            SegFault is not a beauty contest. It asks: <em>can a compiler be a beautiful
+            instrument, and can its visible workings become part of the object it
+            produces?</em>
+          </p>
+        </div>
+        <aside className="brief-mark">
+          <Sparkles size={28} />
+          <span>
+            SEGFAULT 2026
+            <br />
+            EXPLAINABLE COMPILERS
+            <br />
+            WORKING · INSPECTABLE
+          </span>
+        </aside>
+      </section>
+
+      <section className="brief-body">
+        <Section index="01" title="The Reverse-Obverse Image Duality">
+          <p>
+            The Reverse-Obverse Image Duality (<span className="product-name">troid</span>) is an
+            explainable compiler that turns a digital photograph into an Obverse-Reverse Image
+            Object, or <em>orio cookie</em> — a two-sided proprietary image format viewed like a
+            coin or a postcard: an untouched obverse and a deterministically generated reverse,
+            mutually exclusive to the sight.
+          </p>
+          <p>
+            <span className="product-name">robby</span> makes <span className="product-name">troid</span>'s
+            underlying mechanism visible. A user picks a photograph, writes a recipe, and
+            deliberately compiles an orio. The live Teppanyaki Counter exposes the pipeline: source
+            intake, metadata and C2PA inspection, pixel and palette measurement, recipe
+            validation, IR generation, deterministic binding, reverse rendering, and pairing.
+          </p>
+        </Section>
+
+        <Section index="02" title="A real compiler stack">
+          <p>
+            It is a real compiler stack — a Rust lexer, parser, validator, IR, palette engine,
+            renderer, and a WASM-connected browser interface. It separates authored from
+            canonicalised instructions, source identity from pixel identity, C2PA presence from
+            validation and signer trust, and private evidence from share-safe output.
+          </p>
+        </Section>
+
+        <Section index="03" title="The original image stays sacred">
+          <p>
+            The original image stays sacred and immutable — <span className="product-name">robby</span> never
+            alters, recompresses, or overwrites the obverse or its embedded credentials. The
+            reverse is an emerging artwork and observability record, built from opaque image
+            identity, colour material, explicit recipe settings, and bounded evidence — not from
+            semantic recognition of the photograph's content.
+          </p>
+        </Section>
+
+        <Section index="04" title="The proposition">
+          <p>
+            <strong>The proposition: compilers can be beautiful instruments whose visible
+            workings become part of the object they create.</strong>
+          </p>
+        </Section>
+
+        <figure className="brief-figure">
+          <img src="/about/robby-studio.jpg" alt="robby studio — obverse photograph on the left, live Teppanyaki Counter on the right showing every visible stage of an orio compilation." />
+          <figcaption>MS201306-BipashaAashish0192.jpg · obverse · Teppanyaki Counter resolved · K = 8</figcaption>
+        </figure>
+      </section>
+
+      <footer className="brief-footer">
+        <FileText size={16} />
+        <span>{brief.source}</span>
+      </footer>
     </main>
   );
 }
