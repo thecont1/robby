@@ -56,9 +56,16 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_clause(&mut self) -> CompileResult<Clause> {
-        let (name, span) = self.expect_identifier("Expected a recipe clause.")?;
+        let (raw_name, span) = self.expect_identifier("Expected a recipe clause.")?;
+        // `evidence` is the reader-facing spelling; the IR keeps the original
+        // v2 canonical clause name `inspect` for compatibility.
+        let name = if raw_name == "evidence" {
+            "inspect".to_string()
+        } else {
+            raw_name
+        };
         let variant = if name == "split" || name == "reverse" {
-            Some(self.expect_identifier("Expected a clause mode.")?.0)
+            Some(self.expect_clause_mode()?)
         } else {
             None
         };
@@ -77,6 +84,16 @@ impl<'a> Parser<'a> {
             clause.arguments.push(self.parse_argument()?);
         }
         Ok(clause)
+    }
+
+    fn expect_clause_mode(&mut self) -> CompileResult<String> {
+        let token = self.current().clone();
+        let value = match token.kind {
+            TokenKind::Identifier(value) | TokenKind::String(value) => value,
+            _ => return Err(self.error_here("Expected a clause mode.")),
+        };
+        self.advance();
+        Ok(value.replace('-', "_"))
     }
 
     fn parse_entry(&mut self) -> CompileResult<Argument> {
