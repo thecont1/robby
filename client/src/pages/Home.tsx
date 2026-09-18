@@ -778,7 +778,7 @@ export default function Home() {
               <DropdownMenuItem asChild><Link href="/brief/image-object"><Lightbulb size={17} /> Image-object concept</Link></DropdownMenuItem>
               <DropdownMenuItem asChild><a href="/deck/"><Presentation size={17} /> Presentation deck</a></DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem asChild><a href="https://github.com/thecont1/robby/archive/refs/heads/dev/harleen.zip" target="_blank" rel="noreferrer"><Download size={17} /> Download troid / Rust source</a></DropdownMenuItem>
+              <DropdownMenuItem asChild><a href="https://github.com/thecont1/robby/releases/latest" target="_blank" rel="noreferrer"><Download size={17} /> Compiler &amp; releases</a></DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
