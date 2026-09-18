@@ -1,4 +1,4 @@
-//! `robby-compiler` is the portable source of truth for Robby v1.
+//! `troid` is the portable compiler engine and source of truth inside robby.
 //!
 //! The same lexer, parser, validator, and IR lowerer power the native CLI and
 //! the optional WebAssembly adapter used by the browser showcase.

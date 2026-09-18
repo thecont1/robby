@@ -229,6 +229,10 @@
 /* The stable viewing window preserves controls, not a black matte. Any unused
  * contain area is intentionally transparent, revealing the active page ground. */
 .two-sided-object,.object-face,.object-face-inverse { background:transparent; box-shadow:none; }.object-face .object-image,.object-face-inverse .object-image { background:transparent; }
+.palette-mosaic-host { background:#f4efe1; height:100%; overflow:hidden; position:relative; width:100%; }
+.palette-mosaic-host canvas { display:block; height:100% !important; width:100% !important; }
+.artwork-view-image-viewport .palette-mosaic-host { height:100%; max-width:calc(100% - 48px); width:100%; }
+.dark .palette-mosaic-host { background:#000; }
 
 /* Dark mode must preserve the same transparent image containment; its black
  * background belongs to the page itself, never to a letterbox behind the work. */

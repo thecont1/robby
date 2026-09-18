@@ -6,12 +6,13 @@
  */
 
 import SourceEditor from "@/components/SourceEditor";
+import PaletteMosaicCanvas from "@/components/PaletteMosaicCanvas";
 import TeppanyakiCounter from "@/components/TeppanyakiCounter";
 import { ProvenanceModule, type RuntimeRecord, type TraceMode } from "@/components/Build06Panels";
 import { loadCompileHistory, persistCompileSnapshot, type CompileSnapshot } from "@/lib/compileHistory";
 import { compileActions, compileActionOrder, isPaletteReprocessCurrent, shouldAcceptPaletteEdit, shouldStartCompileRequest } from "@/lib/compileActions";
 import { browserCompileController } from "@/lib/compileBrowser";
-import type { CompileRun } from "@/lib/compileEvents";
+import type { CompileRun, SessionOrio } from "@/lib/compileEvents";
 import { verifiedCompilerStatus } from "@/lib/compilerStatus";
 import { paletteKFromSource } from "@/lib/paletteSettings";
 import { authoredRecipeForCompile, editPaletteInRecipe, isCompiledSourceCurrent, reverseModeFromSource } from "@/lib/recipeAuthority";
@@ -77,6 +78,14 @@ function traceFromIr(ir: RobbyIr): TraceStep[] {
   return trace;
 }
 
+function ReverseArtwork({ result, alt }: { result?: SessionOrio; alt: string }) {
+  if (!result) return null;
+  if (result.renderModule === "palette_grid") {
+    return <PaletteMosaicCanvas palette={result.colourSwatches} seed={result.derivedSeed} fallbackUrl={result.reverseObjectUrl} alt={alt} />;
+  }
+  return <img src={result.reverseObjectUrl} alt={alt} className="object-image" />;
+}
+
 type ProjectionState = "gallery" | "draft" | "compiling" | "error" | "live";
 type SlideTransition = { outgoingId: string; incomingId: string; incomingIndex: number; direction: GallerySlideDirection };
 
@@ -86,7 +95,7 @@ export default function Home() {
   const [face, setFace] = useState<"obverse" | "inverse">("obverse");
   const [isFlipping, setIsFlipping] = useState(false);
   const [compilerState, setCompilerState] = useState<"checking" | "verified" | "error">("checking");
-  const [compilerLabel, setCompilerLabel] = useState("RUST CORE · LOADING");
+  const [compilerLabel, setCompilerLabel] = useState("TROID ENGINE · LOADING");
   const [compiledEdit, setCompiledEdit] = useState<{ specimenId: string; ir: RobbyIr; source: string } | null>(null);
   const [projectionState, setProjectionState] = useState<ProjectionState>("gallery");
   const [traceMode, setTraceMode] = useState<TraceMode>("evidence");
@@ -162,7 +171,7 @@ export default function Home() {
   const activeFace = face;
   const liveIr = projectionState === "live" && compiledEdit?.specimenId === selected.id ? compiledEdit.ir : null;
   const displayedObverse = selected.obverse;
-  const displayedInverse = compileRun?.galleryItemId === selected.id ? compileRun.result?.reverseObjectUrl : undefined;
+  const displayedReverseResult = compileRun?.galleryItemId === selected.id ? compileRun.result : undefined;
   // The draft store is the authority for "what source is this specimen
   // showing". Reading the ref directly by the selected id (rather than
   // mirroring it into state, which would lag a render behind a selection
@@ -446,7 +455,7 @@ export default function Home() {
   useEffect(() => {
     let active = true;
     setCompilerState("checking");
-    setCompilerLabel("RUST CORE · READY");
+    setCompilerLabel("TROID ENGINE · READY");
     rustToolchainVersion()
       .then(toolchain => {
         if (!active) return;
@@ -457,7 +466,7 @@ export default function Home() {
       .catch(() => {
         if (!active) return;
         setCompilerState("error");
-        setCompilerLabel("RUST CORE · CHECK FAILED");
+        setCompilerLabel("TROID ENGINE · CHECK FAILED");
       });
     return () => {
       active = false;
@@ -627,7 +636,7 @@ export default function Home() {
               <DropdownMenuItem asChild><Link href="/brief/hackathon"><FileText size={17} /> Hackathon brief</Link></DropdownMenuItem>
               <DropdownMenuItem asChild><Link href="/brief/image-object"><Lightbulb size={17} /> Image-object concept</Link></DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem asChild><a href="https://github.com/thecont1/robby/archive/refs/heads/main.zip" target="_blank" rel="noreferrer"><Download size={17} /> Download Rust source</a></DropdownMenuItem>
+              <DropdownMenuItem asChild><a href="https://github.com/thecont1/robby/archive/refs/heads/dev/harleen.zip" target="_blank" rel="noreferrer"><Download size={17} /> Download troid / Rust source</a></DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
@@ -663,7 +672,7 @@ export default function Home() {
                             <img src={displayedObverse} alt="" className="object-image" />
                           </div>
                           <div className="object-face object-face-inverse" aria-hidden={face !== "inverse"}>
-                            {displayedInverse && <img src={displayedInverse} alt="" className="object-image" />}
+                            <ReverseArtwork result={displayedReverseResult} alt="" />
                           </div>
                         </div>
                       </div>
@@ -694,7 +703,7 @@ export default function Home() {
                             <img src={displayedObverse} alt="" className="object-image" />
                           </div>
                           <div className="object-face object-face-inverse" aria-hidden={face !== "inverse"}>
-                            {displayedInverse && <img src={displayedInverse} alt="" className="object-image" />}
+                            <ReverseArtwork result={displayedReverseResult} alt="" />
                           </div>
                         </div>
                       </div>
@@ -709,7 +718,7 @@ export default function Home() {
                       <img src={displayedObverse} alt={`${selected.title} obverse`} className="object-image" />
                     </div>
                     <div className="object-face object-face-inverse" aria-hidden={face !== "inverse"}>
-                      {displayedInverse && <img src={displayedInverse} alt={`${selected.title} inverse: ${selected.reverseDescription}`} className="object-image" />}
+                      <ReverseArtwork result={displayedReverseResult} alt={`${selected.title} inverse: ${selected.reverseDescription}`} />
                     </div>
                   </div>
                 </div>
@@ -817,7 +826,7 @@ export default function Home() {
           <div className="artwork-view-image-viewport">
             {face === "obverse"
               ? <img src={displayedObverse} alt={`${selected.title} obverse`} />
-              : displayedInverse && <img src={displayedInverse} alt={`${selected.title} inverse`} />}
+              : <ReverseArtwork result={displayedReverseResult} alt={`${selected.title} inverse`} />}
           </div>
           <div className="artwork-view-controls"><div className="artwork-view-meta"><span>{selected.title} / {face}</span><span>SWIPE TO BROWSE · ESC TO CLOSE</span></div><button type="button" onClick={closeArtworkView} aria-label="Close full-bleed artwork view" title="Close full-bleed artwork view"><Minimize2 size={19} /></button></div>
         </div>
