@@ -8,7 +8,7 @@
 import SourceEditor from "@/components/SourceEditor";
 import IngredientAnalysisPanel from "@/components/IngredientAnalysisPanel";
 import SwatchMatrix from "@/components/SwatchMatrix";
-import TeppanyakiCounter from "@/components/TeppanyakiCounter";
+import TeppanyakiCounter, { type CounterView } from "@/components/TeppanyakiCounter";
 import { ProvenanceModule, type RuntimeRecord, type TraceMode } from "@/components/Build06Panels";
 import { loadCompileHistory, persistCompileSnapshot, type CompileSnapshot } from "@/lib/compileHistory";
 import { compileActions, shouldAcceptPaletteEdit, shouldStartCompileRequest } from "@/lib/compileActions";
@@ -39,9 +39,11 @@ import {
   ChevronLeft,
   ChevronRight,
   CircleDotDashed,
-  Download,
   FileText,
   FlipHorizontal2,
+  Github,
+  Info,
+  Play,
   RotateCcw,
 
   Menu,
@@ -130,6 +132,10 @@ export default function Home() {
   const [ingredientStatus, setIngredientStatus] = useState<"idle" | "running" | "ready" | "error">("idle");
   const [ingredientAnalysis, setIngredientAnalysis] = useState<{ specimenId: string; paletteK: number; value: IngredientAnalysis } | null>(null);
   const [ingredientError, setIngredientError] = useState<string | null>(null);
+  // Counter tab state lives here, not in TeppanyakiCounter: the counter is
+  // mounted with `key={selected.id}`, so local tab state would reset on every
+  // gallery switch. The user asked for the open tab to survive cycling.
+  const [counterView, setCounterView] = useState<CounterView>("cooking");
   const ingredientCache = useRef<Record<string, IngredientAnalysis>>({});
   const faceBySpecimen = useRef<Record<string, "obverse" | "inverse">>({});
   const invalidatedSpecimens = useRef(new Set<string>());
@@ -476,6 +482,27 @@ export default function Home() {
     }
   }, [ingredientStatus, paletteK, selected.id, selected.obverse, selected.source]);
 
+  // Selecting a counter tab is the job request: Ingredients and Stuffing
+  // both run the Rust analysis pass. Re-clicking an open analysis tab is an
+  // explicit re-request; the running/cache guards inside analyzeIngredients
+  // keep it idempotent.
+  const selectCounterView = (view: CounterView) => {
+    setCounterView(view);
+    if (view !== "cooking") void analyzeIngredients();
+  };
+
+  // Keyed on the request inputs, not on ingredientStatus: a status flip must
+  // not retrigger the pass (a persistent failure would retry forever). The
+  // ref keeps the invoked callback current without making it a dep.
+  const analyzeIngredientsRef = useRef(analyzeIngredients);
+  useLayoutEffect(() => {
+    analyzeIngredientsRef.current = analyzeIngredients;
+  });
+  useEffect(() => {
+    if (counterView === "cooking") return;
+    void analyzeIngredientsRef.current();
+  }, [counterView, selected.id, paletteK]);
+
   // Memoized so the keydown effect below re-binds whenever the compilation
   // state this handler captures changes. Without it, the F shortcut keeps
   // calling a closure created before the run completed and silently no-ops.
@@ -774,11 +801,13 @@ export default function Home() {
             <DropdownMenuContent align="end" className="robby-menu-content">
               <DropdownMenuItem asChild><Link href="/manual"><BookOpen size={17} /> Language manual</Link></DropdownMenuItem>
 
-              <DropdownMenuItem asChild><Link href="/brief/hackathon"><FileText size={17} /> Hackathon brief</Link></DropdownMenuItem>
-              <DropdownMenuItem asChild><Link href="/brief/image-object"><Lightbulb size={17} /> Image-object concept</Link></DropdownMenuItem>
+              <DropdownMenuItem asChild><Link href="/about"><Info size={17} /> About</Link></DropdownMenuItem>
+              <DropdownMenuItem asChild><Link href="/hackathon"><FileText size={17} /> Hackathon brief</Link></DropdownMenuItem>
+              <DropdownMenuItem asChild><Link href="/concept"><Lightbulb size={17} /> Image-object concept</Link></DropdownMenuItem>
               <DropdownMenuItem asChild><a href="/deck/"><Presentation size={17} /> Presentation deck</a></DropdownMenuItem>
+              <DropdownMenuItem asChild><a href="/demo/"><Play size={17} /> Demo video</a></DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem asChild><a href="https://github.com/thecont1/robby/releases/latest" target="_blank" rel="noreferrer"><Download size={17} /> Compiler &amp; releases</a></DropdownMenuItem>
+              <DropdownMenuItem asChild><a href="https://github.com/thecont1/robby" target="_blank" rel="noreferrer"><Github size={17} /> View Source</a></DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
@@ -950,6 +979,8 @@ export default function Home() {
             ingredientAnalysis={ingredientAnalysis?.specimenId === selected.id && ingredientAnalysis.paletteK === paletteK ? ingredientAnalysis.value : null}
             ingredientError={ingredientError}
             onAnalyzeIngredients={() => void analyzeIngredients()}
+            view={counterView}
+            onViewChange={selectCounterView}
           />
         </div>
       </section>
