@@ -209,6 +209,12 @@ describe("CompileController", () => {
     vi.useRealTimers();
   });
 
+  it("rejects an already-aborted zero-delay wait", async () => {
+    const controller = new AbortController();
+    controller.abort();
+    await expect(waitForPresentationDelay(0, controller.signal)).rejects.toMatchObject({ name: "AbortError" });
+  });
+
   it("does no compile work until an explicit compile request", () => {
     const environment = deps();
     createCompileController(environment);

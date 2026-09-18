@@ -91,8 +91,8 @@ export type CompileOptions = {
  */
 export function waitForPresentationDelay(milliseconds: number | undefined, signal: AbortSignal): Promise<void> {
   const delay = Math.max(0, Math.floor(milliseconds ?? 0));
-  if (delay === 0) return Promise.resolve();
   if (signal.aborted) return Promise.reject(new DOMException("Aborted", "AbortError"));
+  if (delay === 0) return Promise.resolve();
   return new Promise((resolve, reject) => {
     const timer = globalThis.setTimeout(() => {
       signal.removeEventListener("abort", cancel);
