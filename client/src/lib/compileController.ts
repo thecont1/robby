@@ -69,11 +69,36 @@ export type CompileDeps = {
   revokeObjectUrl: (url: string) => void;
   compilerVersion: string;
   rendererVersion: string;
+  /** UI-only pause between station events; zero keeps tests and non-UI callers immediate. */
+  presentationDelayMs?: number;
 };
 
 export type CompileOptions = {
   force?: boolean;
 };
+
+/**
+ * Give the observation deck time to show a station changing state. This never
+ * changes compiler inputs, outputs, hashes, or cache keys, and is abortable so
+ * a specimen switch does not leave a delayed run alive in the background.
+ */
+export function waitForPresentationDelay(milliseconds: number | undefined, signal: AbortSignal): Promise<void> {
+  const delay = Math.max(0, Math.floor(milliseconds ?? 0));
+  if (delay === 0) return Promise.resolve();
+  if (signal.aborted) return Promise.reject(new DOMException("Aborted", "AbortError"));
+  return new Promise((resolve, reject) => {
+    const timer = globalThis.setTimeout(() => {
+      signal.removeEventListener("abort", cancel);
+      resolve();
+    }, delay);
+    const cancel = () => {
+      globalThis.clearTimeout(timer);
+      signal.removeEventListener("abort", cancel);
+      reject(new DOMException("Aborted", "AbortError"));
+    };
+    signal.addEventListener("abort", cancel, { once: true });
+  });
+}
 
 /**
  * Inspects the intake byte snapshot without making C2PA availability a compile
@@ -181,8 +206,10 @@ export function createCompileController(deps: CompileDeps) {
     work: () => Promise<Record<string, unknown>>,
   ) => {
     emit(run, stage, "started", `${STATION_LABELS[stage]} started`);
+    await waitForPresentationDelay(deps.presentationDelayMs, abort?.signal ?? new AbortController().signal);
     const payload = await work();
     emit(run, stage, "artifact", `${STATION_LABELS[stage]} artifact`, payload, classification);
+    await waitForPresentationDelay(deps.presentationDelayMs, abort?.signal ?? new AbortController().signal);
     emit(run, stage, "completed", `${STATION_LABELS[stage]} completed`, payload, classification);
     return payload;
   };

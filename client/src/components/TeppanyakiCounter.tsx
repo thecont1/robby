@@ -92,14 +92,7 @@ export default function TeppanyakiCounter({
           ))}
         </div>
       )}
-      {presentation.showStations && (presentation.stationsExpandable ? (
-        <details className="teppanyaki-station-details" open={presentation.defaultStationsExpanded}>
-          <summary>Inspect all eight stations</summary>
-          <StationList stations={stations} />
-        </details>
-      ) : (
-        <StationList stations={stations} />
-      ))}
+      {presentation.showStations && <StationList stations={stations} />}
       {run?.result?.disclosure && (
         <div className="teppanyaki-audit-window" tabIndex={0} aria-label="Disclosure audit, scrollable">
           <p className="teppanyaki-audit" role="note">

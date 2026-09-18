@@ -90,6 +90,10 @@ export function createBrowserCompileDeps(): CompileDeps {
     revokeObjectUrl: url => URL.revokeObjectURL(url),
     compilerVersion: "robby-compiler-v0.1.0",
     rendererVersion: "robby-render-manifest-v1",
+    // Purely presentational: let each station's started/artifact/completed
+    // state remain visible long enough to read. Rust/WASM and server work are
+    // unchanged, and cancellation clears this pause immediately.
+    presentationDelayMs: 260,
   };
 }
 

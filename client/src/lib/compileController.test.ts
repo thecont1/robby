@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { createCompileController, type CompileDeps } from "./compileController";
+import { createCompileController, waitForPresentationDelay, type CompileDeps } from "./compileController";
 import type { CompileEvent, CompileRequest } from "./compileEvents";
 import type { IntakeManifest, RobbyIr } from "./robbyCompiler";
 
@@ -186,6 +186,24 @@ function deps(overrides: Partial<CompileDeps> = {}): CompileDeps & { calls: stri
 describe("CompileController", () => {
   afterEach(() => {
     vi.restoreAllMocks();
+  });
+
+  it("keeps explainability pacing cancellable and separate from compile work", async () => {
+    vi.useFakeTimers();
+    const controller = new AbortController();
+    let settled = false;
+    const delayed = waitForPresentationDelay(120, controller.signal).then(() => { settled = true; });
+    await vi.advanceTimersByTimeAsync(119);
+    expect(settled).toBe(false);
+    await vi.advanceTimersByTimeAsync(1);
+    await delayed;
+    expect(settled).toBe(true);
+
+    const cancelledController = new AbortController();
+    const cancelled = waitForPresentationDelay(120, cancelledController.signal);
+    cancelledController.abort();
+    await expect(cancelled).rejects.toMatchObject({ name: "AbortError" });
+    vi.useRealTimers();
   });
 
   it("does no compile work until an explicit compile request", () => {

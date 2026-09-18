@@ -18,25 +18,9 @@ describe("Teppanyaki Counter derivation", () => {
     expect(counterCopy("dormant").kicker.toLowerCase()).toContain("resting");
   });
 
-  it("uses progressive disclosure instead of eight empty dormant stations", () => {
-    expect(counterPresentation("dormant")).toEqual({
-      showStations: false,
-      stationsExpandable: false,
-      defaultStationsExpanded: false,
-    });
-    expect(counterPresentation("primed").showStations).toBe(false);
-    expect(counterPresentation("running")).toEqual({
-      showStations: true,
-      stationsExpandable: false,
-      defaultStationsExpanded: true,
-    });
-    expect(counterPresentation("failed").defaultStationsExpanded).toBe(true);
-    for (const state of ["resolved", "stale"] as const) {
-      expect(counterPresentation(state)).toEqual({
-        showStations: true,
-        stationsExpandable: true,
-        defaultStationsExpanded: false,
-      });
+  it("keeps all eight observability stations visible in every counter state", () => {
+    for (const state of ["dormant", "primed", "running", "failed", "resolved", "stale"] as const) {
+      expect(counterPresentation(state)).toEqual({ showStations: true });
     }
   });
 

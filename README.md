@@ -93,6 +93,8 @@ pnpm dev
 
 The server watches `gallery/` for JPEG inputs and matching `.robby` recipes. Gallery originals are local runtime inputs and are ignored by Git; no transformed or WebP source is accepted. Turning an image requests a fresh transient reverse from the Rust renderer. No reverse PNG is written to the repository, gallery, storage, or database.
 
+The observation deck deliberately pauses briefly between each station's `started`, `artifact`, and `completed` events. This is a UI-only explainability aid: it gives the viewer time to watch the chain move from Intake through Marry. The pause is cancellable when changing specimens, and it does not affect troid inputs, output bytes, hashes, cache keys, or manifests.
+
 ---
 
 ## Project status
