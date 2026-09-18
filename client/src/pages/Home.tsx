@@ -180,10 +180,6 @@ export default function Home() {
   const activeFace = face;
   const liveIr = projectionState === "live" && compiledEdit?.specimenId === selected.id ? compiledEdit.ir : null;
   const displayedObverse = selected.obverse;
-  const displayedReverseResult = compileRun?.galleryItemId === selected.id ? compileRun.result : undefined;
-  const displayedSwatchSeedToken = displayedReverseResult
-    ? swatchSeedToken(displayedReverseResult.derivedSeed, displayedReverseResult.c2paEvidence.presence)
-    : undefined;
   // The draft store is the authority for "what source is this specimen
   // showing". Reading the ref directly by the selected id (rather than
   // mirroring it into state, which would lag a render behind a selection
@@ -197,6 +193,14 @@ export default function Home() {
   // compiled projection may describe that draft, but must never replace it.
   const activeRecipe = selectedDraft;
   const recipeChanged = Boolean(compileRun?.result && compileRun.recipeSource !== activeRecipe);
+  // A completed run is a live projection only while its authored recipe still
+  // matches the editor. This prevents an old reverse, seed, or C2PA badge from
+  // surviving a palette-k edit while the revised recipe is awaiting compile.
+  const activeCompileRun = compileRun?.galleryItemId === selected.id && !recipeChanged ? compileRun : null;
+  const displayedReverseResult = activeCompileRun?.result;
+  const displayedSwatchSeedToken = displayedReverseResult
+    ? swatchSeedToken(displayedReverseResult.derivedSeed, displayedReverseResult.c2paEvidence.presence)
+    : undefined;
   // Live palette preview: when the recipe's k no longer matches the palette
   // the counter would display (compiled swatches for the active recipe, else
   // the server k=8 preview), ask the Rust/WASM compiler for the real
@@ -611,6 +615,8 @@ export default function Home() {
       setFace("obverse");
       setCompileRun(null);
       setCompiledEdit(null);
+      setCredentialOverride(null);
+      setRuntimeRecord(current => current ? { compiledAt: "", irHash: "", toolchain: current.toolchain } : null);
       setProjectionState("draft");
       setFailureMessage(null);
     } catch (error) {
@@ -848,11 +854,12 @@ export default function Home() {
         </div>
         <div className="counter-column" inert={imageOnly}>
           <TeppanyakiCounter
-            run={compileRun?.galleryItemId === selected.id ? compileRun : null}
+            run={activeCompileRun}
             recipeChanged={recipeChanged}
             paletteK={paletteK}
             onPaletteKChange={editPaletteK}
             previewPalette={selected.palette}
+            liveSwatches={livePalette?.specimenId === selected.id && livePalette.k === paletteK ? livePalette.swatches : []}
             swatchSeedToken={displayedSwatchSeedToken}
             swatchC2paPresent={displayedReverseResult?.c2paEvidence.presence === "present"}
           />

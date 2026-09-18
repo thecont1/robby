@@ -73,6 +73,19 @@ describe("palette control and authored recipe stay synchronised", () => {
     expect(editBody).not.toContain("setTimeout");
   });
 
+  it("does not expose a completed reverse while its authored recipe is stale", () => {
+    expect(HOME_SOURCE).toContain("const activeCompileRun = compileRun?.galleryItemId === selected.id && !recipeChanged ? compileRun : null;");
+    expect(HOME_SOURCE).toContain("const displayedReverseResult = activeCompileRun?.result;");
+    expect(HOME_SOURCE).toContain("run={activeCompileRun}");
+  });
+
+  it("clears runtime evidence and the seed line when Palette K invalidates Orio", () => {
+    const editBody = HOME_SOURCE.match(/const editPaletteK = \(value: number\) => \{([\s\S]*?)\n  \};/)?.[1] ?? "";
+    expect(editBody).toContain("setCredentialOverride(null)");
+    expect(editBody).toContain('setRuntimeRecord(current => current ? { compiledAt: "", irHash: "", toolchain: current.toolchain } : null)');
+    expect(HOME_SOURCE).toContain("liveSwatches={livePalette?.specimenId === selected.id && livePalette.k === paletteK ? livePalette.swatches : []}");
+  });
+
   it("re-seeds outside source changes before the browser paints", () => {
     expect(SOURCE_EDITOR_SOURCE).toContain("useLayoutEffect(() => {");
     expect(SOURCE_EDITOR_SOURCE).toContain("setDraft(source);");
