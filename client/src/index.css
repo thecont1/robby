@@ -348,7 +348,11 @@
 .teppanyaki-counter .trace-heading { border-bottom-color:rgba(244,239,225,.3); }
 .teppanyaki-counter .trace-heading > div { color:#f4efe1; }
 .teppanyaki-counter .trace-heading .mono-label { color:#f4efe1; font-size:10px; }
-.teppanyaki-counter .trace-heading > span { color:#e8a394; font-size:9px; }
+.teppanyaki-heading-status { align-items:center; display:flex; gap:8px; }
+.teppanyaki-heading-status > span:last-child { color:#e8a394; font-size:9px; }
+.content-credentials-salute { align-items:center; display:inline-flex; gap:4px; }
+.content-credentials-salute img { display:block; height:18px; width:18px; }
+.content-credentials-salute > span { color:#fff8e9; font-family:"DM Mono",monospace; font-size:8px; font-weight:700; letter-spacing:.08em; }
 .teppanyaki-counter .trace-title { padding:20px 0 17px; }
 .teppanyaki-counter .trace-title .eyebrow { color:#e8a394; font-size:10px; margin-bottom:8px; }
 .teppanyaki-counter .counter-message { color:#f4efe1; font-family:"Source Serif 4",Georgia,serif; font-size:18px; line-height:1.15; margin:0; max-width:31ch; }
@@ -361,31 +365,28 @@
 .teppanyaki-station.status-failed { color:#f4efe1; }
 .teppanyaki-station.is-active { background:rgba(227,68,47,.18); box-shadow:inset 3px 0 0 #e3442f; transition:background-color .18s ease, box-shadow .18s ease; }
 .teppanyaki-station.is-active .trace-number { background:#e3442f; color:#1c1a19; }
-.teppanyaki-station strong { display:block; font-size:13px; }
-.teppanyaki-station p { color:#b8ada0; font-family:"DM Mono",monospace; font-size:11px; line-height:1.35; margin:4px 0 0; }
-.teppanyaki-station em { color:#e8a394; display:block; font-family:"DM Mono",monospace; font-size:10px; font-style:normal; letter-spacing:.08em; margin-top:4px; text-transform:uppercase; }
+.teppanyaki-station-copy { min-width:0; }
+.teppanyaki-station-heading { align-items:baseline; display:flex; gap:8px; justify-content:space-between; }
+.teppanyaki-station strong { display:block; font-size:13px; min-width:0; }
+.teppanyaki-station p { color:#b8ada0; font-family:"DM Mono",monospace; font-size:11px; line-height:1.35; margin:7px 0 0; }
+.teppanyaki-station em { background:rgba(232,163,148,.12); border:1px solid rgba(232,163,148,.55); border-radius:999px; color:#e8a394; display:block; flex:0 0 auto; font-family:"DM Mono",monospace; font-size:9px; font-style:normal; letter-spacing:.08em; line-height:1; margin:0; padding:4px 7px; text-align:right; text-transform:uppercase; }
 .teppanyaki-swatches { display:flex; flex-wrap:wrap; gap:3px; margin-top:7px; }
 .teppanyaki-swatches i { border:1px solid rgba(244,239,225,.4); display:block; height:11px; width:11px; }
 .compile-orio-control { align-items:center; background:#7c3024; border:1px solid #7c3024; color:#fffaf0; display:inline-flex; font-family:"DM Mono",monospace; font-size:10px; font-weight:700; gap:7px; letter-spacing:.1em; min-height:44px; padding:0 12px; text-transform:uppercase; }
+.compile-orio-control.is-cancel { background:#e3442f; border-color:#e3442f; color:#1c1a19; }
 .compile-orio-control:disabled { cursor:wait; opacity:.54; }
 .caption-turn { align-items:center; display:flex; gap:8px; }
 .compile-orio-slot { position:relative; width:190px; }
 .compile-orio-slot > .compile-orio-control { justify-content:center; width:190px; }
-.compile-cancel-control { left:calc(100% + 8px); position:absolute; top:0; width:76px !important; }
-/* The disclosure bar is a window into the lab: text large enough to read at
- * a glance, height frozen so it never pushes the counter's layout around,
- * and internally scrollable so a long disclosure is still fully reachable. */
-.teppanyaki-audit-window { border-top:1px solid rgba(244,239,225,.22); margin-top:12px; max-height:92px; overflow-y:auto; padding-top:10px; }
-.teppanyaki-shortcuts { border-top:1px solid rgba(244,239,225,.18); color:#e8a394; font-family:"DM Mono",monospace; font-size:9px; letter-spacing:.1em; margin:12px 0 0; padding-top:12px; text-transform:uppercase; }
-.teppanyaki-audit-window:focus-visible { outline:2px solid #e3442f; outline-offset:2px; }
-.teppanyaki-audit { color:#b8ada0; font-family:"DM Mono",monospace; font-size:13px; letter-spacing:.04em; line-height:1.5; margin:0; text-transform:uppercase; }
+.teppanyaki-shortcuts { border-bottom:1px solid rgba(244,239,225,.18); color:#e8a394; font-family:"DM Mono",monospace; font-size:9px; letter-spacing:.1em; margin:11px 0 14px; padding:0 0 12px; text-transform:uppercase; }
 .dark .teppanyaki-counter { background:#000; border-color:#e3442f; color:#f7efe0; }
 .dark .teppanyaki-counter .trace-heading { border-bottom-color:#e3442f; }
 .dark .teppanyaki-counter .trace-heading > div,.dark .teppanyaki-counter .trace-heading .mono-label,.dark .teppanyaki-counter .counter-message,.dark .teppanyaki-station.status-started,.dark .teppanyaki-station.status-artifact,.dark .teppanyaki-station.status-completed,.dark .teppanyaki-station.status-failed { color:#f7efe0; }
 .dark .teppanyaki-counter .trace-heading > span,.dark .teppanyaki-counter .trace-title .eyebrow,.dark .teppanyaki-station em { color:#e8a394; }
-.dark .teppanyaki-station { border-bottom-color:#e3442f; }.dark .teppanyaki-station.status-idle,.dark .teppanyaki-station p,.dark .teppanyaki-audit { color:#d79a8d; }.dark .teppanyaki-swatches i { border-color:#e3442f; }
+.dark .teppanyaki-station em { background:rgba(227,68,47,.16); border-color:#e3442f; }
+.dark .teppanyaki-station { border-bottom-color:#e3442f; }.dark .teppanyaki-station.status-idle,.dark .teppanyaki-station p { color:#d79a8d; }.dark .teppanyaki-swatches i { border-color:#e3442f; }
 .dark .teppanyaki-station.is-active { background:rgba(227,68,47,.26); box-shadow:inset 3px 0 0 #e3442f; }
-.dark .teppanyaki-audit-window { border-top-color:#e3442f; }
+.provenance-disclosure dd { color:#e8a394; }
 .image-only .teppanyaki-counter { pointer-events:none; visibility:hidden; }
 
 /* Palette slider sits inside the counter, mirroring the recipe's `palette(k:)`

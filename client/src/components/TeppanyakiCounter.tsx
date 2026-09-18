@@ -8,10 +8,12 @@ function StationList({ stations }: { stations: StationView[] }) {
       {stations.map(station => (
         <li key={station.stage} className={`teppanyaki-station status-${station.status}${station.status === "started" || station.status === "artifact" ? " is-active" : ""}`} data-stage={station.stage} aria-current={station.status === "started" || station.status === "artifact" ? "step" : undefined}>
           <span className="trace-number">{station.index}</span>
-          <div>
-            <strong>{station.name}</strong>
+          <div className="teppanyaki-station-copy">
+            <div className="teppanyaki-station-heading">
+              <strong>{station.name}</strong>
+              {station.classification && <em>{station.classification}</em>}
+            </div>
             <p>{station.label}</p>
-            {station.classification && <em>{station.classification}</em>}
           </div>
         </li>
       ))}
@@ -46,6 +48,8 @@ export default function TeppanyakiCounter({
   const copy = counterCopy(state);
   const presentation = counterPresentation(state);
   const stations = stationViews(run?.events ?? []);
+  const credentialPresence = run?.result?.c2paEvidence.presence;
+  const hasContentCredentials = credentialPresence === "present";
   const splitStation = stations.find(station => station.stage === "split");
   const compiledSwatches = splitStation?.swatches ?? [];
   const swatches = compiledSwatches.length > 0 ? compiledSwatches : previewPalette;
@@ -60,8 +64,12 @@ export default function TeppanyakiCounter({
           <CircleDotDashed size={15} aria-hidden="true" />
           <h2 id="teppanyaki-counter-title" className="mono-label">Teppanyaki counter</h2>
         </div>
-        <span aria-label={`Compilation state: ${state}`}>{state.toUpperCase()}</span>
+        <div className="teppanyaki-heading-status">
+          {hasContentCredentials && <span className="content-credentials-salute" title="Content Credentials found in the source image" aria-label={`Content Credentials ${credentialPresence}`}><img src="/icons/content_credentials_cr.svg" alt="" aria-hidden="true" /><span>CR</span></span>}
+          <span aria-label={`Compilation state: ${state}`}>{state.toUpperCase()}</span>
+        </div>
       </div>
+      <p className="teppanyaki-shortcuts" aria-label="Keyboard shortcuts">← → TO CYCLE · F TO FLIP · C TO COMPILE</p>
       <div className="trace-title" role="status" aria-live="polite" aria-atomic="true">
         <p className="eyebrow">{copy.kicker}</p>
         <p className="counter-message">{copy.body}</p>
@@ -93,16 +101,6 @@ export default function TeppanyakiCounter({
         </div>
       )}
       {presentation.showStations && <StationList stations={stations} />}
-      <p className="teppanyaki-shortcuts" aria-label="Keyboard shortcuts">← → TO CYCLE · F TO FLIP · C TO COMPILE</p>
-      {run?.result?.disclosure && (
-        <div className="teppanyaki-audit-window" tabIndex={0} aria-label="Disclosure audit, scrollable">
-          <p className="teppanyaki-audit" role="note">
-            {run.result.disclosure.safe
-              ? `Public-safe: omitted ${run.result.disclosure.omitted.join(" · ")}`
-              : `Disclosure warning: ${run.result.disclosure.warnings.join(" · ")}`}
-          </p>
-        </div>
-      )}
     </aside>
   );
 }

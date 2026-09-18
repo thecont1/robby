@@ -47,6 +47,7 @@ import {
   Lightbulb,
   Maximize2,
   Minimize2,
+  X,
 } from "lucide-react";
 import { Link } from "wouter";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
@@ -273,7 +274,9 @@ export default function Home() {
     const nextItem = gallery.at(nextIndex);
     const nextRun = nextItem ? runBySpecimen.current[nextItem.id] : undefined;
     setCompileRun(nextRun ?? null);
-    setFace(nextRun?.result && nextItem && faceBySpecimen.current[nextItem.id] === "inverse" ? "inverse" : "obverse");
+    const nextFace = nextRun?.result && face === "inverse" ? "inverse" : "obverse";
+    if (nextItem) faceBySpecimen.current[nextItem.id] = nextFace;
+    setFace(nextFace);
     setIsFlipping(false);
     setCompiledEdit(null);
     setProjectionState("gallery");
@@ -336,6 +339,7 @@ export default function Home() {
       irHash: orio.canonicalRecipeHash,
       toolchain: current?.toolchain ?? "RUST/WASM",
       c2paEvidence: orio.c2paEvidence,
+      disclosure: orio.disclosure,
       transientReverse: {
         generatedAt: orio.createdAt,
         outputSha256: orio.reverseOutputSha256,
@@ -659,7 +663,7 @@ export default function Home() {
                 const incoming = gallery.find(item => item.id === slideTransition.incomingId);
                 if (!outgoing || !incoming) return null;
                 const incomingRun = runBySpecimen.current[incoming.id];
-                const incomingFace = incomingRun?.result && faceBySpecimen.current[incoming.id] === "inverse" ? "inverse" : "obverse";
+                const incomingFace = incomingRun?.result && face === "inverse" ? "inverse" : "obverse";
                 return (
                 <div className={`slide-track slide-track-${slideTransition.direction}`} onAnimationEnd={settleStageSlide}>
                   {slideTransition.direction === "forward" ? (
@@ -736,14 +740,15 @@ export default function Home() {
               </div>
               <div className="caption-turn" data-primary-action={actions.turnEnabled ? "turn" : "compile"}>
                 <div className="compile-orio-slot">
-                  <button type="button" className="compile-orio-control" onClick={() => void compileOrio(actions.compileForce)} disabled={!actions.compileEnabled || isFlipping} aria-label={`${actions.compileLabel} for ${selected.title}`}>
-                    <CircleDotDashed size={16} /><span>{actions.compileLabel}</span>
+                  <button
+                    type="button"
+                    className={`compile-orio-control${actions.showCancel ? " is-cancel" : ""}`}
+                    onClick={() => actions.showCancel ? browserCompileController.cancelActive() : void compileOrio(actions.compileForce)}
+                    disabled={!actions.showCancel && (!actions.compileEnabled || isFlipping)}
+                    aria-label={`${actions.showCancel ? "Cancel compile" : actions.compileLabel} for ${selected.title}`}
+                  >
+                    {actions.showCancel ? <X size={16} /> : <CircleDotDashed size={16} />}<span>{actions.showCancel ? "Cancel" : actions.compileLabel}</span>
                   </button>
-                  {actions.showCancel && (
-                    <button type="button" className="compile-orio-control compile-cancel-control" onClick={() => browserCompileController.cancelActive()} aria-label={`Cancel compile for ${selected.title}`}>
-                      <span>Cancel</span>
-                    </button>
-                  )}
                 </div>
                 <button type="button" className="flip-control" onClick={() => void turnOver()} disabled={!actions.turnEnabled || isFlipping} aria-label={face === "inverse" ? `Return ${selected.title} to its obverse` : `Turn ${selected.title} to its inverse`}>
                   {face === "inverse" ? <RotateCcw size={18} /> : <FlipHorizontal2 size={18} />}<span>{isFlipping ? "Turning object" : actions.turnLabel}</span><small>F</small>

@@ -54,6 +54,11 @@ export type TraceMode = "diff" | "evidence" | "pedagogic" | "failure";
 export type RuntimeRecord = Pick<CompileSnapshot, "compiledAt" | "irHash"> & {
   toolchain: string;
   c2paEvidence?: C2paEvidence;
+  disclosure?: {
+    safe: boolean;
+    warnings: string[];
+    omitted: string[];
+  };
   transientReverse?: {
     generatedAt: string;
     outputSha256: string;
@@ -176,7 +181,7 @@ export function ProvenanceModule({ item, runtime, onFocusReverse, reverseMode, p
     <div className="provenance-tablist" role="tablist" aria-label="Object provenance and runtime manifest views" onKeyDown={event => tablistKeyDown(event, tabs.map(next => next.id), tab, setTab, id => `provenance-tab-${id}`)}>{tabs.map(next => { const Icon = next.icon; return <button key={next.id} id={`provenance-tab-${next.id}`} type="button" role="tab" aria-controls="provenance-panel" aria-selected={tab === next.id} tabIndex={tab === next.id ? 0 : -1} className={tab === next.id ? "active" : ""} onClick={() => setTab(next.id)}><Icon size={16} aria-hidden="true" /><span>{next.label}</span></button>; })}</div>
     <div id="provenance-panel" className="provenance-content" role="tabpanel" aria-labelledby={`provenance-tab-${tab}`}>
       {tab === "provenance" && <div className="provenance-records"><dl><div><dt>SOURCE</dt><dd>{item.source}</dd></div><div><dt>SOURCE SHA-256</dt><dd>{runtime?.transientReverse?.sourceSha256 ?? item.credentialSignature.sourceSha256}</dd></div></dl>{c2paEvidence ? <dl aria-live="polite"><div><dt>C2PA RECORD</dt><dd><strong>{c2paEvidenceLabel(c2paEvidence)}</strong></dd></div><div><dt>AVAILABILITY</dt><dd>{c2paEvidence.availability.toUpperCase()}</dd></div><div><dt>INSPECTED AT</dt><dd>{c2paEvidence.inspectedAt}</dd></div><div><dt>VERIFICATION</dt><dd>{c2paEvidence.verificationMethod}</dd></div><div><dt>WARNINGS</dt><dd>{c2paEvidence.warnings.length ? c2paEvidence.warnings.join(" · ") : "none"}</dd></div></dl> : <CredentialEvidence credential={displayedCredential} />}</div>}
-      {tab === "runtime" && <dl className="provenance-list"><div><dt>MODULE</dt><dd>{runtime?.transientReverse?.mode ?? "ON REQUEST"}</dd></div><div><dt>SEED</dt><dd>{runtime?.transientReverse?.seed ?? "generated on next turn"}</dd></div><div><dt>SETTINGS SHA-256</dt><dd>{runtime?.transientReverse?.settingsSha256 ?? "generated on next turn"}</dd></div><div><dt>OUTPUT SHA-256</dt><dd>{runtime?.transientReverse?.outputSha256 ?? "generated on next turn"}</dd></div><div><dt>CACHED INTERMEDIATE</dt><dd>none</dd></div></dl>}
+      {tab === "runtime" && <dl className="provenance-list"><div><dt>MODULE</dt><dd>{runtime?.transientReverse?.mode ?? "ON REQUEST"}</dd></div><div><dt>SEED</dt><dd>{runtime?.transientReverse?.seed ?? "generated on next turn"}</dd></div><div><dt>SETTINGS SHA-256</dt><dd>{runtime?.transientReverse?.settingsSha256 ?? "generated on next turn"}</dd></div><div><dt>OUTPUT SHA-256</dt><dd>{runtime?.transientReverse?.outputSha256 ?? "generated on next turn"}</dd></div><div><dt>CACHED INTERMEDIATE</dt><dd>none</dd></div>{runtime?.disclosure && <div className="provenance-disclosure"><dt>PUBLIC-SAFE DISCLOSURE</dt><dd>{runtime.disclosure.safe ? `Omitted from the public record: ${runtime.disclosure.omitted.join(" · ") || "none"}.` : runtime.disclosure.warnings.join(" · ")}</dd></div>}</dl>}
       {tab === "reverse" && <dl className="provenance-list"><div><dt>COMMAND</dt><dd><button type="button" onClick={onFocusReverse}>{reverseFacts.command}</button></dd></div><div><dt>PALETTE K</dt><dd>{reverseFacts.paletteK}</dd></div><div><dt>SWATCHES</dt><dd>{runtime?.transientReverse?.swatches.join(" · ") ?? "compiled on next turn"}</dd></div></dl>}
     </div>
   </section>;
