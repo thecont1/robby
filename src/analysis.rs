@@ -119,7 +119,10 @@ pub fn analyze_image_json(bytes: &[u8], requested_k: u8) -> CompileResult<String
             iptc: extraction_state(&intake.evidence.iptc.state),
             xmp: extraction_state(&intake.evidence.xmp.state),
             gps: extraction_state(&intake.evidence.gps.state),
-            c2pa: intake.evidence.c2pa.value
+            c2pa: intake
+                .evidence
+                .c2pa
+                .value
                 .map(|value| format!("{:?}", value.state).to_lowercase())
                 .unwrap_or_else(|| "unsupported".to_string()),
         },

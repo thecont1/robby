@@ -76,10 +76,11 @@ fn main() {
                 eprintln!("Error: palette k must be an integer between 3 and 64");
                 std::process::exit(1);
             });
-            let analysis = analyze_ingredients_json(&source_bytes, palette_k).unwrap_or_else(|error| {
-                eprintln!("Error: {error}");
-                std::process::exit(1);
-            });
+            let analysis =
+                analyze_ingredients_json(&source_bytes, palette_k).unwrap_or_else(|error| {
+                    eprintln!("Error: {error}");
+                    std::process::exit(1);
+                });
             println!("{analysis}");
             return;
         }
