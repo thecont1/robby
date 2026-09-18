@@ -130,7 +130,7 @@ pub fn inspect_image(original_name: &str, bytes: &[u8]) -> CompileResult<Ingredi
     let (xmp_state, xmp_value) =
         extract_marker_map(bytes, b"http://ns.adobe.com/xap/1.0/", b"<x:xmpmeta");
     let c2pa = normalize_c2pa(bytes);
-    let gps = absent_field("No GPS coordinates were found in the source bytes.");
+    let gps = gps_field(bytes, format);
     Ok(IngredientManifest {
         schema_version: "0.2".to_string(),
         obverse: Obverse {
@@ -272,6 +272,25 @@ fn empty_field<T>(state: ExtractionState, note: &str) -> EvidenceField<T> {
 fn absent_field<T>(note: &str) -> EvidenceField<T> {
     empty_field(ExtractionState::Absent, note)
 }
+
+fn gps_field(bytes: &[u8], format: ImageFormat) -> EvidenceField<BTreeMap<String, f64>> {
+    match gps_extraction_state(bytes, format) {
+        ExtractionState::Present => empty_field(
+            ExtractionState::Present,
+            "GPS metadata block detected; coordinates remain private by default.",
+        ),
+        ExtractionState::Corrupt => empty_field(
+            ExtractionState::Corrupt,
+            "GPS metadata pointer was present but unreadable; coordinates remain private.",
+        ),
+        ExtractionState::Unsupported => empty_field(
+            ExtractionState::Unsupported,
+            "GPS encoding is unsupported; coordinates remain private.",
+        ),
+        ExtractionState::Absent => absent_field("No GPS metadata block was detected."),
+    }
+}
+
 fn field_from_state(
     state: ExtractionState,
     value: Option<BTreeMap<String, String>>,
@@ -450,6 +469,57 @@ fn extract_exif(
     let mut map = BTreeMap::new();
     map.insert("orientation".to_string(), orientation.to_string());
     (Some(orientation), ExtractionState::Present, Some(map))
+}
+
+/// Detect the EXIF GPSInfo pointer without reading or exposing coordinates.
+fn gps_extraction_state(bytes: &[u8], format: ImageFormat) -> ExtractionState {
+    let tiff = match format {
+        ImageFormat::Jpeg => jpeg_exif_payload(bytes),
+        ImageFormat::Png => png_exif_payload(bytes),
+        _ => None,
+    };
+    let Some(tiff) = tiff else {
+        return ExtractionState::Absent;
+    };
+    let little = match tiff.get(0..2) {
+        Some(b"II") => true,
+        Some(b"MM") => false,
+        _ => return ExtractionState::Corrupt,
+    };
+    let u16_at = |at: usize| -> Option<u16> {
+        let part = tiff.get(at..at + 2)?;
+        Some(if little {
+            u16::from_le_bytes([part[0], part[1]])
+        } else {
+            u16::from_be_bytes([part[0], part[1]])
+        })
+    };
+    let u32_at = |at: usize| -> Option<u32> {
+        let part = tiff.get(at..at + 4)?;
+        Some(if little {
+            u32::from_le_bytes([part[0], part[1], part[2], part[3]])
+        } else {
+            u32::from_be_bytes([part[0], part[1], part[2], part[3]])
+        })
+    };
+    if u16_at(2) != Some(42) {
+        return ExtractionState::Corrupt;
+    }
+    let Some(ifd) = u32_at(4).map(|value| value as usize) else {
+        return ExtractionState::Corrupt;
+    };
+    let Some(count) = u16_at(ifd).map(|value| value as usize) else {
+        return ExtractionState::Corrupt;
+    };
+    for entry in 0..count {
+        let Some(at) = ifd.checked_add(2 + entry * 12) else {
+            return ExtractionState::Corrupt;
+        };
+        if u16_at(at) == Some(0x8825) {
+            return ExtractionState::Present;
+        }
+    }
+    ExtractionState::Absent
 }
 
 fn parse_orientation(bytes: &[u8]) -> Option<u16> {
