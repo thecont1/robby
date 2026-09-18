@@ -41,6 +41,23 @@ export async function setupVite(app: Express, server: Server) {
       }
     }
 
+    // Same pattern for the /demo/ video page — it lives at
+    // client/public/demo/index.html and we don't want Vite's SPA fallback to
+    // intercept it during local dev.
+    if (url === "/demo" || url.startsWith("/demo/")) {
+      const demoFile = path.resolve(
+        import.meta.dirname,
+        "../..",
+        "client",
+        "public",
+        "demo",
+        "index.html"
+      );
+      if (fs.existsSync(demoFile)) {
+        return res.status(200).set({ "Content-Type": "text/html" }).sendFile(demoFile);
+      }
+    }
+
     try {
       const clientTemplate = path.resolve(
         import.meta.dirname,
