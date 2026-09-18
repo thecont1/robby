@@ -13,6 +13,7 @@ use crate::render::{
 };
 
 pub const ANALYSIS_GRID_SIZE: usize = 8;
+const MAX_ANALYSIS_PIXELS: usize = 262_144;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct IngredientAnalysis {
@@ -98,10 +99,12 @@ pub fn analyze_image_json(bytes: &[u8], requested_k: u8) -> CompileResult<String
     let intake = inspect_image("analysis-source", bytes)?;
     let (pixels, width, height) =
         source_pixels(bytes).map_err(|error| CompilerError::plain(error.to_string()))?;
-    let palette = palette_for_pixels(&pixels, requested_k as usize)
+    let (analysis_pixels, analysis_width, analysis_height) = bounded_sample(&pixels, width, height);
+    let palette = palette_for_pixels(&analysis_pixels, requested_k as usize)
         .map_err(|error| CompilerError::plain(error.to_string()))?;
-    let index_map = palette_index_map(&pixels, &palette);
-    let structure = calculate_structure(&pixels, width, height, &palette);
+    let index_map = palette_index_map(&analysis_pixels, &palette);
+    let structure =
+        calculate_structure(&analysis_pixels, analysis_width, analysis_height, &palette);
     let analysis = IngredientAnalysis {
         schema_version: "robby-ingredients-v1".to_string(),
         source: SourceIngredients {
@@ -136,20 +139,41 @@ pub fn analyze_image_json(bytes: &[u8], requested_k: u8) -> CompileResult<String
                     hex: entry.hex.clone(),
                     rgb: entry.rgb,
                     pixels: entry.weight,
-                    share_percent: (entry.weight as f64 * 100.0) / pixels.len() as f64,
+                    share_percent: (entry.weight as f64 * 100.0) / analysis_pixels.len() as f64,
                     rank: entry.rank,
                 })
                 .collect(),
             index_map_sha256: digest_bytes(&index_map),
         },
         identity: IdentityIngredients {
-            perceptual_hash: average_hash(&pixels, width, height),
+            perceptual_hash: average_hash(&analysis_pixels, analysis_width, analysis_height),
         },
         structure,
     };
     serde_json::to_string(&analysis).map_err(|error| {
         CompilerError::plain(format!("Unable to serialize ingredient analysis: {error}"))
     })
+}
+
+/// Reduce only expensive visual measurements to a deterministic bounded sample.
+/// Full source and canonical-pixel hashes still use every pixel above.
+fn bounded_sample(pixels: &[[u8; 3]], width: u32, height: u32) -> (Vec<[u8; 3]>, u32, u32) {
+    if pixels.len() <= MAX_ANALYSIS_PIXELS {
+        return (pixels.to_vec(), width, height);
+    }
+    let stride = ((pixels.len() as f64 / MAX_ANALYSIS_PIXELS as f64)
+        .sqrt()
+        .ceil() as u32)
+        .max(1);
+    let sampled_width = width.div_ceil(stride);
+    let sampled_height = height.div_ceil(stride);
+    let mut sampled = Vec::with_capacity((sampled_width * sampled_height) as usize);
+    for y in (0..height).step_by(stride as usize) {
+        for x in (0..width).step_by(stride as usize) {
+            sampled.push(pixels[(y * width + x) as usize]);
+        }
+    }
+    (sampled, sampled_width, sampled_height)
 }
 
 fn extraction_state(state: &crate::intake::ExtractionState) -> String {
