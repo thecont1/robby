@@ -6,7 +6,7 @@
  */
 
 import SourceEditor from "@/components/SourceEditor";
-import PaletteMosaicCanvas from "@/components/PaletteMosaicCanvas";
+import SwatchMatrix from "@/components/SwatchMatrix";
 import TeppanyakiCounter from "@/components/TeppanyakiCounter";
 import { ProvenanceModule, type RuntimeRecord, type TraceMode } from "@/components/Build06Panels";
 import { loadCompileHistory, persistCompileSnapshot, type CompileSnapshot } from "@/lib/compileHistory";
@@ -16,7 +16,7 @@ import type { CompileRun, SessionOrio } from "@/lib/compileEvents";
 import { verifiedCompilerStatus } from "@/lib/compilerStatus";
 import { paletteKFromSource } from "@/lib/paletteSettings";
 import { authoredRecipeForCompile, editPaletteInRecipe, isCompiledSourceCurrent, reverseModeFromSource } from "@/lib/recipeAuthority";
-import { reverseMotionSeed } from "@/lib/reverseSeed";
+import { swatchSeed, swatchSeedToken } from "@/lib/swatchSeed";
 
 import {
   DropdownMenu,
@@ -30,7 +30,7 @@ import { type CredentialSignature, type TraceStep, type GalleryItem } from "@/li
 import { useGallery } from "@/lib/useGallery";
 import { createRecipeDraftStore } from "@/lib/recipeDrafts";
 import { footerSocialLinks } from "@/lib/footerLinks";
-import { rustToolchainVersion, type RobbyIr } from "@/lib/robbyCompiler";
+import { palettePreviewWithRust, rustToolchainVersion, type RobbyIr } from "@/lib/robbyCompiler";
 import { gallerySlideDirection, isImageOnlyExitKey, swipeGalleryOffset, themeControlLabel, type GallerySlideDirection } from "@/lib/visualModes";
 import { artworkModalKeyAction, focusableArtworkSelector } from "@/lib/artworkModal";
 import {
@@ -80,10 +80,16 @@ function traceFromIr(ir: RobbyIr): TraceStep[] {
   return trace;
 }
 
-function ReverseArtwork({ result, alt }: { result?: SessionOrio; alt: string }) {
-  if (!result) return null;
-  if (result.renderModule === "palette_grid") {
-    return <PaletteMosaicCanvas palette={result.colourSwatches} seed={reverseMotionSeed(result.c2paEvidence)} fallbackUrl={result.reverseObjectUrl} alt={alt} />;
+function ReverseArtwork({ result, alt, active }: { result?: SessionOrio; alt: string; active: boolean }) {
+  if (!active || !result) return null;
+  if (result.colourSwatches.length >= 3) {
+    return <SwatchMatrix
+      swatches={result.colourSwatches}
+      seed={swatchSeed(result.derivedSeed, result.c2paEvidence.presence)}
+      active={active}
+      resetKey={result.compileRunId}
+      alt={alt}
+    />;
   }
   return <img src={result.reverseObjectUrl} alt={alt} className="object-image" />;
 }
@@ -111,6 +117,13 @@ export default function Home() {
   const [credentialOverride, setCredentialOverride] = useState<CredentialSignature | null>(null);
   const [isRenderingReverse, setIsRenderingReverse] = useState(false);
   const [paletteK, setPaletteK] = useState(8);
+  // Live palette preview: dragging the k slider asks the Rust/WASM compiler
+  // for the median-cut swatches of the edited recipe, so the counter shows
+  // real colours — not placeholders — before Compile Orio runs. Keyed by
+  // specimen + k so a stale result can never paint the wrong grid.
+  const [livePalette, setLivePalette] = useState<{ specimenId: string; k: number; swatches: string[] } | null>(null);
+  const palettePreviewSeq = useRef(0);
+  const sourceBytesCache = useRef<Record<string, Promise<Uint8Array>>>({});
   const [compileRun, setCompileRun] = useState<CompileRun | null>(null);
   const faceBySpecimen = useRef<Record<string, "obverse" | "inverse">>({});
   const invalidatedSpecimens = useRef(new Set<string>());
@@ -168,6 +181,9 @@ export default function Home() {
   const liveIr = projectionState === "live" && compiledEdit?.specimenId === selected.id ? compiledEdit.ir : null;
   const displayedObverse = selected.obverse;
   const displayedReverseResult = compileRun?.galleryItemId === selected.id ? compileRun.result : undefined;
+  const displayedSwatchSeedToken = displayedReverseResult
+    ? swatchSeedToken(displayedReverseResult.derivedSeed, displayedReverseResult.c2paEvidence.presence)
+    : undefined;
   // The draft store is the authority for "what source is this specimen
   // showing". Reading the ref directly by the selected id (rather than
   // mirroring it into state, which would lag a render behind a selection
@@ -181,6 +197,41 @@ export default function Home() {
   // compiled projection may describe that draft, but must never replace it.
   const activeRecipe = selectedDraft;
   const recipeChanged = Boolean(compileRun?.result && compileRun.recipeSource !== activeRecipe);
+  // Live palette preview: when the recipe's k no longer matches the palette
+  // the counter would display (compiled swatches for the active recipe, else
+  // the server k=8 preview), ask the Rust/WASM compiler for the real
+  // median-cut swatches of the edited recipe — debounced, and keyed by
+  // specimen + k so a stale result can never paint the wrong grid.
+  const displayedPaletteCount = recipeChanged
+    ? 0
+    : (compileRun?.galleryItemId === selected.id ? compileRun.result?.colourSwatches?.length ?? 0 : selected.palette.length);
+  const needsPalettePreview = displayedPaletteCount !== paletteK;
+  useEffect(() => {
+    if (!needsPalettePreview || !selected.id) {
+      setLivePalette(null);
+      return;
+    }
+    const specimenId = selected.id;
+    const sourceUrl = selected.obverse;
+    const seq = ++palettePreviewSeq.current;
+    const timer = window.setTimeout(() => {
+      const bytesPromise = sourceBytesCache.current[specimenId] ??= fetch(sourceUrl, { cache: "no-store" })
+        .then(response => {
+          if (!response.ok) throw new Error(`Could not read source bytes for ${sourceUrl}.`);
+          return response.arrayBuffer().then(buffer => new Uint8Array(buffer));
+        });
+      void bytesPromise
+        .then(bytes => palettePreviewWithRust(bytes, paletteK))
+        .then(swatches => {
+          if (palettePreviewSeq.current === seq) setLivePalette({ specimenId, k: paletteK, swatches });
+        })
+        .catch(() => {
+          // Preview failure leaves the empty slots in place — the counter
+          // never shows colours for a palette it could not derive.
+        });
+    }, 220);
+    return () => window.clearTimeout(timer);
+  }, [needsPalettePreview, paletteK, selected.id, selected.obverse]);
   const actions = compileActions({
     run: compileRun?.galleryItemId === selected.id ? compileRun : null,
     recipeChanged,
@@ -552,6 +603,7 @@ export default function Home() {
       selectedRecipeRef.current = { specimenId: selected.id, source: nextRecipe };
       bumpDraftRevision();
       setPaletteK(value);
+      setLivePalette(null);
       browserCompileController.cancelActive();
       delete runBySpecimen.current[selected.id];
       invalidatedSpecimens.current.add(selected.id);
@@ -674,7 +726,7 @@ export default function Home() {
                             <img src={displayedObverse} alt="" className="object-image" />
                           </div>
                           <div className="object-face object-face-inverse" aria-hidden={face !== "inverse"}>
-                            <ReverseArtwork result={displayedReverseResult} alt="" />
+                            <ReverseArtwork result={displayedReverseResult} alt="" active={face === "inverse"} />
                           </div>
                         </div>
                       </div>
@@ -684,7 +736,7 @@ export default function Home() {
                             <img src={incoming.obverse} alt={`${incoming.title} obverse`} className="object-image" />
                           </div>
                           <div className="object-face object-face-inverse" aria-hidden={incomingFace !== "inverse"}>
-                            <ReverseArtwork result={incomingRun?.result} alt={`${incoming.title} inverse`} />
+                            <ReverseArtwork result={incomingRun?.result} alt={`${incoming.title} inverse`} active={incomingFace === "inverse"} />
                           </div>
                         </div>
                       </div>
@@ -697,7 +749,7 @@ export default function Home() {
                             <img src={incoming.obverse} alt={`${incoming.title} obverse`} className="object-image" />
                           </div>
                           <div className="object-face object-face-inverse" aria-hidden={incomingFace !== "inverse"}>
-                            <ReverseArtwork result={incomingRun?.result} alt={`${incoming.title} inverse`} />
+                            <ReverseArtwork result={incomingRun?.result} alt={`${incoming.title} inverse`} active={incomingFace === "inverse"} />
                           </div>
                         </div>
                       </div>
@@ -707,7 +759,7 @@ export default function Home() {
                             <img src={displayedObverse} alt="" className="object-image" />
                           </div>
                           <div className="object-face object-face-inverse" aria-hidden={face !== "inverse"}>
-                            <ReverseArtwork result={displayedReverseResult} alt="" />
+                            <ReverseArtwork result={displayedReverseResult} alt="" active={face === "inverse"} />
                           </div>
                         </div>
                       </div>
@@ -722,7 +774,7 @@ export default function Home() {
                       <img src={displayedObverse} alt={`${selected.title} obverse`} className="object-image" />
                     </div>
                     <div className="object-face object-face-inverse" aria-hidden={face !== "inverse"}>
-                      <ReverseArtwork result={displayedReverseResult} alt={`${selected.title} inverse: ${selected.reverseDescription}`} />
+                      <ReverseArtwork result={displayedReverseResult} alt={`${selected.title} inverse: ${selected.reverseDescription}`} active={face === "inverse"} />
                     </div>
                   </div>
                 </div>
@@ -801,6 +853,8 @@ export default function Home() {
             paletteK={paletteK}
             onPaletteKChange={editPaletteK}
             previewPalette={selected.palette}
+            swatchSeedToken={displayedSwatchSeedToken}
+            swatchC2paPresent={displayedReverseResult?.c2paEvidence.presence === "present"}
           />
         </div>
       </section>
@@ -826,7 +880,7 @@ export default function Home() {
           <div className="artwork-view-image-viewport">
             {face === "obverse"
               ? <img src={displayedObverse} alt={`${selected.title} obverse`} />
-              : <ReverseArtwork result={displayedReverseResult} alt={`${selected.title} inverse`} />}
+              : <ReverseArtwork result={displayedReverseResult} alt={`${selected.title} inverse`} active={face === "inverse"} />}
           </div>
           <div className="artwork-view-controls"><div className="artwork-view-meta"><span>{selected.title} / {face}</span><span>SWIPE TO BROWSE · ESC TO CLOSE</span></div><button type="button" onClick={closeArtworkView} aria-label="Close full-bleed artwork view" title="Close full-bleed artwork view"><Minimize2 size={19} /></button></div>
         </div>
