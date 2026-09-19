@@ -22,6 +22,11 @@ jobs:
       # Worker bundling needs node_modules (@cloudflare/containers).
       - run: corepack enable && corepack pnpm install --frozen-lockfile
 
+      # dist/public must exist before wrangler deploy — it is the assets
+      # directory uploaded for edge serving (SPA, deck, demo, gallery).
+      - name: Build web assets
+        run: corepack pnpm run build:web
+
       # wrangler deploy builds the Dockerfile image (Rust + web + gallery from
       # the checkout), pushes it to registry.cloudflare.com, updates the
       # container application, and uploads the Worker.
