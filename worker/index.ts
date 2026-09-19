@@ -48,20 +48,21 @@ export default {
       if (!("body" in object)) {
         return new Response(null, { status: 412, headers });
       }
-      if (object.range) {
-        headers.set(
-          "content-range",
-          `bytes ${object.range.offset}-${object.range.end ?? object.size - 1}/${object.size}`,
-        );
-        headers.set(
-          "content-length",
-          String((object.range.end ?? object.size - 1) - object.range.offset + 1),
-        );
+      const range = object.range;
+      if (range) {
+        const start = "suffix" in range ? Math.max(0, object.size - range.suffix) : (range.offset ?? 0);
+        const end = "suffix" in range
+          ? object.size - 1
+          : range.length !== undefined
+            ? start + range.length - 1
+            : object.size - 1;
+        headers.set("content-range", `bytes ${start}-${end}/${object.size}`);
+        headers.set("content-length", String(end - start + 1));
       } else {
         headers.set("content-length", String(object.size));
       }
       return new Response(object.body, {
-        status: object.range ? 206 : 200,
+        status: range ? 206 : 200,
         headers,
       });
     }
