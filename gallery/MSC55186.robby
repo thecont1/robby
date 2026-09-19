@@ -1,5 +1,0 @@
-# The JPEG is an opaque byte source plus RGB matrix. No content interpretation.
-base("MSC55186.jpg")
-palette(k: 8)
-reverse(mode: "palette_grid")
-output(obverse: "MSC55186.jpg", reverse: "transient", manifest: "transient")
