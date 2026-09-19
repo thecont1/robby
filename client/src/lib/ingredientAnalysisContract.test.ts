@@ -19,10 +19,10 @@ const analysis = readFileSync(new URL("../components/IngredientAnalysisPanel.tsx
     expect(home).toContain("isCurrentRequest");
   });
 
-  it("offers ingredients, stuffing, and get cooking views", () => {
+  it("offers ingredients, stuffing, and baking views", () => {
     expect(counter).toContain(">Ingredients</button>");
     expect(counter).toContain(">Stuffing</button>");
-    expect(counter).toContain(">Get cooking</button>");
+    expect(counter).toContain(">Baking</button>");
     expect(counter).toContain("EmbeddedEvidencePanel");
   });
 

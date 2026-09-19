@@ -432,9 +432,9 @@
 .dark .teppanyaki-station em { background:rgba(227,68,47,.16); border-color:#e3442f; }
 .dark .teppanyaki-station { border-bottom-color:#e3442f; }.dark .teppanyaki-station.status-idle,.dark .teppanyaki-station p { color:#d79a8d; }.dark .teppanyaki-swatches i { border-color:#e3442f; }
 .dark .teppanyaki-station.is-active { background:rgba(227,68,47,.26); box-shadow:inset 3px 0 0 #e3442f; }
-.dark .teppanyaki-station::before { background:rgba(227,68,47,.22); bottom:0; content:""; left:0; position:absolute; top:0; width:28px; }
-.dark .teppanyaki-station::after { background:#e3442f; content:""; height:calc(var(--rail-fill,0)*100%); left:0; position:absolute; top:0; width:28px; }
-.dark .teppanyaki-station.rail-covered .trace-number { color:#1c1a19; }
+.teppanyaki-station::before { background:rgba(227,68,47,.22); bottom:0; content:""; left:0; position:absolute; top:0; width:28px; }
+.teppanyaki-station::after { background:#e3442f; content:""; height:calc(var(--rail-fill,0)*100%); left:0; position:absolute; top:0; width:28px; }
+.teppanyaki-station.rail-covered .trace-number { color:#1c1a19; }
 .provenance-disclosure dd { color:#e8a394; }
 .image-only .teppanyaki-counter { pointer-events:none; visibility:hidden; }
 

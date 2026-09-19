@@ -179,7 +179,7 @@ export default function TeppanyakiCounter({
       <div className="teppanyaki-view-tabs" role="tablist" aria-label="Teppanyaki counter views">
         <button type="button" role="tab" aria-selected={view === "ingredients"} className={view === "ingredients" ? "active" : ""} onClick={() => onViewChange("ingredients")}>Ingredients</button>
         <button type="button" role="tab" aria-selected={view === "evidence"} className={view === "evidence" ? "active" : ""} onClick={() => onViewChange("evidence")}>Stuffing</button>
-        <button type="button" role="tab" aria-selected={view === "cooking"} className={view === "cooking" ? "active" : ""} onClick={() => onViewChange("cooking")}>Get cooking</button>
+        <button type="button" role="tab" aria-selected={view === "cooking"} className={view === "cooking" ? "active" : ""} onClick={() => onViewChange("cooking")}>Baking</button>
       </div>
       <div className="trace-title" role="status" aria-live="polite" aria-atomic="true">
         <p className="eyebrow">{copy.kicker}</p>

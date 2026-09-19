@@ -371,6 +371,7 @@ export default function Home() {
     setFailureMessage(null);
     setIsRenderingReverse(true);
     setProjectionState("compiling");
+    setCounterView("cooking");
     const run = await browserCompileController.compile({
       galleryItemId: compiledSpecimenId,
       sourceName: selected.source,
