@@ -88,7 +88,7 @@ export function SiteHeader({
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="robby-menu-content">
             <DropdownMenuItem asChild><Link href="/" aria-current={isActive("/") ? "page" : undefined}>robby</Link></DropdownMenuItem>
-            <DropdownMenuItem asChild><Link href="/hackathon" aria-current={isActive("/hackathon") ? "page" : undefined}>troid</Link></DropdownMenuItem>
+            <DropdownMenuItem asChild><Link href="/compiler" aria-current={isActive("/compiler") ? "page" : undefined}>troid</Link></DropdownMenuItem>
             <DropdownMenuItem asChild><Link href="/concept" aria-current={isActive("/concept") ? "page" : undefined}>concept</Link></DropdownMenuItem>
             <DropdownMenuItem asChild><a href="/deck/" aria-current={isActive("/deck") ? "page" : undefined}>deck</a></DropdownMenuItem>
             <DropdownMenuItem asChild><a href="/demo/" aria-current={isActive("/demo") ? "page" : undefined}>demo</a></DropdownMenuItem>

@@ -3,7 +3,7 @@ export type BriefKind = "hackathon" | "image-object" | "about";
 export const briefSummaries: Record<BriefKind, { menuLabel: string; route: string; title: string; source: string }> = {
   hackathon: {
     menuLabel: "Hackathon brief",
-    route: "/hackathon",
+    route: "/compiler",
     title: "The `robby` hackathon brief",
     source: "Source: robby.md · SegFault 2026 project overview",
   },
