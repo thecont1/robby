@@ -85,6 +85,7 @@ const FAQ_ENTRIES: FaqEntry[] = [
 
 export default function Faqs() {
   const [activeIndex, setActiveIndex] = useState(0);
+  const [wide, setWide] = useState(false);
   const pageRef = useRef<HTMLElement | null>(null);
   const heroRef = useRef<HTMLElement | null>(null);
 
@@ -99,9 +100,13 @@ export default function Faqs() {
     resizeObserver.observe(hero);
     syncRailOffset();
 
-    page.classList.add("faqs-scrolly");
-
-    const wide = window.matchMedia("(min-width:791px)");
+    const mq = window.matchMedia("(min-width:791px)");
+    const syncWide = () => {
+      setWide(mq.matches);
+      page.classList.toggle("faqs-scrolly", mq.matches);
+    };
+    mq.addEventListener("change", syncWide);
+    syncWide();
     let lockUntil = 0;
     const step = (dir: number) => {
       const now = performance.now();
@@ -114,7 +119,7 @@ export default function Faqs() {
 
     let wheelAcc = 0;
     const onWheel = (e: WheelEvent) => {
-      if (!wide.matches) return;
+      if (!mq.matches) return;
       e.preventDefault();
       wheelAcc += e.deltaY;
       if (Math.abs(wheelAcc) > 48) {
@@ -123,7 +128,7 @@ export default function Faqs() {
       }
     };
     const onKey = (e: KeyboardEvent) => {
-      if (!wide.matches) return;
+      if (!mq.matches) return;
       const tag = (e.target as HTMLElement | null)?.tagName;
       if (tag === "INPUT" || tag === "TEXTAREA") return;
       if (e.key === "ArrowDown" || e.key === "ArrowRight" || e.key === "PageDown" || e.key === " ") {
@@ -145,10 +150,10 @@ export default function Faqs() {
       touchY = e.touches[0]?.clientY ?? 0;
     };
     const onTouchMove = (e: TouchEvent) => {
-      if (wide.matches) e.preventDefault();
+      if (mq.matches) e.preventDefault();
     };
     const onTouchEnd = (e: TouchEvent) => {
-      if (!wide.matches) return;
+      if (!mq.matches) return;
       const dy = touchY - (e.changedTouches[0]?.clientY ?? touchY);
       if (Math.abs(dy) > 48) step(Math.sign(dy));
     };
@@ -161,6 +166,7 @@ export default function Faqs() {
 
     return () => {
       resizeObserver.disconnect();
+      mq.removeEventListener("change", syncWide);
       page.classList.remove("faqs-scrolly");
       window.removeEventListener("wheel", onWheel);
       window.removeEventListener("keydown", onKey);
@@ -194,8 +200,8 @@ export default function Faqs() {
               <li key={entry.id}>
                 <a
                   href={`#${entry.id}`}
-                  aria-current={index === activeIndex ? "location" : undefined}
-                  className={index === activeIndex ? "is-active" : undefined}
+                  aria-current={wide && index === activeIndex ? "location" : undefined}
+                  className={wide && index === activeIndex ? "is-active" : undefined}
                   onClick={(e) => {
                     e.preventDefault();
                     setActiveIndex(index);
@@ -207,10 +213,10 @@ export default function Faqs() {
           <div className="faqs-entries">
             {FAQ_ENTRIES.map((entry, index) => (
               <article
-                className={index === activeIndex ? "faq-entry in-view" : "faq-entry"}
+                className={wide && index === activeIndex ? "faq-entry in-view" : "faq-entry"}
                 id={entry.id}
                 key={entry.id}
-                aria-hidden={index !== activeIndex || undefined}
+                aria-hidden={(wide && index !== activeIndex) || undefined}
               >
                 <div className="faq-entry-mark"><span>{entry.index}</span><i /></div>
                 <div className="faq-entry-body">
