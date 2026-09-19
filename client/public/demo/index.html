@@ -4,10 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>robby demo — SegFault 2026</title>
-<link rel="icon" href="data:image/svg+xml;base64,PHN2ZyBjbGFzcz0iY29yb25hIiB2aWV3Qm94PSIwIDAgNjQgNjQiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgcm9sZT0iaW1nIiBhcmlhLWxhYmVsPSJyb2JieSAmYW1wOyB0cm9pZCDigJQgb3JpbyBjb29raWUgbWFyayI+CiAgPCEtLQogICAgcm9iYnkgJiB0cm9pZCDigJQgb3JpbyBtYXJrLCByZXRpbnRlZCB0byB0aGUgcm9iYnkgcGFsZXR0ZS4KICAgIEEgdHdvLXRvbmUgY29pbjogb2J2ZXJzZSAoY3JlYW0sIGxlZnQpIGFuZCByZXZlcnNlIChpbmssIHJpZ2h0KSwgc3BsaXQKICAgIGJ5IGEgaGFpcmxpbmUgdmVybWlsaW9uIHNwaW5lLiBUd28gc21hbGwgZG90cyBmYWNlIGVhY2ggb3RoZXIgYWNyb3NzCiAgICB0aGUgc3BpbmUg4oCUIHRoZSBvYnZlcnNlIGFuZCByZXZlcnNlLCBtdXR1YWxseSBleGNsdXNpdmUgdG8gc2lnaHQuCiAgICBQYWxldHRlOiBSZWdpc3RyYXRpb24gVmVybWlsaW9uICNlMzQ0MmYgwrcgYXJjaGl2ZSBwYXBlciAjZjRlZmUxIMK3CiAgICBjaGFyY29hbCBpbmsgIzFjMWExOS4KICAtLT4KICA8Y2lyY2xlIGN4PSIzMiIgY3k9IjMyIiByPSIyOC41IiBmaWxsPSIjZTM0NDJmIi8+CiAgPCEtLSBsZWZ0IGhhbGYgPSBvYnZlcnNlIChhcmNoaXZlIHBhcGVyKSAtLT4KICA8cGF0aCBkPSJNIDMyIDMuNSBBIDI4LjUgMjguNSAwIDAgMCAzMiA2MC41IFoiIGZpbGw9IiNmNGVmZTEiLz4KICA8IS0tIHNwaW5lIOKAlCB2ZXJtaWxpb24gaGFpcmxpbmUgc28gdGhlIHR3byBoYWx2ZXMgcmVhZCBhcyBvbmUgb2JqZWN0IC0tPgogIDxsaW5lIHgxPSIzMiIgeTE9IjMuNSIgeDI9IjMyIiB5Mj0iNjAuNSIgc3Ryb2tlPSIjMWMxYTE5IiBzdHJva2Utd2lkdGg9IjAuOCIgb3BhY2l0eT0iMC41NSIvPgogIDwhLS0gdHdvIGZhY2luZyBjZW50cmUgbWFya3MgLS0+CiAgPGNpcmNsZSBjeD0iMjYiIGN5PSIzMiIgcj0iMi42IiBmaWxsPSIjMWMxYTE5Ii8+CiAgPGNpcmNsZSBjeD0iMzgiIGN5PSIzMiIgcj0iMi42IiBmaWxsPSIjZjRlZmUxIi8+CiAgPCEtLSB0aGluIG91dGVyIHJpbmcgZWNob2luZyB0aGUgY29yb25hIC0tPgogIDxjaXJjbGUgY3g9IjMyIiBjeT0iMzIiIHI9IjI0IiBmaWxsPSJub25lIiBzdHJva2U9IiNmNGVmZTEiIHN0cm9rZS13aWR0aD0iMS4yIiBvcGFjaXR5PSIwLjU1Ii8+Cjwvc3ZnPg==">
+<link rel="icon" type="image/png" href="/icons/robby-registration-mark_658aceee.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Source+Serif+4:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=JetBrains+Mono:wght@400;500;700&family=Noto+Serif+Mono:wght@400;500;600;700&family=Source+Serif+4:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 /* ── HelmsMate · theme tokens injected by build.py ─── */
 :root{
@@ -32,7 +32,7 @@
   --rule: #1c1a19;
   --font-display: "Source Serif 4",Georgia,"Times New Roman",serif;
   --font-sans: "Space Grotesk",ui-sans-serif,system-ui,-apple-system,Helvetica,Arial,sans-serif;
-  --font-mono: "JetBrains Mono",ui-monospace,"DM Mono",Menlo,Monaco,Consolas,monospace;
+  --font-mono: "Noto Serif Mono","DM Mono","JetBrains Mono",ui-monospace,Menlo,Monaco,Consolas,monospace;
   --grid-glow: rgba(227,68,47,.06);
   --grid-line-x: rgba(0,0,0,0);
   --grid-line-y: rgba(0,0,0,0);
@@ -41,9 +41,10 @@
   --nav-shadow: 0 1px 3px rgba(28,26,25,.18);
   --card-radius: 0px;
   --card-border: 1px solid rgba(28,26,25,.22);
+}
 
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme]) {
     --paper: #0e0e0e;
     --chart: #000;
     --beacon-50: rgba(244,239,225,.05);
@@ -101,7 +102,6 @@
     --card-radius: 0px;
     --card-border: 1px solid rgba(227,68,47,.45);
 }
-}
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%}
 body{
@@ -133,7 +133,7 @@ body.menu-open .deck{z-index:12}
 .slide{
   width:100vw;height:100vh;flex-shrink:0;
   display:flex;flex-direction:column;
-  padding:120px 72px 64px;
+  padding:calc(var(--bar-h) + 66px) 72px 64px;
   position:relative;
 }
 /* frozen deck header — logo, wordmark and rule stay put while slides slide by */
@@ -163,84 +163,102 @@ body.menu-open .deck{z-index:12}
 /* Top header bar that sits above the deck-head — brand lockup on the
  * left, theme toggle + site hamburger on the right. Same chrome the
  * user sees on the React app so deck/demo feel like part of one site. */
+:root{--bar-h:78px}
+@media (max-width:790px){:root{--bar-h:70px}}
 .site-bar{
   position:fixed;top:0;left:0;right:0;z-index:14;
-  display:flex;align-items:center;gap:16px;
-  height:54px;padding:0 24px;
+  display:flex;align-items:center;justify-content:space-between;
+  height:var(--bar-h);padding:0 4.2vw;
   border-bottom:1px solid var(--rule,rgba(28,26,25,.38));
   background:var(--paper);
   font-family:var(--font-mono);
 }
 .site-bar-home{
-  display:flex;align-items:center;gap:10px;color:var(--marine-900);
-  text-decoration:none;font-size:13px;font-weight:700;letter-spacing:-.04em;
+  display:inline-flex;align-items:center;gap:10px;color:var(--marine-900);
+  text-decoration:none;font-size:18px;font-weight:700;letter-spacing:-.1em;
+  white-space:nowrap;
 }
-.site-bar-home img,.site-bar-home svg{height:28px;width:28px}
-.site-bar-word{display:flex;align-items:baseline;gap:6px}
-.site-bar-word .amp{color:var(--beacon-500);font-weight:500}
+.site-bar-home img{height:38px;width:38px}
 .site-bar-word .slash{color:var(--beacon-500)}
-.site-bar-word .suffix{color:var(--beacon-500);font-size:10px;letter-spacing:.03em}
-.site-bar-spacer{flex:1}
+.site-bar-word .suffix{color:var(--beacon-500);font-size:11px;letter-spacing:.03em;vertical-align:2px}
+.header-product-subtitle{
+  position:absolute;left:50%;transform:translateX(-50%);
+  color:#423d37;font-size:10px;font-weight:700;letter-spacing:.05em;
+  text-transform:uppercase;white-space:nowrap;
+}
+:root[data-theme="dark"] .header-product-subtitle{color:#f7efe0}
+.site-bar-actions{display:flex;align-items:center;gap:8px}
 .site-bar-btn{
   display:flex;align-items:center;justify-content:center;
-  height:34px;min-width:34px;padding:7px;
+  height:44px;min-width:44px;padding:7px;
   background:transparent;border:1px solid var(--rule,rgba(28,26,25,.4));
   color:var(--marine-900);cursor:pointer;font:inherit;
-  transition:background-color .16s cubic-bezier(.23,1,.32,1),color .16s cubic-bezier(.23,1,.32,1);
+  transition:background-color .16s cubic-bezier(.23,1,.32,1),color .16s cubic-bezier(.23,1,.32,1),transform .16s cubic-bezier(.23,1,.32,1);
 }
-.site-bar-btn:hover,.site-bar-btn[aria-pressed="true"]{
-  background:var(--beacon-500);border-color:var(--beacon-500);color:var(--paper);
-}
+.site-bar-btn:active{transform:scale(.97)}
 .site-bar-btn svg{display:block;width:17px;height:17px}
-.site-bar-btn .icon-dark{display:none}
-:root[data-theme="dark"] .site-bar-btn .icon-light{display:none}
-:root[data-theme="dark"] .site-bar-btn .icon-dark{display:block}
+.site-bar-btn .icon-wrap.icon-dark{display:none}
+:root[data-theme="dark"] .site-bar-btn .icon-wrap.icon-light{display:none}
+:root[data-theme="dark"] .site-bar-btn .icon-wrap.icon-dark{display:inline-flex}
 /* Inlined SVG icons (sunglasses + hamburger + nav) — match the React app's
  * exact dark-icon / invert-on-hover behaviour so the chrome is identical. */
 .site-bar-btn .icon-wrap{display:inline-flex;align-items:center;justify-content:center;width:17px;height:17px;line-height:0}
 .site-bar-btn .icon-wrap svg{display:block;width:17px;height:17px}
+#site-nav-toggle .icon-wrap,#site-nav-toggle .icon-wrap svg{width:18px;height:18px}
+:focus,:focus-visible{outline:none;box-shadow:none}
 .site-bar-btn .icon-wrap svg path{fill:currentColor}
 .site-bar-btn .icon-wrap svg line{stroke:currentColor}
-/* in dark mode the SVG is baseline-inverted so it reads bright by default */
-:root[data-theme="dark"] .site-bar-btn .icon-wrap svg path,
-:root[data-theme="dark"] .site-bar-btn .icon-wrap svg line{filter:invert(1)}
-/* hover/pressed = charcoal background (matches React); the invert flips the
-   icon (whichever way it was) to white so it pops on the charcoal fill */
-.site-bar-btn:hover,.site-bar-btn[aria-pressed="true"]{
-  background:#1c1a19;border-color:var(--beacon-500);color:#f4efe1;
+/* in dark mode the sunglass icons are baseline-inverted so they read bright
+   by default; the hamburger's currentColor strokes already follow the theme */
+:root[data-theme="dark"] .theme-toggle .icon-wrap svg path,
+:root[data-theme="dark"] .theme-toggle .icon-wrap svg line{filter:invert(1)}
+/* theme toggle hover/pressed = vermilion fill (React icon-control) */
+.theme-toggle:hover,.theme-toggle[aria-pressed="true"]{
+  background:var(--beacon-500);border-color:var(--beacon-500);
 }
-.site-bar-btn:hover .icon-wrap svg path,
-.site-bar-btn:hover .icon-wrap svg line,
-.site-bar-btn[aria-pressed="true"] .icon-wrap svg path,
-.site-bar-btn[aria-pressed="true"] .icon-wrap svg line{filter:invert(1)}
-/* site nav overlay — full-height drop sheet */
+.theme-toggle:hover .icon-wrap svg path,
+.theme-toggle:hover .icon-wrap svg line,
+.theme-toggle[aria-pressed="true"] .icon-wrap svg path,
+.theme-toggle[aria-pressed="true"] .icon-wrap svg line{filter:invert(1)}
+:root[data-theme="dark"] .theme-toggle:hover .icon-wrap svg path,
+:root[data-theme="dark"] .theme-toggle:hover .icon-wrap svg line,
+:root[data-theme="dark"] .theme-toggle[aria-pressed="true"] .icon-wrap svg path,
+:root[data-theme="dark"] .theme-toggle[aria-pressed="true"] .icon-wrap svg line{filter:invert(1) brightness(0)}
+/* menu toggle hover/open = charcoal fill (React menu-control) */
+#site-nav-toggle:hover,#site-nav-toggle[aria-expanded="true"]{
+  background:#1c1a19;border-color:#1c1a19;color:#f4efe1;
+}
+:root[data-theme="dark"] #site-nav-toggle:hover,
+:root[data-theme="dark"] #site-nav-toggle[aria-expanded="true"]{
+  background:var(--beacon-500);border-color:var(--beacon-500);color:#03060d;
+}
+:root[data-theme="dark"] #site-nav-toggle:hover .icon-wrap svg line,
+:root[data-theme="dark"] #site-nav-toggle[aria-expanded="true"] .icon-wrap svg line{filter:invert(1) brightness(0)}
+/* site nav — dropdown sheet matching .robby-menu-content in the React app */
 .site-nav{
-  position:fixed;inset:0;z-index:30;
-  background:var(--paper);color:var(--marine-900);
-  display:flex;flex-direction:column;
-  padding:96px 32px 40px;
-  font-family:var(--font-mono);
-  transform:translateY(-100%);transition:transform .3s cubic-bezier(.4,0,.2,1);
-  overflow-y:auto;
+  position:fixed;top:calc(var(--bar-h) + 8px);right:4.2vw;z-index:30;
+  display:none;min-width:180px;padding:7px;
+  background:var(--paper);border:1px solid var(--marine-900);
+  box-shadow:5px 5px 0 var(--beacon-500);
+  color:var(--marine-900);font-family:var(--font-mono);
 }
-.site-nav.open{transform:translateY(0)}
-.site-nav-close{
-  position:absolute;top:18px;right:18px;
-  height:34px;min-width:34px;padding:7px;
-  background:transparent;border:1px solid var(--rule,rgba(28,26,25,.4));
-  color:var(--marine-900);cursor:pointer;font:inherit;
-}
-.site-nav-close:hover{background:var(--marine-900);color:var(--paper)}
+.site-nav.open{display:block}
 .site-nav a{
-  display:flex;align-items:center;gap:14px;
-  padding:18px 4px;border-bottom:1px solid var(--beacon-100);
-  color:var(--marine-900);text-decoration:none;
-  font-size:13px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;
+  display:flex;align-items:center;justify-content:center;gap:9px;padding:12px;
+  color:var(--marine-900);text-decoration:none;text-align:center;
+  font-size:22px;font-weight:500;letter-spacing:.02em;
 }
-.site-nav a:hover{color:var(--beacon-700)}
-.site-nav .nav-icon{width:18px;height:18px;flex:0 0 auto;color:var(--beacon-500)}
+.site-nav a svg{width:16px;height:16px;flex:none}
+.site-nav a:hover{background:var(--beacon-500);color:#fff8e9}
+.site-nav a[aria-current="page"]{background:var(--marine-900);color:var(--paper)}
+:root[data-theme="dark"] .site-nav{background:#03060d;border-color:var(--beacon-500)}
+:root[data-theme="dark"] .site-nav a{color:#f7efe0}
+:root[data-theme="dark"] .site-nav a[aria-current="page"]{background:#f4efe1;color:#0e0e0e}
+@media (max-width:790px){.header-product-subtitle{display:none}.site-bar-home{font-size:16px}.site-bar-home img{height:34px;width:34px}.theme-toggle .icon-wrap,.theme-toggle .icon-wrap svg{width:15px;height:15px}}
+@media (max-width:560px){.site-bar{padding:0 5vw}.site-nav{right:5vw}}
+@media (max-width:420px){.site-bar{padding:0 4vw}.site-nav{right:4vw}.site-bar-home{font-size:15px}.site-bar-home img{height:30px;width:30px}}
 /* the deck-head sits below the site-bar; lift it accordingly */
-.deck-head{top:54px !important}
+.deck-head{top:var(--bar-h)}
 /* inline code / brand-name emphasis — coder-monospace for "robby", "troid" etc. */
 code{
   font-family:var(--font-mono);font-size:.92em;letter-spacing:-.01em;
@@ -331,7 +349,8 @@ h2{font-size:clamp(30px,3.4vw,46px);line-height:1.06}
 }
 /* demo layout — centered video hero */
 .demo-frame{
-  width:100%;max-width:1080px;margin:34px auto 0;aspect-ratio:16/9;
+  width:min(920px,100%,calc((100vh - var(--bar-h) - 300px)*16/9));
+  margin:26px auto 0;aspect-ratio:16/9;
   background:#000;border:1px solid var(--beacon-100);
   display:flex;align-items:center;justify-content:center;
   overflow:hidden;
@@ -354,6 +373,29 @@ h2{font-size:clamp(30px,3.4vw,46px);line-height:1.06}
   font-family:var(--font-mono);font-size:10.5px;letter-spacing:.1em;
   color:var(--marine-600);text-transform:uppercase;
 }
+/* shared site footer — same lockup as the React app's .site-footer; the stage
+   fills the whole viewport so the footer only appears once the user scrolls */
+.slide{overflow-y:auto;scrollbar-width:thin;-webkit-overflow-scrolling:touch}
+.slide>.stage{min-height:calc(100vh - var(--bar-h) - 42px)}
+.site-footer{display:flex;justify-content:space-between;align-items:center;gap:24px;flex:none;padding:27px 0 34px}
+.site-footer .footer-left{display:flex;align-items:center;flex-wrap:wrap;gap:15px}
+.site-footer .footer-observation{font-family:var(--font-display);font-size:18px;line-height:1;margin:0;color:var(--beacon-600)}
+.site-footer .footer-observation em{color:inherit}
+.footer-socials{display:flex;align-items:center;gap:7px}
+.footer-socials a{display:inline-flex;align-items:center;justify-content:center;width:25px;height:25px;
+  border:1px solid rgba(28,26,25,.36);color:var(--marine-900);
+  transition:background-color .16s cubic-bezier(.23,1,.32,1),color .16s cubic-bezier(.23,1,.32,1),transform .16s cubic-bezier(.23,1,.32,1)}
+.footer-socials a:hover{background:var(--beacon-600);border-color:var(--beacon-600);color:var(--paper)}
+.footer-socials a:active{transform:scale(.97)}
+.footer-socials svg{fill:currentColor;width:12px;height:12px}
+.site-footer .footer-copyright{font-family:var(--font-mono);font-size:9px;letter-spacing:.06em;margin:0;text-align:right;color:var(--marine-600)}
+.footer-copyright a{color:inherit;text-decoration-color:var(--beacon-600);text-decoration-thickness:1px;text-underline-offset:4px}
+.footer-copyright a:hover{color:var(--beacon-600)}
+:root[data-theme="dark"] .site-footer p{color:#f7efe0}
+:root[data-theme="dark"] .site-footer .footer-observation{color:#f7efe0}
+:root[data-theme="dark"] .footer-socials a{border-color:var(--beacon-600);color:#f7efe0}
+:root[data-theme="dark"] .footer-socials a:hover{background:var(--beacon-600);color:#000}
+:root[data-theme="dark"] .site-footer .footer-copyright{color:#d79a8d}
 /* controls */
 .nav{
   position:fixed;right:22px;bottom:18px;z-index:10;display:flex;gap:12px;align-items:center;
@@ -379,12 +421,11 @@ h2{font-size:clamp(30px,3.4vw,46px);line-height:1.06}
    restores vertical reachability without collapsing the desktop grids */
 @media (max-height:620px){
   .slide{overflow-y:auto;scrollbar-width:thin;-webkit-overflow-scrolling:touch;
-    padding-top:96px;padding-bottom:84px}
-  .deck-head{top:24px}
+    padding-top:calc(var(--bar-h) + 42px);padding-bottom:84px}
 }
 @media (max-width:900px){
-  .slide{padding:96px 24px 84px;overflow-y:auto;scrollbar-width:thin;-webkit-overflow-scrolling:touch}
-  .deck-head{top:24px;left:24px;right:24px}
+  .slide{padding:calc(var(--bar-h) + 42px) 24px 84px;overflow-y:auto;scrollbar-width:thin;-webkit-overflow-scrolling:touch}
+  .deck-head{left:24px;right:24px}
   .grid2,.grid3{grid-template-columns:1fr}
   .brand-word{font-size:12px}
   .menu-current,.menu-caret{display:none}
@@ -418,30 +459,12 @@ h2{font-size:clamp(30px,3.4vw,46px);line-height:1.06}
 <body>
 <!-- site chrome — shared with the React app so deck/demo feel like one site -->
 <header class="site-bar">
-  <a class="site-bar-home" href="https://robby.thecontrarian.in/" aria-label="troid &amp; robby — back to the gallery">
-    <svg class="corona" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="robby &amp; troid — orio cookie mark">
-  <!--
-    robby & troid — orio mark, retinted to the robby palette.
-    A two-tone coin: obverse (cream, left) and reverse (ink, right), split
-    by a hairline vermilion spine. Two small dots face each other across
-    the spine — the obverse and reverse, mutually exclusive to sight.
-    Palette: Registration Vermilion #e3442f · archive paper #f4efe1 ·
-    charcoal ink #1c1a19.
-  -->
-  <circle cx="32" cy="32" r="28.5" fill="#e3442f"/>
-  <!-- left half = obverse (archive paper) -->
-  <path d="M 32 3.5 A 28.5 28.5 0 0 0 32 60.5 Z" fill="#f4efe1"/>
-  <!-- spine — vermilion hairline so the two halves read as one object -->
-  <line x1="32" y1="3.5" x2="32" y2="60.5" stroke="#1c1a19" stroke-width="0.8" opacity="0.55"/>
-  <!-- two facing centre marks -->
-  <circle cx="26" cy="32" r="2.6" fill="#1c1a19"/>
-  <circle cx="38" cy="32" r="2.6" fill="#f4efe1"/>
-  <!-- thin outer ring echoing the corona -->
-  <circle cx="32" cy="32" r="24" fill="none" stroke="#f4efe1" stroke-width="1.2" opacity="0.55"/>
-</svg>
-    <span class="site-bar-word">troid<span class="amp">&amp;</span>robby<span class="slash">/</span><span class="suffix">v1</span></span>
+  <a class="site-bar-home" href="/" aria-label="troid &amp; robby — back to the gallery">
+    <img src="/icons/robby-registration-mark_658aceee.png" alt="robby split registration disc">
+    <span class="site-bar-word">troid <span class="amp">&amp;</span> robby <span class="slash">/</span> <span class="suffix">v1</span></span>
   </a>
-  <div class="site-bar-spacer"></div>
+  <span class="header-product-subtitle">The Reverse-Obverse Image Duality Compiler</span>
+  <div class="site-bar-actions">
   <button class="site-bar-btn theme-toggle" id="theme-toggle" type="button" aria-label="Toggle theme" aria-pressed="false" title="Toggle light/dark">
     <span class="icon-wrap icon-light"><svg class="corona" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
   <path d="M 63.111111111111114 97.77777777777777 Q 71.11111111111111 72.88888888888889 96.88888888888889 71.11111111111111 Q 104.88888888888889 71.11111111111111 112 74.66666666666667 L 131.55555555555554 84.44444444444444 L 131.55555555555554 84.44444444444444 Q 137.77777777777777 87.11111111111111 141.33333333333334 80.88888888888889 Q 144 75.55555555555556 137.77777777777777 72 L 118.22222222222223 62.22222222222222 L 118.22222222222223 62.22222222222222 Q 108.44444444444444 56.888888888888886 96.88888888888889 56.888888888888886 Q 79.11111111111111 56.888888888888886 66.66666666666667 67.55555555555556 Q 53.333333333333336 77.33333333333333 48.888888888888886 94.22222222222223 L 5.333333333333333 269.3333333333333 L 5.333333333333333 269.3333333333333 Q 1.7777777777777777 285.3333333333333 0 301.3333333333333 Q 0 303.1111111111111 0 305.77777777777777 L 0 312.8888888888889 L 0 312.8888888888889 L 0 327.1111111111111 L 0 327.1111111111111 L 0 355.55555555555554 L 0 355.55555555555554 Q 0.8888888888888888 398.22222222222223 29.333333333333332 425.77777777777777 Q 56.888888888888886 454.22222222222223 99.55555555555556 455.1111111111111 L 138.66666666666666 455.1111111111111 L 138.66666666666666 455.1111111111111 Q 179.55555555555554 454.22222222222223 207.11111111111111 427.55555555555554 Q 235.55555555555554 401.77777777777777 238.22222222222223 360.8888888888889 L 241.77777777777777 307.55555555555554 L 241.77777777777777 307.55555555555554 Q 241.77777777777777 303.1111111111111 240.88888888888889 298.6666666666667 L 271.1111111111111 298.6666666666667 L 271.1111111111111 298.6666666666667 Q 270.22222222222223 303.1111111111111 270.22222222222223 307.55555555555554 L 273.77777777777777 360.8888888888889 L 273.77777777777777 360.8888888888889 Q 276.44444444444446 401.77777777777777 304.8888888888889 427.55555555555554 Q 332.44444444444446 454.22222222222223 373.3333333333333 455.1111111111111 L 412.44444444444446 455.1111111111111 L 412.44444444444446 455.1111111111111 Q 455.1111111111111 454.22222222222223 482.6666666666667 425.77777777777777 Q 511.1111111111111 398.22222222222223 512 355.55555555555554 L 512 327.1111111111111 L 512 327.1111111111111 L 512 312.8888888888889 L 512 312.8888888888889 L 512 305.77777777777777 L 512 305.77777777777777 Q 512 303.1111111111111 512 301.3333333333333 Q 510.22222222222223 285.3333333333333 506.6666666666667 269.3333333333333 L 463.1111111111111 94.22222222222223 L 463.1111111111111 94.22222222222223 Q 458.6666666666667 77.33333333333333 445.3333333333333 67.55555555555556 Q 432.8888888888889 56.888888888888886 415.1111111111111 56.888888888888886 Q 403.55555555555554 56.888888888888886 392.8888888888889 62.22222222222222 L 373.3333333333333 72 L 373.3333333333333 72 Q 368 75.55555555555556 370.6666666666667 81.77777777777777 Q 374.22222222222223 87.11111111111111 380.44444444444446 84.44444444444444 L 400 74.66666666666667 L 400 74.66666666666667 Q 407.1111111111111 71.11111111111111 415.1111111111111 71.11111111111111 Q 440.8888888888889 72.88888888888889 448.8888888888889 97.77777777777777 L 493.3333333333333 272.8888888888889 L 493.3333333333333 272.8888888888889 Q 493.3333333333333 276.44444444444446 494.22222222222223 279.1111111111111 Q 445.3333333333333 256 391.1111111111111 256 Q 336 256 286.22222222222223 280 Q 282.6666666666667 281.77777777777777 279.1111111111111 284.44444444444446 Q 278.22222222222223 284.44444444444446 277.3333333333333 284.44444444444446 L 234.66666666666666 284.44444444444446 L 234.66666666666666 284.44444444444446 Q 233.77777777777777 284.44444444444446 232.88888888888889 284.44444444444446 Q 229.33333333333334 281.77777777777777 225.77777777777777 280 Q 176 256 120.88888888888889 256 Q 66.66666666666667 256 17.77777777777778 279.1111111111111 Q 18.666666666666668 276.44444444444446 18.666666666666668 272.8888888888889 Q 18.666666666666668 272.8888888888889 18.666666666666668 272.8888888888889 L 63.111111111111114 97.77777777777777 L 63.111111111111114 97.77777777777777 Z M 14.222222222222221 312.8888888888889 Q 14.222222222222221 307.55555555555554 14.222222222222221 303.1111111111111 Q 16 296 22.22222222222222 293.3333333333333 Q 68.44444444444444 270.22222222222223 120.88888888888889 270.22222222222223 Q 172.44444444444446 270.22222222222223 219.55555555555554 293.3333333333333 Q 227.55555555555554 297.77777777777777 227.55555555555554 306.6666666666667 L 224 360 L 224 360 L 224 360 L 224 360 L 224 360 L 224 360 Q 221.33333333333334 394.6666666666667 197.33333333333334 417.77777777777777 Q 173.33333333333334 440 138.66666666666666 440.8888888888889 L 99.55555555555556 440.8888888888889 L 99.55555555555556 440.8888888888889 Q 77.33333333333333 440.8888888888889 58.666666666666664 430.22222222222223 L 160 376 L 160 376 Q 165.33333333333334 372.44444444444446 162.66666666666666 366.22222222222223 Q 159.11111111111111 360.8888888888889 152.88888888888889 363.55555555555554 L 49.77777777777778 418.6666666666667 L 49.77777777777778 418.6666666666667 L 45.333333333333336 421.3333333333333 L 45.333333333333336 421.3333333333333 Q 26.666666666666668 406.22222222222223 18.666666666666668 383.1111111111111 L 117.33333333333333 333.3333333333333 L 117.33333333333333 333.3333333333333 Q 122.66666666666667 329.77777777777777 120 324.44444444444446 Q 116.44444444444444 318.22222222222223 111.11111111111111 320.8888888888889 L 15.11111111111111 368.8888888888889 L 15.11111111111111 368.8888888888889 Q 14.222222222222221 361.77777777777777 14.222222222222221 355.55555555555554 L 14.222222222222221 327.1111111111111 L 14.222222222222221 327.1111111111111 L 14.222222222222221 312.8888888888889 L 14.222222222222221 312.8888888888889 Z M 489.77777777777777 293.3333333333333 Q 496 296 497.77777777777777 303.1111111111111 Q 497.77777777777777 307.55555555555554 497.77777777777777 312.8888888888889 L 497.77777777777777 327.1111111111111 L 497.77777777777777 327.1111111111111 L 497.77777777777777 355.55555555555554 L 497.77777777777777 355.55555555555554 Q 496.8888888888889 392 472.8888888888889 416 Q 448.8888888888889 440 412.44444444444446 440.8888888888889 L 373.3333333333333 440.8888888888889 L 373.3333333333333 440.8888888888889 Q 349.3333333333333 440.8888888888889 330.6666666666667 429.3333333333333 L 430.22222222222223 376 L 430.22222222222223 376 Q 435.55555555555554 372.44444444444446 432.8888888888889 366.22222222222223 Q 429.3333333333333 360.8888888888889 423.1111111111111 363.55555555555554 L 320 418.6666666666667 L 320 418.6666666666667 L 317.3333333333333 420.44444444444446 L 317.3333333333333 420.44444444444446 Q 299.55555555555554 404.44444444444446 291.55555555555554 381.3333333333333 L 387.55555555555554 333.3333333333333 L 387.55555555555554 333.3333333333333 Q 392.8888888888889 329.77777777777777 390.22222222222223 324.44444444444446 Q 386.6666666666667 318.22222222222223 381.3333333333333 320.8888888888889 L 288.8888888888889 367.1111111111111 L 288.8888888888889 367.1111111111111 Q 288 367.1111111111111 288 366.22222222222223 Q 288 363.55555555555554 288 360 L 288 360 L 288 360 L 288 360 L 288 360 L 284.44444444444446 306.6666666666667 L 284.44444444444446 306.6666666666667 Q 284.44444444444446 297.77777777777777 292.44444444444446 293.3333333333333 Q 339.55555555555554 270.22222222222223 391.1111111111111 270.22222222222223 Q 443.55555555555554 270.22222222222223 489.77777777777777 293.3333333333333 L 489.77777777777777 293.3333333333333 Z" />
@@ -450,37 +473,22 @@ h2{font-size:clamp(30px,3.4vw,46px);line-height:1.06}
   <path d="M 105.77777777777777 99.55555555555556 Q 88.88888888888889 100.44444444444444 84.44444444444444 116.44444444444444 L 50.666666666666664 259.55555555555554 L 50.666666666666664 259.55555555555554 Q 85.33333333333333 248.88888888888889 120.88888888888889 248.88888888888889 Q 176 248.88888888888889 225.77777777777777 272.8888888888889 Q 233.77777777777777 277.3333333333333 238.22222222222223 284.44444444444446 L 273.77777777777777 284.44444444444446 L 273.77777777777777 284.44444444444446 Q 278.22222222222223 277.3333333333333 286.22222222222223 272.8888888888889 Q 336 248.88888888888889 391.1111111111111 248.88888888888889 Q 426.6666666666667 248.88888888888889 461.3333333333333 259.55555555555554 L 427.55555555555554 116.44444444444444 L 427.55555555555554 116.44444444444444 Q 423.1111111111111 100.44444444444444 406.22222222222223 99.55555555555556 Q 402.6666666666667 99.55555555555556 398.22222222222223 101.33333333333333 L 370.6666666666667 112 L 370.6666666666667 112 Q 352 118.22222222222223 343.1111111111111 100.44444444444444 Q 336.8888888888889 81.77777777777777 354.6666666666667 72.88888888888889 L 382.22222222222223 61.333333333333336 L 382.22222222222223 61.333333333333336 Q 393.77777777777777 56.888888888888886 406.22222222222223 56.888888888888886 Q 429.3333333333333 56.888888888888886 447.1111111111111 71.11111111111111 Q 464 84.44444444444444 469.3333333333333 106.66666666666667 L 508.44444444444446 273.77777777777777 L 508.44444444444446 273.77777777777777 Q 511.1111111111111 283.55555555555554 512 293.3333333333333 Q 512 296 512 298.6666666666667 L 512 303.1111111111111 L 512 303.1111111111111 L 512 304.8888888888889 L 512 304.8888888888889 L 512 341.3333333333333 L 512 341.3333333333333 L 512 342.22222222222223 L 512 342.22222222222223 L 512 355.55555555555554 L 512 355.55555555555554 Q 511.1111111111111 398.22222222222223 482.6666666666667 425.77777777777777 Q 455.1111111111111 454.22222222222223 412.44444444444446 455.1111111111111 L 373.3333333333333 455.1111111111111 L 373.3333333333333 455.1111111111111 Q 332.44444444444446 454.22222222222223 304.8888888888889 427.55555555555554 Q 276.44444444444446 401.77777777777777 273.77777777777777 360.8888888888889 L 272.8888888888889 341.3333333333333 L 272.8888888888889 341.3333333333333 L 239.11111111111111 341.3333333333333 L 239.11111111111111 341.3333333333333 L 238.22222222222223 360.8888888888889 L 238.22222222222223 360.8888888888889 Q 235.55555555555554 401.77777777777777 207.11111111111111 427.55555555555554 Q 179.55555555555554 454.22222222222223 138.66666666666666 455.1111111111111 L 99.55555555555556 455.1111111111111 L 99.55555555555556 455.1111111111111 Q 56.888888888888886 454.22222222222223 29.333333333333332 425.77777777777777 Q 0.8888888888888888 398.22222222222223 0 355.55555555555554 L 0 341.3333333333333 L 0 341.3333333333333 L 0 304.8888888888889 L 0 304.8888888888889 L 0 298.6666666666667 L 0 298.6666666666667 Q 0 296 0.8888888888888888 293.3333333333333 Q 0.8888888888888888 283.55555555555554 3.5555555555555554 273.77777777777777 L 42.666666666666664 106.66666666666667 L 42.666666666666664 106.66666666666667 Q 48 84.44444444444444 64.88888888888889 71.11111111111111 Q 82.66666666666667 56.888888888888886 105.77777777777777 56.888888888888886 Q 118.22222222222223 56.888888888888886 129.77777777777777 61.333333333333336 L 157.33333333333334 72.88888888888889 L 157.33333333333334 72.88888888888889 Q 175.11111111111111 81.77777777777777 168.88888888888889 100.44444444444444 Q 160 117.33333333333333 141.33333333333334 112 L 113.77777777777777 101.33333333333333 L 113.77777777777777 101.33333333333333 Q 109.33333333333333 99.55555555555556 105.77777777777777 99.55555555555556 L 105.77777777777777 99.55555555555556 Z M 42.666666666666664 341.3333333333333 L 42.666666666666664 355.55555555555554 L 42.666666666666664 341.3333333333333 L 42.666666666666664 355.55555555555554 Q 42.666666666666664 359.1111111111111 43.55555555555556 362.6666666666667 L 171.55555555555554 298.6666666666667 L 171.55555555555554 298.6666666666667 Q 145.77777777777777 291.55555555555554 120.88888888888889 291.55555555555554 Q 80 291.55555555555554 42.666666666666664 307.55555555555554 L 42.666666666666664 341.3333333333333 L 42.666666666666664 341.3333333333333 Z M 391.1111111111111 291.55555555555554 Q 351.1111111111111 291.55555555555554 313.77777777777777 307.55555555555554 L 316.44444444444446 359.1111111111111 L 316.44444444444446 359.1111111111111 Q 316.44444444444446 360 316.44444444444446 360.8888888888889 L 441.77777777777777 298.6666666666667 L 441.77777777777777 298.6666666666667 Q 416.8888888888889 291.55555555555554 391.1111111111111 291.55555555555554 L 391.1111111111111 291.55555555555554 Z" />
 </svg></span>
   </button>
-  <button class="site-bar-btn" id="site-nav-toggle" type="button" aria-label="Open site menu" aria-expanded="false" title="Site menu">
+  <button class="site-bar-btn" id="site-nav-toggle" type="button" aria-label="Site menu" aria-haspopup="true" aria-expanded="false" aria-controls="site-nav" title="Site menu">
     <span class="icon-wrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg></span>
   </button>
+  </div>
 </header>
-<nav class="site-nav" id="site-nav" aria-label="Site navigation" hidden>
-  <button class="site-nav-close" id="site-nav-close" type="button" aria-label="Close menu">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-  </button>
-  <a href="https://robby.thecontrarian.in/"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>Home — gallery</a>
-  <a href="https://robby.thecontrarian.in/about"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>About</a>
-  <a href="https://robby.thecontrarian.in/hackathon"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>Hackathon brief</a>
-  <a href="https://robby.thecontrarian.in/concept"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18h6M10 22h4M12 2a7 7 0 0 0-4 12.74V17a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1v-2.26A7 7 0 0 0 12 2z"/></svg>Image-object concept</a>
-  <a href="https://robby.thecontrarian.in/manual"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>Language manual</a>
-  <a href="https://robby.thecontrarian.in/deck/"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>Presentation deck</a>
-  <a href="https://robby.thecontrarian.in/demo/"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>Demo video</a>
-  <a href="https://github.com/thecont1/robby" target="_blank" rel="noreferrer"><svg class="nav-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M12 1.5a10.5 10.5 0 0 0-3.32 20.46c.53.1.72-.23.72-.51v-1.85c-2.94.64-3.56-1.25-3.56-1.25-.48-1.22-1.18-1.55-1.18-1.55-.96-.66.07-.65.07-.65 1.07.08 1.63 1.09 1.63 1.09.94 1.62 2.48 1.15 3.08.88.1-.69.37-1.15.67-1.42-2.35-.27-4.82-1.17-4.82-5.23 0-1.16.42-2.11 1.09-2.85-.11-.27-.47-1.35.1-2.81 0 0 .89-.29 2.89 1.09A9.96 9.96 0 0 1 12 6.6c.9 0 1.8.12 2.64.36 2-1.38 2.88-1.09 2.88-1.09.58 1.46.22 2.54.11 2.81.68.74 1.09 1.69 1.09 2.85 0 4.07-2.48 4.95-4.84 5.21.38.33.72.97.72 1.96v2.79c0 .28.19.61.73.51A10.5 10.5 0 0 0 12 1.5Z"/></svg>View Source</a>
+<nav class="site-nav" id="site-nav" aria-label="Site navigation">
+  <a href="/">robby</a>
+  <a href="/hackathon">troid</a>
+  <a href="/concept">concept</a>
+  <a href="/deck/">deck</a>
+  <a href="/demo/">demo</a>
+  <a href="/manual">manual</a>
+  <a href="/faqs">faqs</a>
+  <a href="https://github.com/thecont1/robby" target="_blank" rel="noreferrer">source<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg></a>
 </nav>
 <main class="deck" id="deck">
-<div class="deck-head">
-  <header class="brand">
-    <nav class="deck-menu" id="deck-menu" aria-label="Slide index">
-      <button class="menu-btn" id="menu-btn" aria-haspopup="true" aria-expanded="false" aria-label="Slide index">
-        <span class="menu-current" id="menu-current"></span>
-        <span class="menu-caret" aria-hidden="true">&#9662;</span>
-        <span class="menu-burger" aria-hidden="true"><i></i><i></i><i></i></span>
-      </button>
-      <div class="menu-list" id="menu-list" role="menu"></div>
-    </nav>
-  </header>
-  <div class="rule"></div>
-</div>
 <div class="track" id="track">
 <section class="slide" data-context="SegFault 2026 · Demonstration">
   <div class="stage">
@@ -498,33 +506,27 @@ h2{font-size:clamp(30px,3.4vw,46px);line-height:1.06}
 
     </div>
     <p class="lede lede-flush demo-lede">
-      A short walkthrough of the gallery, the Teppanyaki Counter, the recipe editor, and a flip from obverse to reverse. Watch the working mechanism — compile, counter, palette, bind — the same compiler that produced the deck you just read.
-    </p>
-    <p class="lede lede-followup">
-      90 seconds · no narration · click the play button.
+      A short walkthrough of the antecedents of the <code>robby</code> project, and its many features, like the Teppanyaki Counter, recipe editor, and a flip from obverse to reverse.
     </p>
   </div>
-  <footer class="foot">
-    <span>Demo video · hosted at <code>robby</code>.thecontrarian.in/demo</span>
+  <footer class="site-footer">
+    <div class="footer-left">
+      <p class="footer-observation"><em>Observation is a choice.</em></p>
+      <nav class="footer-socials" aria-label="Mahesh Shantaram social links">
+        <a href="https://x.com/thecontrarian/" target="_blank" rel="noreferrer" aria-label="X" title="X"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18.9 2.25h3.68l-8.04 9.19L24 21.75h-7.41l-5.8-7.58-6.63 7.58H.48l8.6-9.83L0 2.25h7.6l5.25 6.94 6.05-6.94Zm-1.29 17.3h2.04L6.49 4.33H4.3L17.61 19.55Z"/></svg></a>
+        <a href="https://www.linkedin.com/in/mahesh-shantaram/" target="_blank" rel="noreferrer" aria-label="LinkedIn" title="LinkedIn"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5.37 3.36a2.13 2.13 0 1 1-4.26 0 2.13 2.13 0 0 1 4.26 0ZM1.46 8.1h3.82v12.29H1.46V8.1Zm6.22 0h3.66v1.68h.05c.51-.97 1.76-2 3.62-2 3.88 0 4.6 2.55 4.6 5.87v6.74h-3.82v-5.97c0-1.42-.03-3.24-1.97-3.24-1.98 0-2.29 1.54-2.29 3.14v6.07H7.68V8.1Z"/></svg></a>
+        <a href="https://github.com/thecont1" target="_blank" rel="noreferrer" aria-label="GitHub" title="GitHub"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 1.5a10.5 10.5 0 0 0-3.32 20.46c.53.1.72-.23.72-.51v-1.85c-2.94.64-3.56-1.25-3.56-1.25-.48-1.22-1.18-1.55-1.18-1.55-.96-.66.07-.65.07-.65 1.07.08 1.63 1.09 1.63 1.09.94 1.62 2.48 1.15 3.08.88.1-.69.37-1.15.67-1.42-2.35-.27-4.82-1.17-4.82-5.23 0-1.16.42-2.11 1.09-2.85-.11-.27-.47-1.35.1-2.81 0 0 .89-.29 2.89 1.09A9.96 9.96 0 0 1 12 6.6c.9 0 1.8.12 2.64.36 2-1.38 2.88-1.09 2.88-1.09.58 1.46.22 2.54.11 2.81.68.74 1.09 1.69 1.09 2.85 0 4.07-2.48 4.95-4.84 5.21.38.33.72.97.72 1.96v2.79c0 .28.19.61.73.51A10.5 10.5 0 0 0 12 1.5Z"/></svg></a>
+      </nav>
+    </div>
+    <p class="footer-copyright">© 2026 <a href="https://thecontrarian.in/" target="_blank" rel="noreferrer">Mahesh Shantaram / thecontrarian.in</a></p>
   </footer>
 </section>
 </div>
 </main>
-<div class="dots" id="dots"></div>
-<div class="nav">
-  <button id="prev" aria-label="Previous slide">&#8249;</button>
-  <span id="pageno" aria-live="polite">1 / 1</span>
-  <button id="next" aria-label="Next slide">&#8250;</button>
-</div>
 <div class="progress" id="progress"></div>
 <script>
 (function(){
   var track=document.getElementById('track');
-  var pageno=document.getElementById('pageno');
-  var menu=document.getElementById('deck-menu');
-  var menuList=document.getElementById('menu-list');
-  var menuCurrent=document.getElementById('menu-current');
-  var menuBtn=document.getElementById('menu-btn');
   var slides=[],n=0;
   // Clean paths (deck root = slide 1, /2../N after) over http(s).
   // file:// cannot pushState across paths, so it keeps hash routing.
@@ -540,17 +542,10 @@ h2{font-size:clamp(30px,3.4vw,46px);line-height:1.06}
     m=(location.hash||'').match(/^#\/?(\d+)$/);   // legacy #/N links still resolve
     return m?parseInt(m[1],10):1;
   }
-  function closeMenu(){menu.classList.remove('open');menuBtn.setAttribute('aria-expanded','false');document.body.classList.remove('menu-open')}
   function go(i,skipUrl){
     n=Math.max(0,Math.min(slides.length-1,i));
     track.style.transform='translateX(-'+(n*100)+'vw)';
-    var dots=document.querySelectorAll('.dots i');
-    for(var k=0;k<dots.length;k++)dots[k].classList.toggle('on',k===n);
-    var items=menuList.children;
-    for(var j=0;j<items.length;j++)items[j].classList.toggle('on',j===n);
     document.getElementById('progress').style.width=((n+1)/slides.length*100)+'%';
-    pageno.textContent=(n+1)+' / '+slides.length;
-    menuCurrent.textContent=slides[n].getAttribute('data-context')||'';
     if(skipUrl)return;
     if(usePath){
       try{history.pushState(null,'',urlFor(n));}
@@ -561,38 +556,10 @@ h2{font-size:clamp(30px,3.4vw,46px);line-height:1.06}
   }
   window.__initDeck=function(){
     slides=Array.prototype.slice.call(document.querySelectorAll('.slide'));
-    var dotsEl=document.getElementById('dots');
-    dotsEl.innerHTML='';menuList.innerHTML='';
-    slides.forEach(function(s,k){
-      dotsEl.appendChild(document.createElement('i'));
-      var b=document.createElement('button');
-      b.setAttribute('role','menuitem');
-      b.innerHTML='<span class="mi">'+('0'+(k+1)).slice(-2)+'</span><span></span>';
-      b.lastChild.textContent=s.getAttribute('data-context')||('Slide '+(k+1));
-      b.onclick=function(){go(k);closeMenu();};
-      menuList.appendChild(b);
-    });
     go(slideFromUrl()-1);
     if(usePath){try{history.replaceState(null,'',urlFor(n));}catch(e){usePath=false;}}
   };
-  document.getElementById('prev').onclick=function(){go(n-1)};
-  document.getElementById('next').onclick=function(){go(n+1)};
-  menuBtn.onclick=function(e){
-    e.stopPropagation();
-    var open=menu.classList.toggle('open');
-    menuBtn.setAttribute('aria-expanded',open?'true':'false');
-    document.body.classList.toggle('menu-open',open);
-  };
-  // Tap the popover's empty backdrop to dismiss it.
-  menuList.addEventListener('click',function(e){
-    if(e.target===menuList)closeMenu();
-  });
-  // Click any brand lockup (top-left logo) to reset to the opening slide.
-  document.addEventListener('click',function(e){
-    if(!e.target.closest||!e.target.closest('#deck-menu'))closeMenu();
-  });
   document.addEventListener('keydown',function(e){
-    if(e.key==='Escape'){closeMenu();return;}
     if(e.key==='ArrowRight'||e.key==='PageDown'||e.key===' ')go(n+1);
     if(e.key==='ArrowLeft'||e.key==='PageUp')go(n-1);
     if(e.key==='Home')go(0);if(e.key==='End')go(slides.length-1);
@@ -622,8 +589,7 @@ h2{font-size:clamp(30px,3.4vw,46px);line-height:1.06}
   var theme=stored==='dark'||stored==='light'?stored:(prefers?'dark':'light');
   applyTheme(theme);
   function applyTheme(t){
-    if(t==='dark'){html.setAttribute('data-theme','dark');}
-    else{html.removeAttribute('data-theme');}
+    html.setAttribute('data-theme',t);
     if(themeBtn){themeBtn.setAttribute('aria-pressed',t==='dark'?'true':'false');themeBtn.setAttribute('aria-label',t==='dark'?'Switch to light mode':'Switch to dark mode');}
   }
   if(themeBtn){
@@ -633,16 +599,26 @@ h2{font-size:clamp(30px,3.4vw,46px);line-height:1.06}
       try{localStorage.setItem('theme',next);}catch(e){}
     });
   }
-  // ── Site nav overlay ──
+  // ── Site nav dropdown — same open/close behaviour as the React menu ──
   var nav=document.getElementById('site-nav');
   var navToggle=document.getElementById('site-nav-toggle');
-  var navClose=document.getElementById('site-nav-close');
-  function openNav(){if(!nav)return;nav.hidden=false;nav.classList.add('open');navToggle.setAttribute('aria-expanded','true');}
-  function closeNav(){if(!nav)return;nav.classList.remove('open');navToggle.setAttribute('aria-expanded','false');setTimeout(function(){nav.hidden=true;},300);}
-  if(navToggle){navToggle.addEventListener('click',openNav);}
-  if(navClose){navClose.addEventListener('click',closeNav);}
-  if(nav){nav.addEventListener('click',function(e){if(e.target===nav)closeNav();});}
-  document.addEventListener('keydown',function(e){if(e.key==='Escape'&&nav&&nav.classList.contains('open'))closeNav();});
+  // mark the active page, matching the React menu's aria-current
+  if(nav){
+    var here=location.pathname;
+    nav.querySelectorAll('a').forEach(function(a){
+      var h=a.getAttribute('href');
+      if(h==='/'?here==='/':here.indexOf(h)===0){a.setAttribute('aria-current','page');}
+    });
+  }
+  function setNav(open){
+    if(!nav||!navToggle)return;
+    nav.classList.toggle('open',open);
+    navToggle.setAttribute('aria-expanded',open?'true':'false');
+  }
+  if(navToggle){navToggle.addEventListener('click',function(e){e.stopPropagation();setNav(!nav.classList.contains('open'));});}
+  if(nav){nav.addEventListener('click',function(e){if(e.target.closest('a'))setNav(false);e.stopPropagation();});}
+  document.addEventListener('click',function(){setNav(false);});
+  document.addEventListener('keydown',function(e){if(e.key==='Escape')setNav(false);});
 })();
 </script>
 </body>
