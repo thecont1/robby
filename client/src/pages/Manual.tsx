@@ -4,6 +4,7 @@
  * language record, with every entry grounded in the Rust validator contract.
  */
 
+import { SiteHeader } from "@/components/SiteHeader";
 import { languageReference, minimalExample } from "@/lib/languageReference";
 import { ArrowLeft, BookOpen, Download, ExternalLink } from "lucide-react";
 import { Link } from "wouter";
@@ -11,17 +12,14 @@ import { Link } from "wouter";
 export default function Manual() {
   return (
     <main className="manual-page">
-      <header className="site-header manual-header">
-        <Link className="brand-lockup" href="/">
-          <img src="/icons/robby-registration-mark_658aceee.png" alt="robby split registration disc" />
-          <span>robby<span className="brand-suffix">/ v1</span></span>
-        </Link>
+      <SiteHeader />
+      <div className="manual-subhead">
         <div className="header-center"><BookOpen size={14} /><span className="header-kicker">Language reference · v0.1</span></div>
         <div className="header-actions">
           <a className="source-download" href="https://github.com/thecont1/robby/archive/refs/heads/dev/ananya.zip" target="_blank" rel="noreferrer"><Download size={13} strokeWidth={2.5} /> DOWNLOAD RUST SOURCE</a>
           <Link className="manual-back" href="/"><ArrowLeft size={13} /> RETURN TO GALLERY</Link>
         </div>
-      </header>
+      </div>
 
       <section className="manual-hero">
         <p className="eyebrow"><span className="product-name">robby</span> language reference · v0.1</p>

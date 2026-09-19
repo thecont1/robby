@@ -19,38 +19,22 @@ import { paletteKFromSource } from "@/lib/paletteSettings";
 import { authoredRecipeForCompile, editPaletteInRecipe, isCompiledSourceCurrent, reverseModeFromSource } from "@/lib/recipeAuthority";
 import { swatchSeed, swatchSeedToken } from "@/lib/swatchSeed";
 
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { useTheme } from "@/contexts/ThemeContext";
+import { SiteHeader } from "@/components/SiteHeader";
 import { type CredentialSignature, type TraceStep, type GalleryItem } from "@/lib/demoData";
 import { useGallery } from "@/lib/useGallery";
 import { createRecipeDraftStore } from "@/lib/recipeDrafts";
 import { footerSocialLinks } from "@/lib/footerLinks";
 import { analyzeIngredientsWithRust, palettePreviewWithRust, rustToolchainVersion, type IngredientAnalysis, type RobbyIr } from "@/lib/robbyCompiler";
-import { gallerySlideDirection, isImageOnlyExitKey, swipeGalleryOffset, themeControlLabel, type GallerySlideDirection } from "@/lib/visualModes";
+import { gallerySlideDirection, isImageOnlyExitKey, swipeGalleryOffset, type GallerySlideDirection } from "@/lib/visualModes";
 import { artworkModalKeyAction, focusableArtworkSelector } from "@/lib/artworkModal";
 import {
-  BookOpen,
   ChevronLeft,
   ChevronRight,
   CircleDotDashed,
-  FileText,
   FlipHorizontal2,
-  Github,
-  Info,
-  Play,
   RotateCcw,
-
-  Menu,
-  Lightbulb,
   Maximize2,
   Minimize2,
-  Presentation,
   X,
 } from "lucide-react";
 import { Link } from "wouter";
@@ -171,7 +155,7 @@ export default function Home() {
   const ingredientAuthorityRef = useRef({ specimenId: "", paletteK: 0 });
   const compileGeneration = useRef(0);
   const discardReverseAfterFlip = useRef(false);
-  const { theme, toggleTheme } = useTheme();
+  // theme/toggleTheme are now consumed by <SiteHeader>.
 
   // Clamp selectedIndex when gallery changes (e.g. images added/removed)
   useEffect(() => {
@@ -778,40 +762,12 @@ export default function Home() {
       >
         Skip to gallery &amp; compilation
       </a>
-      <header className="site-header">
-        <a className="brand-lockup" href="#gallery" aria-label="robby gallery">
-          <img src="/icons/robby-registration-mark_658aceee.png" alt="robby split registration disc" />
-          <span className="brand-copy">
-            <span className="brand-title">robby <span className="brand-slash">/</span> <span className="brand-suffix">v1</span></span>
-            <span className={`compile-status ${compilerState}`}>{compilerLabel}</span>
-          </span>
-        </a>
-        <span className="header-product-subtitle">The Reverse-Obverse Image Duality Compiler</span>
-        <div className="header-actions header-toolset">
-          <button type="button" className="feature-control icon-control" onClick={toggleTheme} aria-label={themeControlLabel(theme)} aria-pressed={theme === "dark"} title={themeControlLabel(theme)}>
-            <img src={theme === "light" ? "/icons/thin-sunglasses_23303233.svg" : "/icons/regular-sunglasses_28c9e1cf.svg"} alt="" />
-          </button>
-          <button type="button" className="feature-control icon-control image-only-toggle" onClick={() => setImageOnly((current) => !current)} aria-pressed={imageOnly} aria-label={imageOnly ? "Restore interface text" : "Enable image-only concentration mode"} title="Image-only concentration mode. Press Escape to return.">
-            <img src={imageOnly ? "/icons/text-hidden_1b455537.svg" : "/icons/text-visible_5e9d8f58.svg"} alt="" />
-          </button>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button type="button" className="menu-control" aria-label="Open site menu" title="Site menu"><Menu size={18} strokeWidth={2.2} /></button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="robby-menu-content">
-              <DropdownMenuItem asChild><Link href="/manual"><BookOpen size={17} /> Language manual</Link></DropdownMenuItem>
-
-              <DropdownMenuItem asChild><Link href="/about"><Info size={17} /> About</Link></DropdownMenuItem>
-              <DropdownMenuItem asChild><Link href="/hackathon"><FileText size={17} /> Hackathon brief</Link></DropdownMenuItem>
-              <DropdownMenuItem asChild><Link href="/concept"><Lightbulb size={17} /> Image-object concept</Link></DropdownMenuItem>
-              <DropdownMenuItem asChild><a href="/deck/"><Presentation size={17} /> Presentation deck</a></DropdownMenuItem>
-              <DropdownMenuItem asChild><a href="/demo/"><Play size={17} /> Demo video</a></DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem asChild><a href="https://github.com/thecont1/robby" target="_blank" rel="noreferrer"><Github size={17} /> View Source</a></DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-      </header>
+      <SiteHeader
+        compileState={compilerState}
+        compileLabel={compilerLabel}
+        imageOnly={imageOnly}
+        onToggleImageOnly={() => setImageOnly((current) => !current)}
+      />
 
       <section className="gallery-intro" inert={imageOnly}>
         <div className="intro-copy">

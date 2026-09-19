@@ -1,11 +1,6 @@
-import { ArrowLeft, Braces, Coins, ExternalLink, FileText, GitBranch, Images, ScanSearch, Sparkles } from "lucide-react";
-import { Link } from "wouter";
-import { briefSummaries, type BriefKind } from "@/lib/briefContent";
-
-function BriefHeader({ kind }: { kind: BriefKind }) {
-  const brief = briefSummaries[kind];
-  return <header className="brief-header"><Link href="/" className="brief-back"><ArrowLeft size={14} /> Back to <span className="product-name">robby</span></Link><span>{brief.source}</span></header>;
-}
+import { SiteHeader } from "@/components/SiteHeader";
+import { briefSummaries } from "@/lib/briefContent";
+import { Braces, Coins, ExternalLink, FileText, GitBranch, Images, ScanSearch, Sparkles } from "lucide-react";
 
 function Section({ index, title, children }: { index: string; title: string; children: React.ReactNode }) {
   return <section className="brief-section"><span className="brief-index">{index}</span><div><h2>{title}</h2>{children}</div></section>;
@@ -13,17 +8,17 @@ function Section({ index, title, children }: { index: string; title: string; chi
 
 export function HackathonBrief() {
   const brief = briefSummaries.hackathon;
-  return <main className="brief-page"><BriefHeader kind="hackathon" /><section className="brief-hero"><div><p className="brief-eyebrow">SegFault 2026 · Explainable compilers</p><h1><span className="product-name">robby</span> / reverse–obverse image duality compiler</h1><p className="brief-question">What if a digital image could be a two-sided image-object, like a postcard or a coin?</p></div><aside className="brief-mark"><Braces size={28} /><span>TEXTUAL DSL → VALIDATED IR → TWO FACES</span></aside></section><section className="brief-body"><Section index="01" title="The proposition"><p><span className="product-name">robby</span> compiles a short source program into an inspectable, deterministic reverse for one immutable obverse photograph. The two faces remain mutually exclusive, like the faces of a coin.</p></Section><Section index="02" title="The constraint"><p>The obverse is an opaque byte sequence plus an RGB matrix. The compiler may hash bytes and calculate flat colour statistics, but it never identifies, classifies, or assigns meaning to depicted content.</p></Section><Section index="03" title="The system"><p>The Rust compiler parses and validates four explicit stages, lowers them to versioned JSON IR, and runs the registered seed-driven renderer only when the viewer requests a flip.</p><pre>{`base("night-street.jpg")
+  return <main className="brief-page"><SiteHeader /><section className="brief-hero"><div><p className="brief-eyebrow">SegFault 2026 · Explainable compilers</p><h1><span className="product-name">robby</span> / reverse–obverse image duality compiler</h1><p className="brief-question">What if a digital image could be a two-sided image-object, like a postcard or a coin?</p></div><aside className="brief-mark"><Braces size={28} /><span>TEXTUAL DSL → VALIDATED IR → TWO FACES</span></aside></section><section className="brief-body"><Section index="01" title="The proposition"><p><span className="product-name">robby</span> compiles a short source program into an inspectable, deterministic reverse for one immutable obverse photograph. The two faces remain mutually exclusive, like the faces of a coin.</p></Section><Section index="02" title="The constraint"><p>The obverse is an opaque byte sequence plus an RGB matrix. The compiler may hash bytes and calculate flat colour statistics, but it never identifies, classifies, or assigns meaning to depicted content.</p></Section><Section index="03" title="The system"><p>The Rust compiler parses and validates four explicit stages, lowers them to versioned JSON IR, and runs the registered seed-driven renderer only when the viewer requests a flip.</p><pre>{`base("night-street.jpg")
 palette(k: 8)
 reverse(mode: "negative")
-output(obverse: "night-street.jpg", reverse: "transient", manifest: "transient")`}</pre></Section><Section index="04" title="The outputs"><div className="brief-output-grid"><article><Images size={18} /><strong>Obverse</strong><span>The original JPEG, unchanged.</span></article><article><ScanSearch size={18} /><strong>Reverse</strong><span>A transient PNG generated afresh for this flip.</span></article><article><GitBranch size={18} /><strong>Manifest</strong><span>Source, settings, seed, module, swatches, and output hashes.</span></article></div></Section><Section index="05" title="The practical stack"><p>One Rust library supplies the native CLI, browser WASM compiler, and deterministic renderer. The server invokes that native core and returns PNG bytes directly with a no-store response.</p></Section></section></main>;
+output(obverse: "night-street.jpg", reverse: "transient", manifest: "transient")`}</pre></Section><Section index="04" title="The outputs"><div className="brief-output-grid"><article><Images size={18} /><strong>Obverse</strong><span>The original JPEG, unchanged.</span></article><article><ScanSearch size={18} /><strong>Reverse</strong><span>A transient PNG generated afresh for this flip.</span></article><article><GitBranch size={18} /><strong>Manifest</strong><span>Source, settings, seed, module, swatches, and output hashes.</span></article></div></Section><Section index="05" title="The practical stack"><p>One Rust library supplies the native CLI, browser WASM compiler, and deterministic renderer. The server invokes that native core and returns PNG bytes directly with a no-store response.</p></Section><footer className="brief-footer"><FileText size={16} /><span>{brief.source}</span></footer></section></main>;
 }
 
 export function ImageObjectBrief() {
   const brief = briefSummaries["image-object"];
   return (
     <main className="brief-page">
-      <BriefHeader kind="image-object" />
+      <SiteHeader />
       <section className="brief-hero concept-hero">
         <div>
           <p className="brief-eyebrow">MFA concept note · 2023</p>
@@ -159,7 +154,7 @@ export function AboutBrief() {
   const brief = briefSummaries.about;
   return (
     <main className="brief-page">
-      <BriefHeader kind="about" />
+      <SiteHeader />
       <section className="brief-hero">
         <div>
           <p className="brief-eyebrow">About · SegFault 2026 · Explainable compilers</p>
