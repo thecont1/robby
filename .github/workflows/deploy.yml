@@ -35,3 +35,12 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: 9f6c75ebdcbc7447c7e7748b803c1c2f
+
+      # The demo MP4 exceeds the 25 MiB asset limit, so it lives in R2 and the
+      # Worker streams it from there. Re-upload on every deploy — pushing an
+      # updated video to the repo is all that's needed.
+      - name: Upload demo video to R2
+        run: corepack pnpm dlx wrangler@4.95.0 r2 object put robby-media/robby-demo.mp4 --file dist/public/demo/robby-demo.mp4
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: 9f6c75ebdcbc7447c7e7748b803c1c2f

@@ -5,8 +5,11 @@
   "assets": {
     "directory": "./dist/public",
     "binding": "ASSETS",
-    "run_worker_first": ["/api/*", "/gallery/*"]
+    "run_worker_first": ["/api/*", "/gallery/*", "/demo/robby-demo.mp4"]
   },
+  "r2_buckets": [
+    { "binding": "MEDIA", "bucket_name": "robby-media" }
+  ],
   "containers": [
     {
       "class_name": "RobbyContainer",
