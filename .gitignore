@@ -120,3 +120,4 @@ temp/
 .playwright-mcp/
 
 # Gallery originals are committed so CI deploys can bake them into the image.
+.wrangler/
