@@ -7,7 +7,7 @@
  * live compile-status line and an image-only concentration toggle behind
  * those props.
  *
- * The brand reads "troid & robby" — both names in DM Mono via the existing
+ * The brand reads "troid & robby" — both names in serif mono via the existing
  * `.brand-title` rule. Click anywhere on the lockup (logo + wordmark) to
  * return to the gallery; this is the canonical "home" affordance across
  * the site, so the ancillary pages (deck, demo, briefs, manual) feel
@@ -18,39 +18,27 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useTheme } from "@/contexts/ThemeContext";
 import { themeControlLabel } from "@/lib/visualModes";
-import {
-  BookOpen,
-  FileText,
-  Github,
-  Info,
-  Lightbulb,
-  Menu,
-  Play,
-  Presentation,
-} from "lucide-react";
-import { Link } from "wouter";
+import { Github, Menu } from "lucide-react";
+import { Link, useLocation } from "wouter";
 
 export type SiteHeaderProps = {
-  /** Live status line under the wordmark — only Home needs this. */
-  compileState?: "checking" | "verified" | "error";
-  compileLabel?: string;
   /** Image-only concentration toggle — only Home needs this. */
   imageOnly?: boolean;
   onToggleImageOnly?: () => void;
 };
 
 export function SiteHeader({
-  compileState,
-  compileLabel,
   imageOnly,
   onToggleImageOnly,
 }: SiteHeaderProps) {
   const { theme, toggleTheme } = useTheme();
+  const [location] = useLocation();
+  const isActive = (href: string) =>
+    href === "/" ? location === "/" : location.startsWith(href.replace(/\/$/, ""));
 
   return (
     <header className="site-header">
@@ -58,28 +46,10 @@ export function SiteHeader({
         <img src="/icons/robby-registration-mark_658aceee.png" alt="robby split registration disc" />
         <span className="brand-copy">
           <span className="brand-title">troid <span className="brand-amp">&amp;</span> robby <span className="brand-slash">/</span> <span className="brand-suffix">v1</span></span>
-          {compileState && compileLabel ? (
-            <span className={`compile-status ${compileState}`}>{compileLabel}</span>
-          ) : null}
         </span>
       </Link>
       <span className="header-product-subtitle">The Reverse-Obverse Image Duality Compiler</span>
       <div className="header-actions header-toolset">
-        {toggleTheme ? (
-          <button
-            type="button"
-            className="feature-control icon-control"
-            onClick={toggleTheme}
-            aria-label={themeControlLabel(theme)}
-            aria-pressed={theme === "dark"}
-            title={themeControlLabel(theme)}
-          >
-            <img
-              src={theme === "light" ? "/icons/thin-sunglasses_23303233.svg" : "/icons/regular-sunglasses_28c9e1cf.svg"}
-              alt=""
-            />
-          </button>
-        ) : null}
         {onToggleImageOnly && imageOnly !== undefined ? (
           <button
             type="button"
@@ -95,6 +65,21 @@ export function SiteHeader({
             />
           </button>
         ) : null}
+        {toggleTheme ? (
+          <button
+            type="button"
+            className="feature-control icon-control"
+            onClick={toggleTheme}
+            aria-label={themeControlLabel(theme)}
+            aria-pressed={theme === "dark"}
+            title={themeControlLabel(theme)}
+          >
+            <img
+              src={theme === "light" ? "/icons/thin-sunglasses_23303233.svg" : "/icons/regular-sunglasses_28c9e1cf.svg"}
+              alt=""
+            />
+          </button>
+        ) : null}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button type="button" className="menu-control" aria-label="Open site menu" title="Site menu">
@@ -102,15 +87,14 @@ export function SiteHeader({
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="robby-menu-content">
-            <DropdownMenuItem asChild><Link href="/manual"><BookOpen size={17} /> Language manual</Link></DropdownMenuItem>
-
-            <DropdownMenuItem asChild><Link href="/about"><Info size={17} /> About</Link></DropdownMenuItem>
-            <DropdownMenuItem asChild><Link href="/hackathon"><FileText size={17} /> Hackathon brief</Link></DropdownMenuItem>
-            <DropdownMenuItem asChild><Link href="/concept"><Lightbulb size={17} /> Image-object concept</Link></DropdownMenuItem>
-            <DropdownMenuItem asChild><a href="/deck/"><Presentation size={17} /> Presentation deck</a></DropdownMenuItem>
-            <DropdownMenuItem asChild><a href="/demo/"><Play size={17} /> Demo video</a></DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem asChild><a href="https://github.com/thecont1/robby" target="_blank" rel="noreferrer"><Github size={17} /> View Source</a></DropdownMenuItem>
+            <DropdownMenuItem asChild><Link href="/" aria-current={isActive("/") ? "page" : undefined}>robby</Link></DropdownMenuItem>
+            <DropdownMenuItem asChild><Link href="/hackathon" aria-current={isActive("/hackathon") ? "page" : undefined}>troid</Link></DropdownMenuItem>
+            <DropdownMenuItem asChild><Link href="/concept" aria-current={isActive("/concept") ? "page" : undefined}>concept</Link></DropdownMenuItem>
+            <DropdownMenuItem asChild><a href="/deck/" aria-current={isActive("/deck") ? "page" : undefined}>deck</a></DropdownMenuItem>
+            <DropdownMenuItem asChild><a href="/demo/" aria-current={isActive("/demo") ? "page" : undefined}>demo</a></DropdownMenuItem>
+            <DropdownMenuItem asChild><Link href="/manual" aria-current={isActive("/manual") ? "page" : undefined}>manual</Link></DropdownMenuItem>
+            <DropdownMenuItem asChild><Link href="/faqs" aria-current={isActive("/faqs") ? "page" : undefined}>faqs</Link></DropdownMenuItem>
+            <DropdownMenuItem asChild><a href="https://github.com/thecont1/robby" target="_blank" rel="noreferrer">source <Github size={16} strokeWidth={2.2} aria-hidden="true" /></a></DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>

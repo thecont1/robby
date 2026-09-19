@@ -4,22 +4,15 @@
  * language record, with every entry grounded in the Rust validator contract.
  */
 
+import { SiteFooter } from "@/components/SiteFooter";
 import { SiteHeader } from "@/components/SiteHeader";
 import { languageReference, minimalExample } from "@/lib/languageReference";
-import { ArrowLeft, BookOpen, Download, ExternalLink } from "lucide-react";
-import { Link } from "wouter";
 
 export default function Manual() {
   return (
     <main className="manual-page">
+      <div className="page-fold">
       <SiteHeader />
-      <div className="manual-subhead">
-        <div className="header-center"><BookOpen size={14} /><span className="header-kicker">Language reference · v0.1</span></div>
-        <div className="header-actions">
-          <a className="source-download" href="https://github.com/thecont1/robby/archive/refs/heads/dev/ananya.zip" target="_blank" rel="noreferrer"><Download size={13} strokeWidth={2.5} /> DOWNLOAD RUST SOURCE</a>
-          <Link className="manual-back" href="/"><ArrowLeft size={13} /> RETURN TO GALLERY</Link>
-        </div>
-      </div>
 
       <section className="manual-hero">
         <p className="eyebrow"><span className="product-name">robby</span> language reference · v0.1</p>
@@ -52,8 +45,8 @@ export default function Manual() {
           ))}
         </div>
       </section>
-
-      <footer className="manual-footer"><span>Source of truth: Rust validator and IR lowerer.</span><a href="https://github.com/thecont1/robby/tree/dev/ananya" target="_blank" rel="noreferrer">Inspect Rust source <ExternalLink size={12} /></a></footer>
+      </div>
+      <SiteFooter />
     </main>
   );
 }
