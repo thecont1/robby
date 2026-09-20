@@ -57,6 +57,8 @@ export type SessionOrio = {
   renderModule: string;
   derivedSeed: string;
   colourSwatches: string[];
+  /** GPS-seeded coarse terrain for the reverse face — null without GPS evidence. */
+  terrain: { representation: string; grid_size: number; heights: number[] } | null;
   c2paEvidence: C2paEvidence;
   identity: IdentityRecord;
   compilerVersion: string;
@@ -84,7 +86,7 @@ export type CompileRun = {
 
 export const STATION_LABELS: Record<CompileStage, string> = {
   intake: "Intake",
-  read: "Read",
+  read: "Observe",
   measure: "Measure",
   split: "Split",
   declare: "Declare",

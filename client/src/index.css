@@ -444,7 +444,7 @@
 .teppanyaki-station.is-active .trace-number { background:#e3442f; color:#1c1a19; }
 .teppanyaki-station-copy { min-width:0; }
 .teppanyaki-station-heading { align-items:baseline; display:flex; gap:8px; justify-content:space-between; }
-.teppanyaki-station strong { display:block; font-size:13px; min-width:0; }
+.teppanyaki-station strong { display:block; font-size:13px; min-width:0; }.station-tick { color:#e3442f; font-size:15px; font-style:normal; margin-left:7px; }.dark .station-tick { color:#e8a394; }
 .teppanyaki-station p { color:#b8ada0; font-family:"Noto Serif Mono","DM Mono",monospace; font-size:11px; line-height:1.35; margin:7px 0 0; }
 .teppanyaki-station em { background:rgba(232,163,148,.12); border:1px solid rgba(232,163,148,.55); border-radius:999px; color:#e8a394; display:block; flex:0 0 auto; font-family:"Noto Serif Mono","DM Mono",monospace; font-size:9px; font-style:normal; letter-spacing:.08em; line-height:1; margin:0; padding:4px 7px; text-align:right; text-transform:uppercase; }
 .teppanyaki-swatches { display:flex; flex-wrap:wrap; gap:3px; margin-top:7px; }
@@ -463,8 +463,9 @@
 .dark .teppanyaki-station em { background:rgba(227,68,47,.16); border-color:#e3442f; }
 .dark .teppanyaki-station { border-bottom-color:#e3442f; }.dark .teppanyaki-station.status-idle,.dark .teppanyaki-station p { color:#d79a8d; }.dark .teppanyaki-swatches i { border-color:#e3442f; }
 .dark .teppanyaki-station.is-active { background:rgba(227,68,47,.26); box-shadow:inset 3px 0 0 #e3442f; }
-.teppanyaki-station::before { background:rgba(227,68,47,.22); bottom:0; content:""; left:0; position:absolute; top:0; width:28px; }
-.teppanyaki-station::after { background:#e3442f; content:""; height:calc(var(--rail-fill,0)*100%); left:0; position:absolute; top:0; width:28px; }
+.teppanyaki-stations { position:relative; }
+.teppanyaki-stations::before { background:rgba(227,68,47,.22); bottom:0; content:""; left:0; position:absolute; top:0; width:28px; }
+.teppanyaki-stations::after { background:#e3442f; content:""; height:calc(var(--rail-progress,0)*100%); left:0; position:absolute; top:0; width:28px; }
 .teppanyaki-station.rail-covered .trace-number { color:#1c1a19; }
 .provenance-disclosure dd { color:#e8a394; }
 .image-only .teppanyaki-counter { pointer-events:none; visibility:hidden; }
@@ -508,7 +509,7 @@
 .ingredient-stage-number { color:#e3442f; font-family:"Noto Serif Mono","DM Mono",monospace; font-size:10px; font-weight:700; }
 .ingredient-stage strong { color:#f7efe0; display:block; font-size:12px; }
 .ingredient-stage p { color:#b8ada0; font-family:"Noto Serif Mono","DM Mono",monospace; font-size:9px; line-height:1.35; margin:3px 0 0; }
-.ingredient-stage em { border:1px solid rgba(232,163,148,.55); border-radius:999px; color:#e8a394; font-family:"Noto Serif Mono","DM Mono",monospace; font-size:8px; font-style:normal; letter-spacing:.08em; padding:3px 5px; text-transform:uppercase; }
+.ingredient-stage-tick { color:#e3442f; font-family:"Noto Serif Mono","DM Mono",monospace; font-size:8px; font-style:normal; font-weight:700; letter-spacing:.08em; text-transform:uppercase; }.dark .ingredient-stage-tick { color:#e8a394; }
 .ingredient-stage-pending { opacity:.45; }
 .ingredient-record-grid { border-bottom:1px solid rgba(244,239,225,.18); border-top:1px solid rgba(244,239,225,.18); display:grid; gap:10px; grid-template-columns:1fr 1fr; padding:11px 0; }
 .ingredient-record-grid dt,.ingredient-section-heading strong { color:#a89e91; font-family:"Noto Serif Mono","DM Mono",monospace; font-size:8px; font-weight:700; letter-spacing:.08em; }

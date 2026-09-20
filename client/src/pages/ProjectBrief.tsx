@@ -9,7 +9,7 @@ function Section({ index, title, children }: { index: string; title: string; chi
 
 const COUNTER_CELLS: { index: string; title: string; body: string }[] = [
   { index: "00", title: "Intake", body: "The source JPEG arrives as nothing but bytes. robby hashes the file exactly as found — that SHA-256 becomes the anchor every later stage must agree with." },
-  { index: "01", title: "Read", body: "Credential inspection on the untouched bytes: C2PA manifests, signatures, signer chains. Reading provenance is observational — it never marks the pixels." },
+  { index: "01", title: "Observe", body: "Credential inspection on the untouched bytes: C2PA manifests, signatures, signer chains. Provenance is only ever observed — it never marks the pixels." },
   { index: "02", title: "Measure", body: "The Rust intake decodes the RGB matrix and records structural facts — dimensions, orientation, MIME, a pixel digest. Still no interpretation: no labels, no faces, no meaning." },
   { index: "03", title: "Split", body: "Median-cut clustering collapses the photograph's colour material into a flat palette of size k. The recipe's k is a statement of granularity, not taste." },
   { index: "04", title: "Declare", body: "The recipe is lexed, parsed, and validated into versioned JSON IR. What you wrote is what compiled — the declared IR is inspectable before anything renders." },
