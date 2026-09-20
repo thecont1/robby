@@ -559,6 +559,8 @@ export function createCompileController(deps: CompileDeps) {
           renderModule: String(rendered.renderModule),
           derivedSeed: String(rendered.derivedSeed),
           colourSwatches,
+          sourceWidth: Number(intake.width),
+          sourceHeight: Number(intake.height),
           terrain,
           c2paEvidence,
           identity: buildIdentityRecord({

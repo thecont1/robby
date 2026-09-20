@@ -83,10 +83,13 @@ export default function SwatchMatrix({ swatches, seed, active, resetKey, alt, te
       animation = null;
     };
 
+    // Measure the layout box, never getBoundingClientRect: the matrix mounts
+    // while the inverse face is mid-flip, and a transform-projected rect is
+    // both wrong and never corrected — the layout size does not change, so
+    // the ResizeObserver stays silent and the canvas stays distorted.
     const buildSlots = () => {
-      const rect = host.getBoundingClientRect();
-      width = Math.max(1, Math.floor(rect.width));
-      height = Math.max(1, Math.floor(rect.height));
+      width = Math.max(1, host.clientWidth);
+      height = Math.max(1, host.clientHeight);
       // The swatch field is a square anchored to the left edge; any extra
       // width on the right stays empty for the terrain panel (or blank
       // paper when the source carries no GPS evidence).
@@ -228,8 +231,7 @@ export default function SwatchMatrix({ swatches, seed, active, resetKey, alt, te
       };
 
       instance.setup = () => {
-        const rect = host.getBoundingClientRect();
-        instance.createCanvas(Math.max(1, Math.floor(rect.width)), Math.max(1, Math.floor(rect.height)));
+        instance.createCanvas(Math.max(1, host.clientWidth), Math.max(1, host.clientHeight));
         instance.pixelDensity(Math.min(2, window.devicePixelRatio || 1));
         instance.noStroke();
         buildSlots();
@@ -256,9 +258,8 @@ export default function SwatchMatrix({ swatches, seed, active, resetKey, alt, te
       killAnimation();
       buildSlots();
       if (activeState && !reducedMotion) scheduleNext();
-      const rect = host.getBoundingClientRect();
-      const nextWidth = Math.max(1, Math.floor(rect.width));
-      const nextHeight = Math.max(1, Math.floor(rect.height));
+      const nextWidth = Math.max(1, host.clientWidth);
+      const nextHeight = Math.max(1, host.clientHeight);
       if (sketch.width !== nextWidth || sketch.height !== nextHeight) sketch.resizeCanvas(nextWidth, nextHeight);
       rebuildTerrainBuffer();
     });
