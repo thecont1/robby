@@ -14,7 +14,7 @@ use robby_compiler::{
 
 fn usage() {
     eprintln!(
-        "{COMPILER_VERSION}\n\nUsage (troid engine; `robby` remains a compatibility alias):\n  troid compile <script.robby> --out <ir.json>\n  troid check <script.robby>\n  troid recipe-compile <recipe.robby> --out <ir.json>\n  troid recipe-check <recipe.robby>\n  troid render <source-image> --settings <json>\n  troid inspect <source-image> <original-name>\n  troid ingredients <source-image> --k <3..64>\n  troid bind <binding-request.json>\n  troid version"
+        "{COMPILER_VERSION}\n\nUsage:\n  troid compile <script.robby> --out <ir.json>\n  troid check <script.robby>\n  troid recipe-compile <recipe.robby> --out <ir.json>\n  troid recipe-check <recipe.robby>\n  troid render <source-image> --settings <json>\n  troid inspect <source-image> <original-name>\n  troid ingredients <source-image> --k <3..64>\n  troid bind <binding-request.json>\n  troid version"
     );
 }
 

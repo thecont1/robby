@@ -58,8 +58,9 @@ function useRailProgress(stations: StationView[]): number {
 }
 
 function StationList({ stations, railProgress }: { stations: StationView[]; railProgress: number }) {
+  const barFill = stations.length > 0 ? Math.min(railProgress / stations.length, 1) : 0;
   return (
-    <ol className="teppanyaki-stations" aria-label="Compilation stations">
+    <ol className="teppanyaki-stations" aria-label="Compilation stations" style={{ "--rail-progress": barFill.toFixed(3) } as CSSProperties}>
       {stations.map((station, i) => {
         const fill = Math.min(Math.max(railProgress - i, 0), 1);
         const active = station.status === "started" || station.status === "artifact";
@@ -67,15 +68,13 @@ function StationList({ stations, railProgress }: { stations: StationView[]; rail
           <li
             key={station.stage}
             className={`teppanyaki-station status-${station.status}${active ? " is-active" : ""}${fill >= 0.3 ? " rail-covered" : ""}`}
-            style={{ "--rail-fill": fill.toFixed(3) } as CSSProperties}
             data-stage={station.stage}
             aria-current={active ? "step" : undefined}
           >
             <span className="trace-number">{station.index}</span>
             <div className="teppanyaki-station-copy">
               <div className="teppanyaki-station-heading">
-                <strong>{station.name}</strong>
-                {station.classification && <em>{station.classification}</em>}
+                <strong>{station.name}{station.classification && <span className="station-tick" title={station.classification}>✓</span>}</strong>
               </div>
               <p>{station.label}</p>
             </div>
@@ -179,7 +178,7 @@ export default function TeppanyakiCounter({
       <div className="teppanyaki-view-tabs" role="tablist" aria-label="Teppanyaki counter views">
         <button type="button" role="tab" aria-selected={view === "ingredients"} className={view === "ingredients" ? "active" : ""} onClick={() => onViewChange("ingredients")}>Ingredients</button>
         <button type="button" role="tab" aria-selected={view === "evidence"} className={view === "evidence" ? "active" : ""} onClick={() => onViewChange("evidence")}>Stuffing</button>
-        <button type="button" role="tab" aria-selected={view === "cooking"} className={view === "cooking" ? "active" : ""} onClick={() => onViewChange("cooking")}>Get cooking</button>
+        <button type="button" role="tab" aria-selected={view === "cooking"} className={view === "cooking" ? "active" : ""} onClick={() => onViewChange("cooking")}>Baking</button>
       </div>
       <div className="trace-title" role="status" aria-live="polite" aria-atomic="true">
         <p className="eyebrow">{copy.kicker}</p>

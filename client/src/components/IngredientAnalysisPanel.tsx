@@ -19,8 +19,8 @@ function FieldGrid({ values, kind }: { values: readonly number[]; kind: "luminan
   );
 }
 
-function Stage({ number, title, detail, state = "measured" }: { number: string; title: string; detail: string; state?: "measured" | "derived" | "pending" }) {
-  return <li className={`ingredient-stage ingredient-stage-${state}`}><span className="ingredient-stage-number">{number}</span><div><strong>{title}</strong><p>{detail}</p></div><em>{state}</em></li>;
+function Stage({ number, title, detail, state, pending = false }: { number: string; title: string; detail: string; state: "observed" | "extracted" | "measured" | "derived" | "pending"; pending?: boolean }) {
+  return <li className={`ingredient-stage${pending ? " ingredient-stage-pending" : ""}`}><span className="ingredient-stage-number">{number}</span><div><strong>{title}</strong><p>{detail}</p></div><em className="ingredient-stage-tick">{pending ? state : `✓ ${state}`}</em></li>;
 }
 
 export default function IngredientAnalysisPanel({ status, analysis, error, paletteK, onAnalyze }: {
@@ -35,7 +35,7 @@ export default function IngredientAnalysisPanel({ status, analysis, error, palet
   }
 
   if (status === "running") {
-    return <div className="ingredient-analysis-empty" role="status" aria-live="polite"><p>troid is reading the obverse and calculating its visual ingredients…</p><ol className="ingredient-stage-list"><Stage number="01" title="Read" detail="Exact source bytes and canonical pixels" state="measured" /><Stage number="02" title="Calculate" detail={`Median-cut palette at k=${paletteK}, luminance, structure` } state="pending" /><Stage number="03" title="Derive" detail="Perceptual identity and bounded fields" state="pending" /></ol></div>;
+    return <div className="ingredient-analysis-empty" role="status" aria-live="polite"><p>troid is reading the obverse and calculating its visual ingredients…</p><ol className="ingredient-stage-list"><Stage number="01" title="Read" detail="Exact source bytes and canonical pixels" state="observed" /><Stage number="02" title="Calculate" detail={`Median-cut palette at k=${paletteK}, luminance, structure` } state="pending" pending /><Stage number="03" title="Derive" detail="Perceptual identity and bounded fields" state="pending" pending /></ol></div>;
   }
 
   if (status === "error" || !analysis) {
@@ -45,7 +45,7 @@ export default function IngredientAnalysisPanel({ status, analysis, error, palet
   const { source, palette, structure, identity } = analysis;
   return <div className="ingredient-analysis" aria-live="polite">
     <div className="ingredient-analysis-head"><div><p className="eyebrow">INGREDIENTS RESOLVED</p><p className="ingredient-analysis-title">One obverse. One measured reverse vocabulary.</p></div><button type="button" className="ingredient-refresh" onClick={onAnalyze}>Recalculate</button></div>
-    <ol className="ingredient-stage-list"><Stage number="01" title="Read" detail={`${formatBytes(source.byte_size)} · ${source.width} × ${source.height} · ${source.colour_profile ?? "colour profile not detected"}`} /><Stage number="02" title="Extract" detail={`${palette.entries.length} palette clusters · ${palette.method} · ${palette.ordering}`} /><Stage number="03" title="Measure" detail={`${structure.grid_size} × ${structure.grid_size} spatial cells · luminance, edge, texture`} /><Stage number="04" title="Derive" detail={`aHash ${identity.perceptual_hash} · index map ${shortHash(palette.index_map_sha256)}`} state="derived" /></ol>
+    <ol className="ingredient-stage-list"><Stage number="01" title="Read" detail={`${formatBytes(source.byte_size)} · ${source.width} × ${source.height} · ${source.colour_profile ?? "colour profile not detected"}`} state="observed" /><Stage number="02" title="Extract" detail={`${palette.entries.length} palette clusters · ${palette.method} · ${palette.ordering}`} state="extracted" /><Stage number="03" title="Measure" detail={`${structure.grid_size} × ${structure.grid_size} spatial cells · luminance, edge, texture`} state="measured" /><Stage number="04" title="Derive" detail={`aHash ${identity.perceptual_hash} · index map ${shortHash(palette.index_map_sha256)}`} state="derived" /></ol>
     <div className="ingredient-record-grid"><div><dt>BYTE SHA-256</dt><dd>{shortHash(source.byte_sha256)}</dd></div><div><dt>PIXEL SHA-256</dt><dd>{shortHash(source.pixel_sha256)}</dd></div><div><dt>PERCEPTUAL HASH</dt><dd>{identity.perceptual_hash}</dd></div><div><dt>ORIENTATION</dt><dd>{source.orientation ?? "not declared"}</dd></div></div>
     <div className="ingredient-section"><div className="ingredient-section-heading"><strong>PALETTE MATERIAL</strong><span>{palette.requested_k} colours · exact Rust result</span></div><div className="ingredient-palette-list">{palette.entries.map(entry => <div className="ingredient-palette-row" key={`${entry.rank}-${entry.hex}`}><i style={{ background: entry.hex }} /><span>{entry.hex}</span><span>{entry.share_percent.toFixed(1)}%</span></div>)}</div></div>
     <div className="ingredient-fields"><div><div className="ingredient-section-heading"><strong>LUMINANCE</strong><span>8 bands</span></div><FieldGrid values={structure.spatial_cells.map(cell => cell.mean_luminance)} kind="luminance" /></div><div><div className="ingredient-section-heading"><strong>EDGE FIELD</strong><span>cell contrast</span></div><FieldGrid values={structure.edge_field} kind="edge" /></div><div><div className="ingredient-section-heading"><strong>TEXTURE</strong><span>local variation</span></div><FieldGrid values={structure.texture_field} kind="texture" /></div></div>

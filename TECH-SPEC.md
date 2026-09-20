@@ -38,8 +38,8 @@ The generated PNG is a compiler target consumed by ordinary raster decoders. The
 
 The Rust library is compiled to two public targets:
 
-- browser WASM for source compilation and target-parity verification;
-- native CLI (`troid compile …`, `troid render …`) used by the HTTP server; `robby` is the compatibility alias built from the same Rust source.
+- browser WASM for source compilation, the bounded ingredient/terrain inspection pass, and target-parity verification;
+- native CLI (`troid compile …`, `troid render …`) used by the HTTP server.
 
 The React client does not reimplement the compiler. It compiles source through WASM, sends canonical IR to the local HTTP boundary, and displays the transient native result.
 
@@ -48,7 +48,7 @@ The React client does not reimplement the compiler. It compiles source through W
 Commands must appear in this order:
 
 ```text
-base("source.jpg", width: 1024, height: 768)
+base("source.jpg")
 palette(k: 8)
 reverse(mode: "negative")
 output(obverse: "source.jpg", reverse: "transient", manifest: "transient")
@@ -56,8 +56,8 @@ output(obverse: "source.jpg", reverse: "transient", manifest: "transient")
 
 | Command                              | Contract                                                                    |
 | ------------------------------------ | --------------------------------------------------------------------------- |
-| `base(path, width?, height?)`        | Declares exactly one gallery JPEG and optional output dimensions.           |
-| `palette(k)`                         | Optional; selects 3–16 deterministic RGB clusters. Omission means `k = 8`.  |
+| `base(path, width?, height?)`        | Declares exactly one gallery JPEG; optional `width:`/`height:` assert the expected canvas and must equal the measured source dimensions — a mismatch is a compile error, not a resize. |
+| `palette(k)`                         | Optional; selects 3–64 deterministic RGB clusters. Omission means `k = 8`.  |
 | `reverse(mode)`                      | Required once. v1 accepts `negative`, `observability_sheet`, `quantised_obverse`, and `palette_grid`. |
 | `output(obverse, reverse, manifest)` | Required final command; reverse and manifest targets must be `"transient"`. |
 
@@ -71,9 +71,9 @@ The obverse may be treated only as:
 
 1. exact raw bytes, for identity and integrity hashing;
 2. an RGB matrix, for flat numerical colour statistics;
-3. structural file metadata, such as dimensions, format, and embedded C2PA credentials.
+3. structural file metadata, such as dimensions, format, embedded credentials, and extraction states of EXIF / IPTC / XMP / GPS / C2PA blocks.
 
-No spatial content model, depicted-subject model, captioning, recognition, or inferred region metadata belongs in this pipeline. This is a constitutional boundary, not an optimization preference.
+No spatial content model, depicted-subject model, captioning, recognition, or inferred region metadata belongs in this pipeline. This is a constitutional boundary, not an optimization preference. Embedded metadata is reported as *extraction states* — present, absent, corrupt, unsupported — and private values such as GPS coordinates are redacted inside the intake module and can never reach a manifest, API response, or published surface.
 
 ## 5. Deterministic reverse generation
 
@@ -86,7 +86,9 @@ index_map     = nearest_palette_index(decoded_pixels, palette)
 reverse_png   = registered_module(decoded_pixels, palette, settings, seeded_stream)
 ```
 
-`derived_seed` is a reproducibility mechanism, not an encryption key. The palette algorithm is the median-cut contract in ADR-003. The module registry contains `quantised_obverse`, `palette_grid`, and the retained v1 `negative` backend. `palette_grid` may look random, but its shuffle is seeded only from hashed source bytes and settings.
+`derived_seed` is a reproducibility mechanism, not an encryption key. The palette algorithm is the median-cut contract in ADR-003. The module registry contains `quantised_obverse`, `palette_grid`, `observability_sheet`, and the retained v1 `negative` backend. `palette_grid` may look random, but its shuffle is seeded only from hashed source bytes and settings.
+
+**The reverse is always the same dimensions as the obverse.** Every module renders at the measured source dimensions; an optional `base(width:, height:)` declaration that disagrees with them fails as a mis-declaration. Measured source dimensions are bounded to 1–4096 per axis even when no canvas is declared, and declared settings dimensions share the same bound. The `observability_sheet` composes its fixed 1024×768 instrument plate onto the source-sized canvas — the plate is an interior layout, never the output size.
 
 Required guarantees:
 
@@ -130,7 +132,18 @@ The manifest field `cached_intermediate` is `null` in v1. If intermediate cachin
 
 Compile timestamps are runtime events and are deliberately excluded from the deterministic manifest. Embedded C2PA inspection is a separate source-credential concern and is never conflated with the generated render manifest.
 
-## 8. Gallery boundary
+## 8. Bounded inspection and generalized terrain
+
+The deck can request a bounded Rust/WASM analysis of the source bytes — palette, hashes, luminance bands, spatial cells, edge and texture fields, a perceptual hash, and metadata extraction states — bounded to an 8×8 grid and a fixed pixel budget. This is an inspection record, not a render output.
+
+For sources carrying GPS evidence, the same pass publishes a **generalized terrain**: a deterministic 16×16 heightfield displayed in the Ingredients view and as the reverse face's terrain panel. Its privacy contract:
+
+- GPS presence *gates* whether terrain exists — no usable coordinates, no field;
+- the field is *seeded by `SHA-256(source_bytes)`*, never by coordinates — so the published heights carry no location information;
+- raw latitude/longitude never leave the intake module and never enter a manifest;
+- a prior design seeded the field from the coarse 10° GPS band; that was removed because the band domain is only ~648 values, making the published field enumerable back to the photograph's cell.
+
+## 9. Gallery boundary
 
 `ROBBY_GALLERY_DIR` selects the one gallery root used by catalogue scanning, static JPEG serving, C2PA inspection, and rendering. The boundary:
 
@@ -140,7 +153,7 @@ Compile timestamps are runtime events and are deliberately excluded from the det
 - returns an empty catalogue for a missing or empty root;
 - reads JPEG dimensions from headers without precomputing render evidence.
 
-## 9. Purge status and verification
+## 10. Purge status and verification
 
 The retired semantic executor, Python image stack, persisted reverse paths, local signing/export feature, remote platform auth/storage/database stack, and stale generated WASM bindings have been removed. Rejection tests intentionally retain removed tokens as fixtures so that old contracts cannot return silently.
 

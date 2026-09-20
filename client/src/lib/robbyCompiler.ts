@@ -11,6 +11,7 @@ import initRobbyCompiler, {
   compile_recipe_json,
   compile_source_json,
   compiler_version,
+  generalized_terrain_json,
   inspect_image_json,
   palette_preview_json,
   rust_toolchain,
@@ -146,6 +147,19 @@ export async function inspectWithRust(originalName: string, bytes: Uint8Array): 
 export async function analyzeIngredientsWithRust(bytes: Uint8Array, paletteK: number): Promise<IngredientAnalysis> {
   await ensureRustCompiler();
   return JSON.parse(analyze_ingredients_json(bytes, paletteK)) as IngredientAnalysis;
+}
+
+/** The GPS-seeded coarse terrain field, or null when the source has no usable GPS. */
+export type GeneralizedTerrain = {
+  representation: string;
+  grid_size: number;
+  heights: number[];
+};
+
+/** GPS-seeded coarse terrain on its own — null for sources without GPS evidence. */
+export async function generalizedTerrainWithRust(bytes: Uint8Array): Promise<GeneralizedTerrain | null> {
+  await ensureRustCompiler();
+  return JSON.parse(generalized_terrain_json(bytes)) as GeneralizedTerrain | null;
 }
 
 /** The authoritative Rust-produced binding record for a v1 gallery compile. */

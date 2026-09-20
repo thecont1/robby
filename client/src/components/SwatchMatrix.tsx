@@ -1,9 +1,13 @@
 import gsap from "gsap";
 import p5 from "p5";
 import { useEffect, useMemo, useRef } from "react";
-import { seededPermutation, splitMix32 } from "@/lib/swatchSeed";
+import GeneralizedTerrain from "@/components/GeneralizedTerrain";
+import { splitMix32 } from "@/lib/swatchSeed";
+import type { IngredientAnalysis } from "@/lib/robbyCompiler";
 
 type Rgb = [number, number, number];
+
+type Terrain = NonNullable<IngredientAnalysis["terrain"]>;
 
 type SwatchMatrixProps = {
   swatches: readonly string[];
@@ -11,6 +15,7 @@ type SwatchMatrixProps = {
   active: boolean;
   resetKey: string;
   alt: string;
+  terrain?: Terrain | null;
 };
 
 type Cell = {
@@ -19,9 +24,15 @@ type Cell = {
   y: number;
 };
 
+type Position = { row: number; column: number };
+
 type MatrixController = {
   setActive: (active: boolean) => void;
 };
+
+function hasTerrainLabel(terrain: Terrain | null | undefined) {
+  return terrain ? " · GPS-gated terrain panel" : "";
+}
 
 function hexToRgb(value: string): Rgb {
   const hex = value.trim().replace(/^#/, "");
@@ -33,19 +44,18 @@ function hexToRgb(value: string): Rgb {
   ];
 }
 
-function easeInOut(value: number) {
-  return value * value * (3 - 2 * value);
-}
-
 /**
  * A provenance-seeded, full-face reverse artwork. The palette remains in
  * canonical compiler order; only its animated spatial arrangement changes.
  */
-export default function SwatchMatrix({ swatches, seed, active, resetKey, alt }: SwatchMatrixProps) {
+export default function SwatchMatrix({ swatches, seed, active, resetKey, alt, terrain }: SwatchMatrixProps) {
   const hostRef = useRef<HTMLDivElement>(null);
   const controllerRef = useRef<MatrixController | null>(null);
   const paletteKey = swatches.join("|");
   const colours = useMemo(() => swatches.map(hexToRgb), [paletteKey, swatches]);
+  const hasTerrain = Boolean(
+    terrain && terrain.grid_size > 1 && terrain.heights.length >= terrain.grid_size * terrain.grid_size,
+  );
 
   useEffect(() => {
     controllerRef.current?.setActive(active);
@@ -63,12 +73,10 @@ export default function SwatchMatrix({ swatches, seed, active, resetKey, alt }: 
     let slots: Cell[][] = [];
     let width = 1;
     let height = 1;
-    let cellWidth = 1;
-    let cellHeight = 1;
-    let moveNumber = 0;
+    let side = 1;
+    let cellSize = 1;
     const choreography = splitMix32(seed ^ 0x6d2b79f5);
     const k = colours.length;
-    const columnIdentities = Array.from({ length: k }, (_, column) => seededPermutation(k, (seed + k + column) >>> 0));
 
     const killAnimation = () => {
       schedule?.kill();
@@ -77,76 +85,85 @@ export default function SwatchMatrix({ swatches, seed, active, resetKey, alt }: 
       animation = null;
     };
 
+    // Measure the layout box, never getBoundingClientRect: the matrix mounts
+    // while the inverse face is mid-flip, and a transform-projected rect is
+    // both wrong and never corrected — the layout size does not change, so
+    // the ResizeObserver stays silent and the canvas stays distorted.
     const buildSlots = () => {
-      const rect = host.getBoundingClientRect();
-      width = Math.max(1, Math.floor(rect.width));
-      height = Math.max(1, Math.floor(rect.height));
-      cellWidth = width / k;
-      cellHeight = height / k;
-      const rowPermutations = Array.from({ length: k }, (_, row) => seededPermutation(k, (seed + row) >>> 0));
-      slots = rowPermutations.map((row, rowIndex) => row.map((index, columnIndex) => ({
-        index,
-        x: columnIndex * cellWidth,
-        y: rowIndex * cellHeight,
-      })));
+      width = Math.max(1, host.clientWidth);
+      height = Math.max(1, host.clientHeight);
+      // The swatch field is a square anchored to the left edge; any extra
+      // width on the right stays empty for the terrain panel (or blank
+      // paper when the source carries no GPS evidence).
+      side = Math.min(width, height);
+      cellSize = side / k;
+      host.style.setProperty("--matrix-side", `${side}px`);
+      const tiles = Array.from({ length: k * k }, (_, index) => index % k);
+      const random = splitMix32(seed);
+      for (let index = tiles.length - 1; index > 0; index -= 1) {
+        const swapIndex = random() % (index + 1);
+        [tiles[index], tiles[swapIndex]] = [tiles[swapIndex], tiles[index]];
+      }
+      slots = Array.from({ length: k }, (_, rowIndex) =>
+        Array.from({ length: k }, (_, columnIndex) => ({
+          index: tiles[rowIndex * k + columnIndex],
+          x: columnIndex * cellSize,
+          y: rowIndex * cellSize,
+        })));
     };
 
-    const swapRows = (first: number, second: number) => {
-      const firstRow = slots[first];
-      const secondRow = slots[second];
-      if (!firstRow || !secondRow) return;
-      animation = gsap.timeline({
-        defaults: { duration: 0.6, ease: "power2.inOut" },
-        onComplete: () => {
-          slots[first] = secondRow;
-          slots[second] = firstRow;
-          animation = null;
-          scheduleNext();
-        },
-      });
-      firstRow.forEach(cell => animation?.to(cell, { y: second * cellHeight }, 0));
-      secondRow.forEach(cell => animation?.to(cell, { y: first * cellHeight }, 0));
-    };
+    // Burst choreography: k/2 cell-pair swaps play sequentially across k/4
+    // seconds, then the matrix rests for half a second and the next burst
+    // begins — a repeating pulse, never whole rows or columns.
+    const BURST_PAUSE_SECONDS = 0.5;
 
-    const swapColumns = (first: number, second: number) => {
-      const firstColumn = slots.map(row => row[first]).filter((cell): cell is Cell => Boolean(cell));
-      const secondColumn = slots.map(row => row[second]).filter((cell): cell is Cell => Boolean(cell));
-      if (firstColumn.length !== k || secondColumn.length !== k) return;
-      animation = gsap.timeline({
-        defaults: { duration: 0.6, ease: "power2.inOut" },
-        onComplete: () => {
-          slots.forEach((row, rowIndex) => {
-            [row[first], row[second]] = [row[second], row[first]];
-          });
-          animation = null;
-          scheduleNext();
-        },
-      });
-      firstColumn.forEach(cell => animation?.to(cell, { x: second * cellWidth }, 0));
-      secondColumn.forEach(cell => animation?.to(cell, { x: first * cellWidth }, 0));
-    };
-
-    const startMove = () => {
+    const startBurst = () => {
       schedule = null;
       if (!activeState || reducedMotion || animation || k < 2) {
         if (activeState && !reducedMotion && k >= 2) scheduleNext();
         return;
       }
-      const first = choreography() % k;
-      let second = choreography() % k;
-      if (second === first) second = (second + 1) % k;
-      if (moveNumber % 2 === 0) swapRows(first, second);
-      else {
-        const columnOrder = columnIdentities[moveNumber % k] ?? [];
-        swapColumns(columnOrder[first], columnOrder[second]);
+      const pairs = Math.max(1, Math.floor(k / 2));
+      const burstSeconds = Math.max(0.5, k / 4);
+      const swapDuration = burstSeconds / pairs;
+      const chosen = new Set<number>();
+      const picks: Array<[Position, Position]> = [];
+      while (picks.length < pairs && chosen.size < k * k) {
+        const pick = () => {
+          let index = choreography() % (k * k);
+          while (chosen.has(index)) index = (index + 1) % (k * k);
+          chosen.add(index);
+          return index;
+        };
+        const first = pick();
+        const second = pick();
+        picks.push([
+          { row: Math.floor(first / k), column: first % k },
+          { row: Math.floor(second / k), column: second % k },
+        ]);
       }
-      moveNumber += 1;
+      animation = gsap.timeline({
+        onComplete: () => {
+          animation = null;
+          scheduleNext();
+        },
+      });
+      picks.forEach(([a, b], index) => {
+        const cellA = slots[a.row][a.column];
+        const cellB = slots[b.row][b.column];
+        const at = index * swapDuration;
+        animation?.to(cellA, { x: b.column * cellSize, y: b.row * cellSize, duration: swapDuration, ease: "power2.inOut" }, at);
+        animation?.to(cellB, { x: a.column * cellSize, y: a.row * cellSize, duration: swapDuration, ease: "power2.inOut" }, at);
+        animation?.call(() => {
+          slots[a.row][a.column] = cellB;
+          slots[b.row][b.column] = cellA;
+        }, undefined, at + swapDuration);
+      });
     };
 
     function scheduleNext() {
       if (!activeState || reducedMotion || animation || k < 2) return;
-      const delay = 1.5 + (choreography() % 100) / 100 * 2;
-      schedule = gsap.delayedCall(delay, startMove);
+      schedule = gsap.delayedCall(BURST_PAUSE_SECONDS, startBurst);
       if (!activeState) schedule.pause();
     }
 
@@ -168,24 +185,24 @@ export default function SwatchMatrix({ swatches, seed, active, resetKey, alt }: 
       else if (activeState) scheduleNext();
     };
 
+    // The canvas IS the matrix surface — a square of `side` pixels. The
+    // terrain panel lives in its own element to the right, so the matrix
+    // element itself measures square at any viewport width.
     const sketch = new p5(instance => {
       instance.setup = () => {
-        const rect = host.getBoundingClientRect();
-        instance.createCanvas(Math.max(1, Math.floor(rect.width)), Math.max(1, Math.floor(rect.height)));
+        buildSlots();
+        instance.createCanvas(side, side);
         instance.pixelDensity(Math.min(2, window.devicePixelRatio || 1));
         instance.noStroke();
-        buildSlots();
       };
 
       instance.draw = () => {
         const darkMode = document.documentElement.classList.contains("dark");
         instance.background(darkMode ? 0 : 244, darkMode ? 0 : 239, darkMode ? 0 : 225);
-        const progress = animation ? easeInOut(Math.min(1, animation.progress())) : 0;
-        void progress;
         slots.forEach(row => row.forEach(cell => {
           const colour = colours[cell.index] ?? [0, 0, 0];
           instance.fill(...colour);
-          instance.rect(cell.x, cell.y, cellWidth + 0.5, cellHeight + 0.5);
+          instance.rect(cell.x, cell.y, cellSize + 0.5, cellSize + 0.5);
         }));
       };
     }, host);
@@ -194,10 +211,7 @@ export default function SwatchMatrix({ swatches, seed, active, resetKey, alt }: 
       killAnimation();
       buildSlots();
       if (activeState && !reducedMotion) scheduleNext();
-      const rect = host.getBoundingClientRect();
-      const nextWidth = Math.max(1, Math.floor(rect.width));
-      const nextHeight = Math.max(1, Math.floor(rect.height));
-      if (sketch.width !== nextWidth || sketch.height !== nextHeight) sketch.resizeCanvas(nextWidth, nextHeight);
+      if (sketch.width !== side || sketch.height !== side) sketch.resizeCanvas(side, side);
     });
     resizeObserver.observe(host);
 
@@ -217,5 +231,9 @@ export default function SwatchMatrix({ swatches, seed, active, resetKey, alt }: 
     };
   }, [colours, paletteKey, resetKey, seed]);
 
-  return <div ref={hostRef} className="swatch-matrix-host" role="img" aria-label={`${alt} · ${colours.length} by ${colours.length} swatch matrix`} />;
+  return (
+    <div ref={hostRef} className="swatch-matrix-host" role="img" aria-label={`${alt} · ${colours.length} by ${colours.length} swatch matrix${hasTerrainLabel(terrain)}`}>
+      {hasTerrain && terrain ? <div className="swatch-matrix-terrain"><GeneralizedTerrain terrain={terrain} /></div> : null}
+    </div>
+  );
 }

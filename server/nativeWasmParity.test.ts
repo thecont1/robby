@@ -13,7 +13,7 @@ const root = resolve(import.meta.dirname, "..");
 const sourcePath = resolve(root, "tests", "fixtures", "render-source.jpg");
 const sourceBytes = readFileSync(sourcePath);
 const wasmBytes = readFileSync(resolve(root, "client", "src", "wasm", "robby_compiler_bg.wasm"));
-const nativeBinary = resolve(root, "target", "release", "robby");
+const nativeBinary = resolve(root, "target", "release", "troid");
 
 beforeAll(() => {
   const build = spawnSync("cargo", ["build", "--release", "--locked"], {
@@ -38,7 +38,9 @@ function renderNative(settings: string) {
 describe("native/WASM render parity", () => {
   it.each([3, 5, 8, 12, 16, 20, 32, 64])("is byte-identical for k=%i", async k => {
     await initWasm(wasmBytes);
-    const settings = JSON.stringify({ mode: "negative", k, width: 96, height: 64 });
+    // Declared canvas dims must equal the fixture's 96×72 — the reverse is
+    // always the obverse's dimensions.
+    const settings = JSON.stringify({ mode: "negative", k, width: 96, height: 72 });
     const native = renderNative(settings);
     const [wasmPng, wasmManifest] = JSON.parse(renderWasm(sourceBytes, settings));
 
@@ -48,7 +50,7 @@ describe("native/WASM render parity", () => {
 
   it.each(["quantised_obverse", "palette_grid"] as const)("is byte-identical for Phase 4 mode %s", async mode => {
     await initWasm(wasmBytes);
-    const settings = JSON.stringify({ mode, k: 8, width: 96, height: 64, cell: 8, seed: "object_binding" });
+    const settings = JSON.stringify({ mode, k: 8, width: 96, height: 72, cell: 8, seed: "object_binding" });
     const native = renderNative(settings);
     const [wasmPng, wasmManifest] = JSON.parse(renderWasm(sourceBytes, settings));
 

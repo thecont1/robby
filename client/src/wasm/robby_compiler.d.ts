@@ -48,6 +48,13 @@ export function inspect_image_json(original_name: string, bytes: Uint8Array): st
 */
 export function analyze_ingredients_json(source_bytes: Uint8Array, palette_k: number): string;
 /**
+* The GPS-seeded coarse terrain field on its own — `null` when the
+* source carries no usable GPS coordinates.
+* @param {Uint8Array} source_bytes
+* @returns {string}
+*/
+export function generalized_terrain_json(source_bytes: Uint8Array): string;
+/**
 * @returns {string}
 */
 export function compiler_version(): string;
@@ -83,6 +90,7 @@ export interface InitOutput {
   readonly compile_recipe_json: (a: number, b: number, c: number) => void;
   readonly compile_source_json: (a: number, b: number, c: number) => void;
   readonly compiler_version: (a: number) => void;
+  readonly generalized_terrain_json: (a: number, b: number, c: number) => void;
   readonly inspect_image_json: (a: number, b: number, c: number, d: number, e: number) => void;
   readonly palette_preview_json: (a: number, b: number, c: number, d: number) => void;
   readonly render_reverse_json: (a: number, b: number, c: number, d: number, e: number) => void;

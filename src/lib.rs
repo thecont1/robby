@@ -55,6 +55,13 @@ pub fn analyze_ingredients_json(bytes: &[u8], palette_k: u8) -> CompileResult<St
     analysis::analyze_image_json(bytes, palette_k)
 }
 
+/// The GPS-seeded coarse terrain field on its own — `null` when the source
+/// carries no usable GPS coordinates. Derived evidence; raw coordinates
+/// never leave this module.
+pub fn generalized_terrain_json(bytes: &[u8]) -> CompileResult<String> {
+    analysis::generalized_terrain_json(bytes)
+}
+
 /// Build the authoritative `BindingRecord` for a v1 gallery compile from a
 /// canonical binding request JSON (ADR-003 / Plan 9A).
 ///
@@ -184,6 +191,14 @@ mod wasm {
     #[wasm_bindgen]
     pub fn analyze_ingredients_json(source_bytes: &[u8], palette_k: u8) -> Result<String, JsValue> {
         analyze_ingredients(source_bytes, palette_k)
+            .map_err(|error| JsValue::from_str(&error.to_string()))
+    }
+
+    /// The GPS-seeded coarse terrain field on its own — `null` when the
+    /// source carries no usable GPS coordinates.
+    #[wasm_bindgen]
+    pub fn generalized_terrain_json(source_bytes: &[u8]) -> Result<String, JsValue> {
+        crate::generalized_terrain_json(source_bytes)
             .map_err(|error| JsValue::from_str(&error.to_string()))
     }
 

@@ -612,15 +612,21 @@ fn extract_exif(
         // No validated metadata-segment reader for this format.
         _ => return (None, ExtractionState::Absent, None),
     };
-    let Some(orientation) = parse_orientation(tiff) else {
-        return (None, ExtractionState::Corrupt, None);
+    // A present EXIF segment with a readable TIFF header is Present even
+    // when the Orientation tag is absent — absence is not corruption. A tag
+    // that exists but is malformed is.
+    let orientation = match parse_orientation(tiff) {
+        Ok(value) => value,
+        Err(()) => return (None, ExtractionState::Corrupt, None),
     };
     if !supported {
-        return (Some(orientation), ExtractionState::Unsupported, None);
+        return (orientation, ExtractionState::Unsupported, None);
     }
     let mut map = BTreeMap::new();
-    map.insert("orientation".to_string(), orientation.to_string());
-    (Some(orientation), ExtractionState::Present, Some(map))
+    if let Some(value) = orientation {
+        map.insert("orientation".to_string(), value.to_string());
+    }
+    (orientation, ExtractionState::Present, Some(map))
 }
 
 /// Detect the EXIF GPSInfo pointer without reading or exposing coordinates.
@@ -640,49 +646,34 @@ fn gps_extraction_state(bytes: &[u8], format: ImageFormat) -> ExtractionState {
     }
 }
 
-fn parse_orientation(bytes: &[u8]) -> Option<u16> {
-    if bytes.len() < 18 {
-        return None;
+/// Read the Orientation tag from a TIFF payload. Absent tags are `Ok(None)`;
+/// a tag that exists but is malformed (wrong type, wrong count, out of the
+/// 1..=8 range, or unreadable header) is `Err`.
+fn parse_orientation(bytes: &[u8]) -> Result<Option<u16>, ()> {
+    let (little, ifd) = tiff_header(bytes).ok_or(())?;
+    let count = usize::from(tiff_u16(bytes, little, ifd).ok_or(())?);
+    // The declared entry table must fit inside the payload — a count that
+    // runs past the bytes is a corrupt IFD, not an absent tag.
+    let entries_start = ifd.checked_add(2).ok_or(())?;
+    let entries_end = entries_start
+        .checked_add(count.checked_mul(12).ok_or(())?)
+        .ok_or(())?;
+    if entries_end > bytes.len() {
+        return Err(());
     }
-    let little = &bytes[0..2] == b"II";
-    if !little && &bytes[0..2] != b"MM" {
-        return None;
-    }
-    let u16_at = |at: usize| -> Option<u16> {
-        let part = bytes.get(at..at + 2)?;
-        Some(if little {
-            u16::from_le_bytes([part[0], part[1]])
-        } else {
-            u16::from_be_bytes([part[0], part[1]])
-        })
+    let Some((kind, count, value_at)) = tiff_entry(bytes, little, ifd, 0x0112) else {
+        return Ok(None);
     };
-    let u32_at = |at: usize| -> Option<u32> {
-        let part = bytes.get(at..at + 4)?;
-        Some(if little {
-            u32::from_le_bytes([part[0], part[1], part[2], part[3]])
-        } else {
-            u32::from_be_bytes([part[0], part[1], part[2], part[3]])
-        })
-    };
-    if u16_at(2)? != 42 {
-        return None;
+    // TIFF Orientation is SHORT (type 3) with count 1. Any other type or
+    // count is malformed metadata, not a usable orientation.
+    if kind != 3 || count != 1 {
+        return Err(());
     }
-    let ifd = u32_at(4)? as usize;
-    let count = u16_at(ifd)? as usize;
-    for entry in 0..count {
-        let at = ifd + 2 + entry * 12;
-        if u16_at(at)? == 0x0112 {
-            // TIFF Orientation is SHORT (type 3) with count 1. Any other
-            // type or count is malformed metadata, not a usable orientation.
-            let field_type = u16_at(at + 2)?;
-            let count = u32_at(at + 4)?;
-            if field_type != 3 || count != 1 {
-                continue;
-            }
-            return u16_at(at + 8).filter(|value| (1..=8).contains(value));
-        }
+    let value = tiff_u16(bytes, little, value_at).ok_or(())?;
+    if !(1..=8).contains(&value) {
+        return Err(());
     }
-    None
+    Ok(Some(value))
 }
 
 fn detect_colour_profile(bytes: &[u8]) -> Option<String> {

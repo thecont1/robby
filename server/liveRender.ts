@@ -184,7 +184,7 @@ function serialized<T>(work: () => Promise<T>, signal?: AbortSignal) {
 }
 
 function rustBinary() {
-  return process.env.ROBBY_BINARY ?? resolve(process.cwd(), "target", "release", "robby");
+  return process.env.TROID_BINARY ?? resolve(process.cwd(), "target", "release", "troid");
 }
 
 export async function runRustRenderer(

@@ -64,9 +64,20 @@ function ReverseArtwork({ result, alt, active }: { result?: SessionOrio; alt: st
       active={active}
       resetKey={result.compileRunId}
       alt={alt}
+      terrain={result.terrain}
     />
     : <img src={result.reverseObjectUrl} alt={alt} className="object-image" />;
-  return <div className="reverse-face-frame">{body}</div>;
+  // The reverse must occupy exactly the obverse's content rect: the frame is
+  // contain-fit to the canonical source aspect, so the artwork — not the
+  // fixed viewing window — carries the obverse's dimensions.
+  const frameVars =
+    result.sourceWidth > 0 && result.sourceHeight > 0
+      ? ({
+          "--obverse-w": String(result.sourceWidth),
+          "--obverse-h": String(result.sourceHeight),
+        } as React.CSSProperties)
+      : undefined;
+  return <div className="reverse-face-frame" style={frameVars}>{body}</div>;
 }
 
 type ProjectionState = "gallery" | "draft" | "compiling" | "error" | "live";
@@ -371,6 +382,7 @@ export default function Home() {
     setFailureMessage(null);
     setIsRenderingReverse(true);
     setProjectionState("compiling");
+    setCounterView("cooking");
     const run = await browserCompileController.compile({
       galleryItemId: compiledSpecimenId,
       sourceName: selected.source,

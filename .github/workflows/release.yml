@@ -1,15 +1,24 @@
 name: Build release binaries
 
-# Build the robby / troid compiler on every platform we care about and attach
-# the artifacts to a GitHub Release. Triggers on `v*` tag pushes (manual or
+# Build the troid compiler engine on every platform we care about and attach
+# the archives to a GitHub Release. Triggers on `v*` tag pushes (manual or
 # release-please) and on manual dispatch for ad-hoc dry runs.
 #
-# Output filenames (so the menu link / docs can pin exact platform URLs):
-#   robby-x86_64-unknown-linux-gnu.tar.gz     (Debian/Ubuntu, glibc)
-#   robby-aarch64-unknown-linux-gnu.tar.gz    (ARM Linux servers, glibc)
-#   robby-x86_64-apple-darwin.tar.gz          (Intel Macs)
-#   robby-aarch64-apple-darwin.tar.gz         (Apple Silicon Macs)
-#   robby-x86_64-pc-windows-msvc.zip          (Windows 64-bit)
+# Output filenames (stable URLs the compiler page can pin):
+#   troid-linux-x86_64.tar.gz        (Debian/Ubuntu, glibc)
+#   troid-linux-aarch64.tar.gz       (ARM Linux servers, glibc)
+#   troid-macos-x86_64.tar.gz        (Intel Macs)
+#   troid-macos-aarch64.tar.gz       (Apple Silicon Macs)
+#   troid-windows-x86_64.zip         (Windows 64-bit)
+#   SHA256SUMS.txt                   (covers every archive above)
+#
+# Asset names are unversioned on purpose: a re-run for the same tag
+# overwrites same-named assets cleanly. softprops/action-gh-release@v2
+# deletes and re-uploads any pre-existing asset that shares a name with a
+# file in `files:` (see the action's "If a file in the files parameter
+# already exists, it will be deleted before uploading" behaviour). That
+# matches the unversioned-asset policy of the previous release pipeline.
+# If the tag moves, the release itself is new and the assets go with it.
 
 on:
   push:
@@ -19,7 +28,7 @@ on:
 
 # Don't fight a release in progress; serialise.
 concurrency:
-  group: release-robby
+  group: release-troid
   cancel-in-progress: false
 
 permissions:
@@ -36,22 +45,32 @@ jobs:
             target: x86_64-unknown-linux-gnu
             label: linux-x86_64
             ext: tar.gz
+            archive: troid-linux-x86_64.tar.gz
+            binary: troid
           - os: ubuntu-22.04-arm
             target: aarch64-unknown-linux-gnu
             label: linux-aarch64
             ext: tar.gz
-          - os: macos-13
+            archive: troid-linux-aarch64.tar.gz
+            binary: troid
+          - os: macos-15-intel
             target: x86_64-apple-darwin
             label: macos-x86_64
             ext: tar.gz
+            archive: troid-macos-x86_64.tar.gz
+            binary: troid
           - os: macos-latest
             target: aarch64-apple-darwin
             label: macos-aarch64
             ext: tar.gz
+            archive: troid-macos-aarch64.tar.gz
+            binary: troid
           - os: windows-latest
             target: x86_64-pc-windows-msvc
             label: windows-x86_64
             ext: zip
+            archive: troid-windows-x86_64.zip
+            binary: troid.exe
 
     runs-on: ${{ matrix.os }}
     steps:
@@ -67,18 +86,99 @@ jobs:
         with:
           cache-on-failure: true
 
-      - name: Build release binary
-        run: cargo build --release --target ${{ matrix.target }} --bin robby --bin troid
+      # Fail loudly if the pushed tag and Cargo.toml disagree. This must run
+      # before any cargo work so a typo'd tag never produces a usable
+      # artifact. `GITHUB_REF_NAME` is `v0.1.0` for `refs/tags/v0.1.0`. Skipped
+      # on workflow_dispatch: there the ref is a branch, not a tag.
+      - name: Verify tag matches Cargo.toml version
+        if: github.ref_type == 'tag'
+        shell: bash
+        run: |
+          set -euo pipefail
+          TAG="${GITHUB_REF_NAME#v}"
+          CARGO=$(grep -m1 '^version' Cargo.toml | sed 's/version = "\(.*\)"/\1/')
+          if [ "$TAG" != "$CARGO" ]; then
+            echo "::error::pushed tag v$TAG does not match Cargo.toml version $CARGO"
+            echo "tag v$TAG != Cargo.toml $CARGO"
+            exit 1
+          fi
 
-      - name: Stage archive
+      - name: Build release binary
+        run: cargo build --release --locked --target ${{ matrix.target }} --bin troid
+
+      # The CLI surface today is positional: `troid version` exits 0 with
+      # the COMPILER_VERSION on stdout, and `troid check <recipe>` exits 0
+      # with a "Valid Robby v1 script" line. There is no `--version` /
+      # `--help` flag, so the smoke test exercises the actual commands
+      # instead of inventing ones. `examples/example-v1.robby` is committed
+      # to the repo so this works without the gitignored gallery JPEGs.
+      - name: Smoke test (Unix)
+        if: matrix.os != 'windows-latest'
+        shell: bash
+        run: |
+          set -euo pipefail
+          BIN="target/${{ matrix.target }}/release/troid"
+          "$BIN" version
+          "$BIN" check examples/example-v1.robby
+
+      - name: Smoke test (Windows)
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          & "target/${{ matrix.target }}/release/troid.exe" version
+          & "target/${{ matrix.target }}/release/troid.exe" check examples/example-v1.robby
+
+      # Stage only troid (or troid.exe), LICENSE, and a generated README.txt
+      # that describes the binary, gives a usage loop, and points at the
+      # observation deck. The full repository README stays out — the
+      # download page is a binary, not the project.
+      - name: Stage archive contents
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p staging
-          cp "target/${{ matrix.target }}/release/robby"   staging/robby
-          cp "target/${{ matrix.target }}/release/troid"   staging/troid || true
-          cp README.md staging/README.md 2>/dev/null || true
-          chmod +x staging/robby staging/troid 2>/dev/null || true
+          VERSION=$(grep -m1 '^version' Cargo.toml | sed 's/version = "\(.*\)"/\1/')
+          cat > staging/README.txt <<EOF
+          troid ${VERSION}
+          ============
+
+          troid is the reverse-obverse image compiler: the Rust engine that
+          turns one .robby recipe into a deterministic reverse for one
+          immutable obverse photograph.
+
+          Usage
+          -----
+            1. Download and unpack this archive.
+            2. Write a .robby recipe that points at your JPEG (see the
+               project README for the recipe grammar).
+            3. Validate, then compile to IR JSON:
+
+                 troid check   recipe.robby
+                 troid compile recipe.robby --out recipe.ir.json
+
+          Checksums
+          ---------
+          Verify this archive against SHA256SUMS.txt from the same release:
+
+            # macOS / Linux
+            shasum -a 256 troid-${{ matrix.label }}.${{ matrix.ext }}   # or:  sha256sum ...
+            # Windows (PowerShell)
+            Get-FileHash .\troid-windows-x86_64.zip -Algorithm SHA256
+
+          Observation deck
+          ----------------
+          troid is the compiler itself. The robby observation deck at
+          robby.thecontrarian.in remains where you watch the compiler work.
+          EOF
+          cp LICENSE staging/LICENSE
+          if [ "${{ matrix.os }}" = "windows-latest" ]; then
+            cp "target/${{ matrix.target }}/release/troid.exe" staging/troid.exe
+            chmod +x staging/troid.exe 2>/dev/null || true
+          else
+            cp "target/${{ matrix.target }}/release/troid" staging/troid
+            chmod +x staging/troid
+          fi
 
       - name: Pack archive
         shell: bash
@@ -86,34 +186,61 @@ jobs:
           set -euo pipefail
           cd staging
           if [ "${{ matrix.ext }}" = "tar.gz" ]; then
-            tar czf "../robby-${{ matrix.label }}.tar.gz" .
+            tar czf "../${{ matrix.archive }}" .
           else
-            7z a "../robby-${{ matrix.label }}.zip" . >/dev/null
+            7z a "../${{ matrix.archive }}" . >/dev/null
           fi
 
+      # Artifact names must be unique per matrix job: upload-artifact@v4
+      # refuses duplicate names across the matrix and merge-multiple in the
+      # release job collapses them back together.
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
-          name: robby-${{ matrix.label }}
-          path: robby-${{ matrix.label }}.${{ matrix.ext }}
+          name: troid-${{ matrix.label }}
+          path: ${{ matrix.archive }}
           if-no-files-found: error
           retention-days: 14
 
   release:
     name: Publish GitHub Release
     needs: build
+    # Only a tag push publishes. workflow_dispatch builds the matrix for a
+    # dry run but must never create a release — its ref_name is a branch.
+    if: github.event_name == 'push' && github.ref_type == 'tag'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      - name: Verify tag matches Cargo.toml version
+        if: github.ref_type == 'tag'
+        shell: bash
+        run: |
+          set -euo pipefail
+          TAG="${GITHUB_REF_NAME#v}"
+          CARGO=$(grep -m1 '^version' Cargo.toml | sed 's/version = "\(.*\)"/\1/')
+          [ "$TAG" = "$CARGO" ] || { echo "tag v$TAG != Cargo.toml $CARGO"; exit 1; }
 
       - name: Download all build artifacts
         uses: actions/download-artifact@v4
         with:
           path: artifacts
+          pattern: troid-*
           merge-multiple: true
 
       - name: Show what we have
         run: ls -la artifacts/
+
+      - name: Generate SHA256SUMS.txt
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd artifacts
+          # sha256sum is available on ubuntu-latest; the archives don't
+          # contain a `.git` directory so the "WARNING: ... .git ..." line
+          # it prints on directories will not fire here.
+          sha256sum -- *.tar.gz *.zip > SHA256SUMS.txt
+          cat SHA256SUMS.txt
 
       - name: Create release and upload assets
         uses: softprops/action-gh-release@v2
@@ -123,7 +250,11 @@ jobs:
           generate_release_notes: true
           fail_on_unmatched_files: true
           files: |
-            artifacts/*.tar.gz
-            artifacts/*.zip
+            artifacts/troid-linux-x86_64.tar.gz
+            artifacts/troid-linux-aarch64.tar.gz
+            artifacts/troid-macos-x86_64.tar.gz
+            artifacts/troid-macos-aarch64.tar.gz
+            artifacts/troid-windows-x86_64.zip
+            artifacts/SHA256SUMS.txt
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
