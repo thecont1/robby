@@ -133,19 +133,17 @@ fn observability_sheet_is_an_instrument_plate_not_the_source_scene() {
     assert_eq!(first.manifest.render_module, "observability_sheet");
     assert_eq!(first.manifest.palette_method, "median_cut");
     assert!(!first.manifest.colour_swatches.is_empty());
+    // RULE: the reverse is the same dimensions as the obverse. The fixed
+    // instrument plate is contain-fit onto the source-sized canvas.
     assert_eq!(
         u32::from_be_bytes(first.png[16..20].try_into().unwrap()),
-        1024
+        8
     );
     assert_eq!(
         u32::from_be_bytes(first.png[20..24].try_into().unwrap()),
-        768
+        6
     );
     assert_ne!(first.png, quantised.png);
-    assert_ne!(
-        u32::from_be_bytes(quantised.png[16..20].try_into().unwrap()),
-        1024
-    );
     assert_eq!(
         first
             .manifest
@@ -285,6 +283,13 @@ fn absent_sheet_facts_do_not_change_quantised_obverse_settings_hash() {
 
 /// Decode a PNG into (width, height, RGB rows). Minimal inflate-free path is
 /// impossible, so lean on the `image` crate already in the dependency graph.
+fn png_dimensions(png: &[u8]) -> (u32, u32) {
+    (
+        u32::from_be_bytes(png[16..20].try_into().unwrap()),
+        u32::from_be_bytes(png[20..24].try_into().unwrap()),
+    )
+}
+
 fn decode_png(bytes: &[u8]) -> (u32, u32, Vec<[u8; 3]>) {
     let img = image::load_from_memory(bytes)
         .expect("decode png")
@@ -399,10 +404,13 @@ fn contrast_ratio(left: [u8; 3], right: [u8; 3]) -> f64 {
     (a.max(b) + 0.05) / (a.min(b) + 0.05)
 }
 
+/// Sheet layout is verified against the instrument plate at 1:1 scale: the
+/// plate is contain-fit onto a source-sized canvas, so a plate-sized source
+/// keeps every probe coordinate (and the 1px swatch hairlines) intact.
 fn sheet_with_k(k: u8) -> robby_compiler::render::RenderResult {
     let mut s = settings("observability_sheet");
     s.k = k;
-    render_reverse(&rich_bmp(96, 72), &s).expect("sheet")
+    render_reverse(&rich_bmp(1024, 768), &s).expect("sheet")
 }
 
 /// Every declared palette colour must be countable in the swatch band. A
@@ -575,10 +583,10 @@ fn observability_sheet_separates_its_editorial_levels() {
 /// yields 15.35:1 on the real photograph.
 #[test]
 fn observability_sheet_separates_identical_adjacent_swatches() {
-    let source = near_white_cluster_bmp(64, 48);
+    let source = near_white_cluster_bmp(1024, 768);
     let mut exercised = 0_u32;
 
-    for k in 10_u8..=15 {
+    for k in 3_u8..=64 {
         let mut s = settings("observability_sheet");
         s.k = k;
         let out = render_reverse(&source, &s).expect("sheet");
@@ -644,4 +652,69 @@ fn observability_sheet_separates_identical_adjacent_swatches() {
         "fixture no longer produces identical adjacent palette entries — \
          the duplicate-separator path is unverified; rebuild the fixture"
     );
+}
+
+/// RULE: the reverse is the same dimensions as the obverse — every mode, on
+/// sources that are neither the plate size nor a standard display ratio.
+#[test]
+fn every_reverse_mode_matches_the_obverse_dimensions() {
+    for mode in [
+        "quantised_obverse",
+        "palette_grid",
+        "observability_sheet",
+        "negative",
+    ] {
+        for (w, h) in [(96_u32, 70_u32), (130, 97), (64, 120)] {
+            let result = render_reverse(&bmp(w, h), &settings(mode)).expect("render");
+            assert_eq!(
+                png_dimensions(&result.png),
+                (w, h),
+                "{mode}: reverse PNG must equal the {w}x{h} obverse"
+            );
+            let descriptor = match mode {
+                "quantised_obverse" => result.manifest.artifacts.quantised_obverse.as_ref(),
+                "palette_grid" => result.manifest.artifacts.palette_grid.as_ref(),
+                "observability_sheet" => {
+                    result.manifest.artifacts.observability_sheet.as_ref()
+                }
+                _ => result.manifest.artifacts.negative.as_ref(),
+            }
+            .expect("artifact descriptor");
+            assert_eq!(
+                (descriptor.width, descriptor.height),
+                (w, h),
+                "{mode}: manifest descriptor must equal the {w}x{h} obverse"
+            );
+        }
+    }
+}
+
+/// `base(width:, height:)` declares the expected canvas. A declaration equal
+/// to the measured obverse renders; a disagreement is a mis-declaration, not
+/// a licence to resize — the compiler rejects it rather than emit a reverse
+/// with different dimensions than its obverse.
+#[test]
+fn declared_canvas_must_match_the_obverse_dimensions() {
+    let source = bmp(96, 70);
+
+    let mut matching = settings("negative");
+    matching.width = Some(96);
+    matching.height = Some(70);
+    let result = render_reverse(&source, &matching).expect("matching declaration renders");
+    assert_eq!(png_dimensions(&result.png), (96, 70));
+
+    let mut mismatched = settings("negative");
+    mismatched.width = Some(64);
+    mismatched.height = Some(48);
+    assert!(render_reverse(&source, &mismatched)
+        .unwrap_err()
+        .to_string()
+        .contains("does not match the obverse"));
+
+    let mut width_only = settings("negative");
+    width_only.width = Some(1024);
+    assert!(render_reverse(&source, &width_only)
+        .unwrap_err()
+        .to_string()
+        .contains("does not match the obverse"));
 }

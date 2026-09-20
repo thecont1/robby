@@ -26,8 +26,11 @@ const INK: Rgb<u8> = Rgb([244, 239, 225]);
 const VERMILION: Rgb<u8> = Rgb([227, 68, 47]);
 const MUTED: Rgb<u8> = Rgb([88, 82, 74]);
 const RULE: Rgb<u8> = Rgb([216, 206, 188]);
-const OUTPUT_WIDTH: u32 = 1024;
-const OUTPUT_HEIGHT: u32 = 768;
+/// The observability sheet is drawn as a fixed-size instrument plate, then
+/// contain-fit onto a canvas the exact size of the obverse. These are plate
+/// dimensions only — never the reverse output dimensions.
+const SHEET_WIDTH: u32 = 1024;
+const SHEET_HEIGHT: u32 = 768;
 const GRID_PAD: u32 = 5;
 const MAX_MEDIAN_CUT_ITERATIONS: usize = 64;
 
@@ -163,13 +166,13 @@ impl RenderModule for QuantisedObverseModule {
         &self,
         pixels: &[[u8; 3]],
         palette: &[PaletteEntry],
-        settings: &RenderSettings,
+        _settings: &RenderSettings,
         _rng: &mut SplitMix64,
         source_width: u32,
         source_height: u32,
     ) -> RgbImage {
-        let width = settings.width.unwrap_or(source_width);
-        let height = settings.height.unwrap_or(source_height);
+        let width = source_width;
+        let height = source_height;
         let mut image = ImageBuffer::new(width, height);
         for y in 0..height {
             for x in 0..width {
@@ -200,8 +203,8 @@ impl RenderModule for PaletteGridModule {
         source_width: u32,
         source_height: u32,
     ) -> RgbImage {
-        let width = settings.width.unwrap_or(source_width);
-        let height = settings.height.unwrap_or(source_height);
+        let width = source_width;
+        let height = source_height;
         let mut image = ImageBuffer::from_pixel(width, height, PAPER);
         let n = palette.len() as u32;
         if n == 0 || width < GRID_PAD * 2 || height < GRID_PAD * 2 {
@@ -255,8 +258,8 @@ impl RenderModule for ObservabilitySheetModule {
         palette: &[PaletteEntry],
         settings: &RenderSettings,
         rng: &mut SplitMix64,
-        _source_width: u32,
-        _source_height: u32,
+        source_width: u32,
+        source_height: u32,
     ) -> RgbImage {
         let facts = settings.sheet.clone().unwrap_or_default();
         // Level 2's OUTPUT line cannot embed its own final PNG digest. We
@@ -264,8 +267,34 @@ impl RenderModule for ObservabilitySheetModule {
         // deterministic and documented, never a fake fixed point.
         let unstamped = draw_sheet(palette, &facts, rng.seed, "········");
         let stamp = font::truncated_digest(&hex(&sha256(&raster_bytes(&unstamped))));
-        draw_sheet(palette, &facts, rng.seed, &stamp)
+        let plate = draw_sheet(palette, &facts, rng.seed, &stamp);
+        fit_plate_into(&plate, source_width, source_height)
     }
+}
+
+/// Centre the fixed instrument plate on a canvas the exact size of the
+/// obverse, scaling it nearest-neighbour to the largest fit. The reverse is
+/// always source-dimensioned; the plate is the artwork placed inside it.
+fn fit_plate_into(plate: &RgbImage, width: u32, height: u32) -> RgbImage {
+    let (plate_width, plate_height) = plate.dimensions();
+    // Largest scale whose plate still fits: for canvases bigger than the
+    // plate this grows the plate, for smaller canvases it shrinks it.
+    // u64 intermediates keep 4096×4096 canvases far from overflow.
+    let scale = ((u64::from(width) << 16) / u64::from(plate_width))
+        .min((u64::from(height) << 16) / u64::from(plate_height));
+    let scaled_width = ((u64::from(plate_width) * scale) >> 16).max(1) as u32;
+    let scaled_height = ((u64::from(plate_height) * scale) >> 16).max(1) as u32;
+    let mut image = ImageBuffer::from_pixel(width, height, PAPER);
+    let origin_x = (width - scaled_width.min(width)) / 2;
+    let origin_y = (height - scaled_height.min(height)) / 2;
+    for y in 0..scaled_height.min(height) {
+        let plate_y = (u64::from(y) * u64::from(plate_height) / u64::from(scaled_height)) as u32;
+        for x in 0..scaled_width.min(width) {
+            let plate_x = (u64::from(x) * u64::from(plate_width) / u64::from(scaled_width)) as u32;
+            image.put_pixel(origin_x + x, origin_y + y, *plate.get_pixel(plate_x, plate_y));
+        }
+    }
+    image
 }
 
 fn display_digest(value: Option<&str>) -> String {
@@ -293,7 +322,7 @@ fn draw_sheet(
 ) -> RgbImage {
     use crate::font::{draw_text, text_width};
 
-    let mut image = ImageBuffer::from_pixel(OUTPUT_WIDTH, OUTPUT_HEIGHT, PAPER);
+    let mut image = ImageBuffer::from_pixel(SHEET_WIDTH, SHEET_HEIGHT, PAPER);
     let margin = 48_u32;
 
     // Masthead: binding mark (left) + title block.
@@ -319,7 +348,7 @@ fn draw_sheet(
         &mut image,
         margin,
         margin + 44,
-        OUTPUT_WIDTH - margin * 2,
+        SHEET_WIDTH - margin * 2,
         2,
         RULE,
     );
@@ -329,11 +358,11 @@ fn draw_sheet(
         &mut image,
         margin,
         margin + 64,
-        OUTPUT_WIDTH - margin * 2,
+        SHEET_WIDTH - margin * 2,
         40,
         palette,
     );
-    let field_x = OUTPUT_WIDTH - margin - 320;
+    let field_x = SHEET_WIDTH - margin - 320;
     draw_seeded_field(
         &mut image,
         field_x,
@@ -475,16 +504,16 @@ fn draw_sheet(
     fill_rect(
         &mut image,
         0,
-        OUTPUT_HEIGHT - 40,
-        OUTPUT_WIDTH,
+        SHEET_HEIGHT - 40,
+        SHEET_WIDTH,
         40,
         Rgb([18, 16, 15]),
     );
     draw_hash_bars(
         &mut image,
         margin,
-        OUTPUT_HEIGHT - 26,
-        OUTPUT_WIDTH - margin * 2,
+        SHEET_HEIGHT - 26,
+        SHEET_WIDTH - margin * 2,
         8,
         seed,
     );
@@ -502,13 +531,13 @@ impl RenderModule for NegativeModule {
         &self,
         _pixels: &[[u8; 3]],
         palette: &[PaletteEntry],
-        settings: &RenderSettings,
+        _settings: &RenderSettings,
         rng: &mut SplitMix64,
         source_width: u32,
         source_height: u32,
     ) -> RgbImage {
-        let width = settings.width.unwrap_or(OUTPUT_WIDTH);
-        let height = settings.height.unwrap_or(OUTPUT_HEIGHT);
+        let width = source_width;
+        let height = source_height;
         let inverted: Vec<PaletteEntry> = palette
             .iter()
             .map(|entry| PaletteEntry {
@@ -599,6 +628,23 @@ pub fn render_reverse(
     // pixel_sha256, dimensions and layout consistent across both paths;
     // without it a rotated source renders transposed against its own manifest.
     let (pixels, source_width, source_height) = source_pixels(source_bytes)?;
+    // RULE: the reverse is the same dimensions as the obverse, always.
+    // `base(width:, height:)` declares the expected canvas; a declaration that
+    // disagrees with the measured source is a mis-declaration, not a resize —
+    // reject it rather than silently produce a differently-sized reverse.
+    if settings.width.is_some_and(|value| value != source_width)
+        || settings
+            .height
+            .is_some_and(|value| value != source_height)
+    {
+        return Err(RenderError(format!(
+            "declared canvas {}×{} does not match the obverse {}×{} — the reverse must share the obverse's dimensions",
+            settings.width.unwrap_or(source_width),
+            settings.height.unwrap_or(source_height),
+            source_width,
+            source_height,
+        )));
+    }
     let palette = palette_for_pixels(&pixels, settings.k as usize)?;
     let index_map = palette_index_map(&pixels, &palette);
     let mut rng = SplitMix64::new(seed);
