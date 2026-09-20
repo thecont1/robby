@@ -53,7 +53,7 @@ jobs:
             ext: tar.gz
             archive: troid-linux-aarch64.tar.gz
             binary: troid
-          - os: macos-13
+          - os: macos-15-intel
             target: x86_64-apple-darwin
             label: macos-x86_64
             ext: tar.gz
@@ -88,8 +88,10 @@ jobs:
 
       # Fail loudly if the pushed tag and Cargo.toml disagree. This must run
       # before any cargo work so a typo'd tag never produces a usable
-      # artifact. `GITHUB_REF_NAME` is `v0.1.0` for `refs/tags/v0.1.0`.
+      # artifact. `GITHUB_REF_NAME` is `v0.1.0` for `refs/tags/v0.1.0`. Skipped
+      # on workflow_dispatch: there the ref is a branch, not a tag.
       - name: Verify tag matches Cargo.toml version
+        if: github.ref_type == 'tag'
         shell: bash
         run: |
           set -euo pipefail
@@ -203,11 +205,15 @@ jobs:
   release:
     name: Publish GitHub Release
     needs: build
+    # Only a tag push publishes. workflow_dispatch builds the matrix for a
+    # dry run but must never create a release — its ref_name is a branch.
+    if: github.event_name == 'push' && github.ref_type == 'tag'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
       - name: Verify tag matches Cargo.toml version
+        if: github.ref_type == 'tag'
         shell: bash
         run: |
           set -euo pipefail
