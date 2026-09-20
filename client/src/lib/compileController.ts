@@ -63,6 +63,15 @@ export type CompileDeps = {
     sourceByteSha256: string,
     signal: AbortSignal,
   ) => Promise<CredentialSignature>;
+  /**
+   * GPS-seeded coarse terrain for the reverse face. Optional: when absent
+   * the orio carries `terrain: null`. Non-abort failures degrade to null —
+   * terrain is presentational evidence, never a compile requirement.
+   */
+  deriveTerrain?: (
+    bytes: Uint8Array,
+    signal: AbortSignal,
+  ) => Promise<{ representation: string; grid_size: number; heights: number[] } | null>;
   renderReverse: (ir: RobbyIr, signal: AbortSignal, sheet?: ObservabilitySheetFacts) => Promise<EphemeralReverseResult>;
   now: () => string;
   createId: () => string;
@@ -446,6 +455,20 @@ export function createCompileController(deps: CompileDeps) {
           }
         }
 
+        // GPS-seeded coarse terrain rides on the orio like colourSwatches —
+        // deterministic evidence of the obverse, never raw coordinates.
+        // Sources without GPS resolve to null; unexpected failures degrade
+        // to null too since the panel is presentational.
+        let terrain: SessionOrio["terrain"] = null;
+        if (deps.deriveTerrain && sourceByteArray) {
+          try {
+            terrain = await deps.deriveTerrain(sourceByteArray, signal);
+          } catch (error) {
+            if (signal.aborted || (error instanceof DOMException && error.name === "AbortError")) throw error;
+            terrain = null;
+          }
+        }
+
         const rendered = await station(run, "resolve", "derived", async () => {
           let intakeManifest: IntakeManifest | undefined;
           try {
@@ -536,6 +559,7 @@ export function createCompileController(deps: CompileDeps) {
           renderModule: String(rendered.renderModule),
           derivedSeed: String(rendered.derivedSeed),
           colourSwatches,
+          terrain,
           c2paEvidence,
           identity: buildIdentityRecord({
             runId: run.id,

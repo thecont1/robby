@@ -6,13 +6,23 @@ const homeSource = readFileSync(new URL("../pages/Home.tsx", import.meta.url), "
 const counterSource = readFileSync(new URL("../components/TeppanyakiCounter.tsx", import.meta.url), "utf8");
 
 describe("swatch matrix reverse artwork contract", () => {
-  it("uses p5 for a square palette matrix and GSAP for row/column choreography", () => {
+  it("uses p5 for a square palette matrix and GSAP for square-pair burst choreography", () => {
     expect(matrixSource).toContain('import gsap from "gsap"');
     expect(matrixSource).toContain('import p5 from "p5"');
-    expect(matrixSource).toContain("seededPermutation(k, (seed + row)");
-    expect(matrixSource).toContain("swapRows");
-    expect(matrixSource).toContain("swapColumns");
-    expect(matrixSource).toContain('duration: 0.6');
+    expect(matrixSource).toContain("startBurst");
+    expect(matrixSource).toContain("Math.floor(k / 2)");
+    expect(matrixSource).toContain("k / 4");
+    expect(matrixSource).toContain("BURST_PAUSE_SECONDS = 0.5");
+    expect(matrixSource).not.toContain("swapRows");
+    expect(matrixSource).not.toContain("swapColumns");
+  });
+
+  it("anchors a square matrix to the left and composes GPS-seeded terrain on the right", () => {
+    expect(matrixSource).toContain("Math.min(width, height)");
+    expect(matrixSource).toContain("instance.WEBGL");
+    expect(matrixSource).toContain("instance.TRIANGLE_STRIP");
+    expect(matrixSource).toContain("instance.image(terrainBuffer, side, 0)");
+    expect(matrixSource).toContain("terrain?: Terrain | null");
   });
 
   it("pauses and resumes animation based on whether the inverse face is visible", () => {

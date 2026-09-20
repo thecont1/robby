@@ -169,6 +169,21 @@ pub fn analyze_image_json(bytes: &[u8], requested_k: u8) -> CompileResult<String
     })
 }
 
+/// The GPS-seeded coarse terrain field on its own — `null` when the source
+/// carries no usable GPS coordinates. Same payload `analyze_image_json`
+/// embeds under `terrain`, produced without the full ingredient pass.
+pub fn generalized_terrain_json(bytes: &[u8]) -> CompileResult<String> {
+    let format = image::ImageReader::new(std::io::Cursor::new(bytes))
+        .with_guessed_format()
+        .map_err(|error| CompilerError::plain(error.to_string()))?
+        .format()
+        .ok_or_else(|| CompilerError::plain("Unsupported image format"))?;
+    let terrain = crate::intake::generalized_gps_seed(bytes, format).map(generalized_terrain);
+    serde_json::to_string(&terrain).map_err(|error| {
+        CompilerError::plain(format!("Unable to serialize generalized terrain: {error}"))
+    })
+}
+
 /// Reduce only expensive visual measurements to a deterministic bounded sample.
 /// Full source and canonical-pixel hashes still use every pixel above.
 fn generalized_terrain(seed: u64) -> TerrainIngredients {

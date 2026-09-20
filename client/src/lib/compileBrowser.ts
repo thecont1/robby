@@ -1,7 +1,7 @@
 import { inspectC2paCredential } from "@/lib/c2paCredentials";
 import { createCompileController, type CompileDeps } from "@/lib/compileController";
 import { requestEphemeralReverse } from "@/lib/liveRender";
-import { buildCanonicalBindingWithRust, compileWithRust, inspectWithRust, rustCompilerVersion } from "@/lib/robbyCompiler";
+import { buildCanonicalBindingWithRust, compileWithRust, generalizedTerrainWithRust, inspectWithRust, rustCompilerVersion } from "@/lib/robbyCompiler";
 
 async function sha256Hex(value: string | Uint8Array) {
   const bytes = typeof value === "string" ? new TextEncoder().encode(value) : new Uint8Array(value);
@@ -74,6 +74,10 @@ export function createBrowserCompileDeps(): CompileDeps {
     inspectC2pa: async (sourceName, bytes, sourceByteSha256, signal) => {
       if (signal.aborted) throw new DOMException("Aborted", "AbortError");
       return inspectC2paCredential(sourceName, bytes, sourceByteSha256, signal);
+    },
+    deriveTerrain: async (bytes, signal) => {
+      if (signal.aborted) throw new DOMException("Aborted", "AbortError");
+      return generalizedTerrainWithRust(bytes);
     },
     renderReverse: async (ir, signal, sheet) => {
       if (signal.aborted) throw new DOMException("Aborted", "AbortError");

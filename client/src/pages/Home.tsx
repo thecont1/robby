@@ -64,6 +64,7 @@ function ReverseArtwork({ result, alt, active }: { result?: SessionOrio; alt: st
       active={active}
       resetKey={result.compileRunId}
       alt={alt}
+      terrain={result.terrain}
     />
     : <img src={result.reverseObjectUrl} alt={alt} className="object-image" />;
   return <div className="reverse-face-frame">{body}</div>;
