@@ -4,9 +4,12 @@
 
 `robby` is a tiny, explainable compiler that turns one photograph—the **obverse**—into a deterministic companion **reverse**. Together they form a two-sided image-object. Like a coin or a postcard, the two faces are never shown at once: you flip between them. The reverse is evidence of a reproducible computation, never proof of ownership, authorship, or truth.
 
-### Two names, one project
+### Names in the project
 
-The repository is called **robby**. Its independent compiler engine is called **troid** — “The Reverse-Obverse Image Duality” compiler. The Rust package remains `robby-compiler` for compatibility with the existing IR and manifest contract, but Cargo builds two equivalent binaries: `troid` is the canonical engine command and `robby` is a compatibility alias. The web application is the **robby observation deck**: it supplies the gallery, live source editor, compilation trace, and explainability panels around troid.
+- **`troid`** — the compiler engine. The only thing this project ships as a downloadable binary.
+- **`robby`** — the observation deck: the web frontend that hosts the gallery, live source editor, compilation trace, and explainability panels. A website, not an install.
+- **`.robby`** — the recipe language: the source program fed to `troid`. Untouched by this repo's naming pass.
+- **`robby-compiler`** — the Rust crate that holds the library and the IR / manifest contract. Kept verbatim so existing IR records (`robby-ir-v1`, `robby-render-manifest-v1`, `robby-binding-record-v1`) remain readable.
 
 Built for **SegFault 2026**, a compiler-technology hackathon, under the _Explainable compilers_ challenge — "modern compilers are enormous black boxes; make their decisions legible to the people using them."
 
@@ -84,11 +87,11 @@ From a clean checkout, the Rust engine can be used independently:
 
 ```sh
 cargo build --release --locked
-./target/release/troid check gallery/MSC55186.robby
-./target/release/troid compile gallery/MSC55186.robby --out /tmp/MSC55186.ir.json
+./target/release/troid check   examples/example-v1.robby
+./target/release/troid compile examples/example-v1.robby --out /tmp/example-v1.ir.json
 ```
 
-`./target/release/robby` accepts the same commands as a compatibility alias. To run the full observation deck locally, install the web dependencies and start the development server:
+The recipe language is `.robby`; `troid` is the only binary the project ships. To run the full observation deck locally, install the web dependencies and start the development server:
 
 ```sh
 pnpm install --frozen-lockfile
@@ -98,6 +101,49 @@ pnpm dev
 The server watches `gallery/` for JPEG inputs and matching `.robby` recipes. Gallery originals are local runtime inputs and are ignored by Git; no transformed or WebP source is accepted. Turning an image requests a fresh transient reverse from the Rust renderer. No reverse PNG is written to the repository, gallery, storage, or database.
 
 The observation deck deliberately pauses briefly between each station's `started`, `artifact`, and `completed` events. This is a UI-only explainability aid: it gives the viewer time to watch the chain move from Intake through Marry. The pause is cancellable when changing specimens, and it does not affect troid inputs, output bytes, hashes, cache keys, or manifests.
+
+---
+
+## Install prebuilt binaries
+
+Pre-built `troid` binaries for macOS (Apple Silicon), Windows, and Linux (x86_64) are published on every release tag at <https://github.com/thecont1/robby/releases/latest>. The Linux x86_64 and macOS Apple Silicon downloads are stable URLs and always point at the most recent release:
+
+- macOS Apple Silicon — <https://github.com/thecont1/robby/releases/latest/download/troid-macos-aarch64.tar.gz>
+- Windows x86_64 — <https://github.com/thecont1/robby/releases/latest/download/troid-windows-x86_64.zip>
+- Linux x86_64 — <https://github.com/thecont1/robby/releases/latest/download/troid-linux-x86_64.tar.gz>
+- All releases — <https://github.com/thecont1/robby/releases>
+
+Verify the archive you downloaded against `SHA256SUMS.txt` before unpacking it. Examples per platform:
+
+```sh
+# macOS / Linux
+shasum -a 256 -c SHA256SUMS.txt   # or:  sha256sum -c SHA256SUMS.txt
+# Windows (PowerShell)
+Get-FileHash .\troid-windows-x86_64.zip -Algorithm SHA256
+```
+
+A typical v1 author loop from a clean checkout:
+
+```sh
+# 1. Download and unpack
+curl -L -o troid-macos-aarch64.tar.gz \
+  https://github.com/thecont1/robby/releases/latest/download/troid-macos-aarch64.tar.gz
+tar -xzf troid-macos-aarch64.tar.gz
+
+# 2. Write a recipe that points at your JPEG
+cat > example.robby <<'RECIPE'
+base("night-street.jpg")
+palette(k: 8)
+reverse(mode: "negative")
+output(obverse: "night-street.jpg", reverse: "transient", manifest: "transient")
+RECIPE
+
+# 3. Validate, then compile to IR JSON
+./troid check   example.robby
+./troid compile example.robby --out example.ir.json
+```
+
+The `recipe-check` and `recipe-compile` commands cover the v2 object-recipe form documented in [`docs/ingredients-and-evidence.md`](./docs/ingredients-and-evidence.md).
 
 ---
 

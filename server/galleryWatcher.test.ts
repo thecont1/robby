@@ -13,7 +13,7 @@ function tempGallery() {
   return mkdtempSync(join(tmpdir(), "robby-gallery-watcher-"));
 }
 
-const envKeysTouched = ["ROBBY_BINARY", "ROBBY_FAKE_CALLS_LOG", "ROBBY_GALLERY_MAX_ITEMS"] as const;
+const envKeysTouched = ["TROID_BINARY", "ROBBY_FAKE_CALLS_LOG", "ROBBY_GALLERY_MAX_ITEMS"] as const;
 type TouchedEnvKey = (typeof envKeysTouched)[number];
 const savedEnv: Partial<Record<TouchedEnvKey, string | undefined>> = {};
 
@@ -146,7 +146,7 @@ describe("gallery snapshot", () => {
     const callsLog = join(root, "..", `robby-fake-calls-${Math.random().toString(36).slice(2)}.log`);
     try {
       copyFileSync(fixture, join(root, "one.jpg"));
-      withEnv({ ROBBY_BINARY: fakeBinary, ROBBY_FAKE_CALLS_LOG: callsLog });
+      withEnv({ TROID_BINARY: fakeBinary, ROBBY_FAKE_CALLS_LOG: callsLog });
 
       const first = await scanGallery(root);
       expect(first).toHaveLength(1);
@@ -173,7 +173,7 @@ describe("gallery snapshot", () => {
       copyFileSync(fixture, join(root, "a.jpg"));
       copyFileSync(fixture, join(root, "b.jpg"));
       copyFileSync(fixture, join(root, "c.jpg"));
-      withEnv({ ROBBY_GALLERY_MAX_ITEMS: "2", ROBBY_BINARY: fakeBinary });
+      withEnv({ ROBBY_GALLERY_MAX_ITEMS: "2", TROID_BINARY: fakeBinary });
 
       const items = await scanGallery(root);
 

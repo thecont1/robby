@@ -39,7 +39,7 @@ The generated PNG is a compiler target consumed by ordinary raster decoders. The
 The Rust library is compiled to two public targets:
 
 - browser WASM for source compilation and target-parity verification;
-- native CLI (`troid compile …`, `troid render …`) used by the HTTP server; `robby` is the compatibility alias built from the same Rust source.
+- native CLI (`troid compile …`, `troid render …`) used by the HTTP server.
 
 The React client does not reimplement the compiler. It compiles source through WASM, sends canonical IR to the local HTTP boundary, and displays the transient native result.
 

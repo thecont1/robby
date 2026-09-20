@@ -13,7 +13,7 @@ const root = resolve(import.meta.dirname, "..");
 const sourcePath = resolve(root, "tests", "fixtures", "render-source.jpg");
 const sourceBytes = readFileSync(sourcePath);
 const wasmBytes = readFileSync(resolve(root, "client", "src", "wasm", "robby_compiler_bg.wasm"));
-const nativeBinary = resolve(root, "target", "release", "robby");
+const nativeBinary = resolve(root, "target", "release", "troid");
 
 beforeAll(() => {
   const build = spawnSync("cargo", ["build", "--release", "--locked"], {

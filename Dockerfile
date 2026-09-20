@@ -17,7 +17,7 @@ RUN corepack pnpm run build:web
 FROM node:22-bookworm-slim
 WORKDIR /app
 ENV NODE_ENV=production
-ENV ROBBY_BINARY=/usr/local/bin/robby
+ENV TROID_BINARY=/usr/local/bin/troid
 COPY package.json pnpm-lock.yaml ./
 COPY patches ./patches
 RUN npm install --global corepack@latest \
@@ -26,5 +26,5 @@ RUN npm install --global corepack@latest \
     && corepack pnpm store prune
 COPY --from=web-builder /app/dist ./dist
 COPY --from=web-builder /app/gallery ./gallery
-COPY --from=rust-builder /src/target/release/robby /usr/local/bin/robby
+COPY --from=rust-builder /src/target/release/troid /usr/local/bin/troid
 CMD ["node", "dist/index.js"]

@@ -8,13 +8,13 @@ const liveRender = readFileSync(new URL("./liveRender.ts", import.meta.url), "ut
 describe("production renderer packaging", () => {
   it("builds the native release renderer in the standard production build", () => {
     expect(packageJson.scripts.build).toContain("cargo build --release");
-    expect(liveRender).toContain('"target", "release", "robby"');
+    expect(liveRender).toContain('"target", "release", "troid"');
   });
 
   it("ships a release Rust binary and no retired Python image stack", () => {
     expect(dockerfile).toMatch(/FROM rust:1\.97/);
     expect(dockerfile).toContain("cargo build --release");
-    expect(dockerfile).toContain("ROBBY_BINARY=/usr/local/bin/robby");
+    expect(dockerfile).toContain("TROID_BINARY=/usr/local/bin/troid");
     expect(dockerfile).not.toMatch(/python|opencv|numpy|pillow|python3-pil/i);
   });
 });

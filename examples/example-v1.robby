@@ -1,0 +1,8 @@
+# v1 line-oriented recipe. Point the `base` clause at any JPEG you own.
+# `troid check` and `troid compile` only read this text; the JPEG is
+# referenced by `output(obverse:)` and consumed later by `troid render`
+# or by the HTTP server. See README.md for the full author loop.
+base("01MS202002-Chile1610.jpg")
+palette(k: 8)
+reverse(mode: "negative")
+output(obverse: "01MS202002-Chile1610.jpg", reverse: "transient", manifest: "transient")
