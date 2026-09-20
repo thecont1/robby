@@ -28,6 +28,7 @@ const MUTED: Rgb<u8> = Rgb([88, 82, 74]);
 const RULE: Rgb<u8> = Rgb([216, 206, 188]);
 const OUTPUT_WIDTH: u32 = 1024;
 const OUTPUT_HEIGHT: u32 = 768;
+const GRID_PAD: u32 = 5;
 const MAX_MEDIAN_CUT_ITERATIONS: usize = 64;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
@@ -201,19 +202,42 @@ impl RenderModule for PaletteGridModule {
     ) -> RgbImage {
         let width = settings.width.unwrap_or(source_width);
         let height = settings.height.unwrap_or(source_height);
-        let cell = settings.cell.unwrap_or(10).max(1);
-        let columns = width.div_ceil(cell);
-        let rows = height.div_ceil(cell);
-        let tile_count = (columns * rows) as usize;
-        let mut tiles = weighted_tile_indices(palette, tile_count);
+        let mut image = ImageBuffer::from_pixel(width, height, PAPER);
+        let n = palette.len() as u32;
+        if n == 0 || width < GRID_PAD * 2 || height < GRID_PAD * 2 {
+            return image;
+        }
+        // k×k tiles: every colour appears exactly k times (no replacement
+        // within a row's worth), then one seeded shuffle mixes individual
+        // cells across rows and columns — not a per-row permutation.
+        let mut tiles: Vec<usize> = Vec::with_capacity((n * n) as usize);
+        for _ in 0..n {
+            tiles.extend(0..palette.len());
+        }
         deterministic_shuffle(&mut tiles, rng);
-        let mut image = ImageBuffer::new(width, height);
-        for y in 0..height {
-            for x in 0..width {
-                let tile = ((y / cell) * columns + x / cell) as usize;
-                image.put_pixel(x, y, Rgb(palette[tiles[tile]].rgb));
+        // Fit the square matrix to the frame height, 5px inside the border
+        // from the top, bottom and left edges. Per-row/column edges divide the
+        // inner span exactly, so the last row is flush with the border.
+        let inner = height - GRID_PAD * 2;
+        let span = settings.cell.map(|cell| cell.max(1) * n).unwrap_or(inner);
+        for row in 0..n {
+            for column in 0..n {
+                let tile = (row * n + column) as usize;
+                let y0 = GRID_PAD + row * span / n;
+                let y1 = GRID_PAD + (row + 1) * span / n;
+                let x0 = GRID_PAD + column * span / n;
+                let x1 = GRID_PAD + (column + 1) * span / n;
+                fill_rect(
+                    &mut image,
+                    x0,
+                    y0,
+                    x1 - x0,
+                    y1 - y0,
+                    Rgb(palette[tiles[tile]].rgb),
+                );
             }
         }
+        stroke_rect(&mut image, GRID_PAD, GRID_PAD, span, span, RULE);
         image
     }
 }
