@@ -463,8 +463,13 @@
 .dark .teppanyaki-station { border-bottom-color:#e3442f; }.dark .teppanyaki-station.status-idle,.dark .teppanyaki-station p { color:#d79a8d; }.dark .teppanyaki-swatches i { border-color:#e3442f; }
 .dark .teppanyaki-station.is-active { background:rgba(227,68,47,.26); box-shadow:inset 3px 0 0 #e3442f; }
 .teppanyaki-stations { position:relative; }
-.teppanyaki-stations::before { background:rgba(227,68,47,.22); bottom:0; content:""; left:0; position:absolute; top:0; width:28px; }
-.teppanyaki-stations::after { background:#e3442f; content:""; height:calc(var(--rail-progress,0)*100%); left:0; position:absolute; top:0; width:28px; }
+.teppanyaki-stations::before { background:rgba(227,68,47,.22); bottom:0; content:""; left:0; position:absolute; top:0; width:28px; z-index:1; }
+.teppanyaki-stations::after { background:#e3442f; content:""; height:calc(var(--rail-progress,0)*100%); left:0; position:absolute; top:0; width:28px; z-index:1; }
+/* The rail column must read as one unbroken bar: it paints above each
+ * cell's bottom hairline and the active cell's translucent highlight
+ * (z-index 1), while trace numbers and station text stay on top (2). */
+.teppanyaki-station .trace-number { z-index:2; }
+.teppanyaki-station-copy { position:relative; z-index:2; }
 .teppanyaki-station.rail-covered .trace-number { color:#1c1a19; }
 .provenance-disclosure dd { color:#e8a394; }
 .image-only .teppanyaki-counter { pointer-events:none; visibility:hidden; }
