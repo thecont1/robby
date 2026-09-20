@@ -1,7 +1,7 @@
 import type { CompileEvent, CompileRun, CompileStage } from "@/lib/compileEvents";
 import { COMPILE_STAGES, STATION_LABELS } from "@/lib/compileEvents";
 
-export type CounterState = "dormant" | "primed" | "running" | "resolved" | "stale" | "failed";
+export type CounterState = "dormant" | "primed" | "running" | "resolved" | "stale" | "failed" | "cancelled";
 
 export type CounterPresentation = {
   showStations: boolean;
@@ -30,7 +30,8 @@ export type StationView = {
 export function deriveCounterState(run: CompileRun | null, recipeChanged: boolean): CounterState {
   if (!run) return recipeChanged ? "primed" : "dormant";
   if (run.status === "running") return "running";
-  if (run.status === "failed" || run.status === "cancelled") return "failed";
+  if (run.status === "cancelled") return "cancelled";
+  if (run.status === "failed") return "failed";
   if (run.status === "completed") return recipeChanged ? "stale" : "resolved";
   return "dormant";
 }
@@ -126,5 +127,7 @@ export function counterCopy(state: CounterState) {
       return { kicker: "Orio stale", body: "The previous reverse no longer matches the current recipe." };
     case "failed":
       return { kicker: "Compile failed", body: "The obverse is unchanged. Fix the recipe or compile again." };
+    case "cancelled":
+      return { kicker: "Compile cancelled", body: "The obverse is unchanged and nothing was published. Compile again when you're ready." };
   }
 }

@@ -19,7 +19,7 @@ describe("Teppanyaki Counter derivation", () => {
   });
 
   it("keeps all eight observability stations visible in every counter state", () => {
-    for (const state of ["dormant", "primed", "running", "failed", "resolved", "stale"] as const) {
+    for (const state of ["dormant", "primed", "running", "failed", "cancelled", "resolved", "stale"] as const) {
       expect(counterPresentation(state)).toEqual({ showStations: true });
     }
   });
@@ -35,6 +35,21 @@ describe("Teppanyaki Counter derivation", () => {
       events: [event("intake", 1)],
     };
     expect(deriveCounterState(run, true)).toBe("stale");
+  });
+
+  it("shows cancellation as its own state, not a failure", () => {
+    const run: CompileRun = {
+      id: "run-1",
+      galleryItemId: "item-a",
+      sourceName: "source.jpg",
+      recipeSource: "base(\"source.jpg\")",
+      requestedAt: "2026-09-13T00:00:00Z",
+      status: "cancelled",
+      events: [event("intake", 1)],
+    };
+    expect(deriveCounterState(run, false)).toBe("cancelled");
+    expect(counterCopy("cancelled").kicker).toBe("Compile cancelled");
+    expect(counterCopy("cancelled").kicker).not.toBe(counterCopy("failed").kicker);
   });
 
   it("renders fixed stations 00-07 from real events only", () => {
