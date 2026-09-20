@@ -225,7 +225,7 @@
 /* In-essay figure — used by the About page to break a long reading with a
  * screenshot of the live compiler. Lives inside .brief-body so it shares the
  * same max-width and padding as the prose sections above and below. */
-.brief-intro { border-bottom:1px solid rgba(28,26,25,.3); max-width:760px; padding-bottom:48px; }.brief-intro p { font-family:"Source Serif 4",Georgia,serif; font-size:18px; line-height:1.36; margin:0; }.brief-intro p + p { margin-top:14px; }.dark .brief-intro { border-bottom-color:#e3442f; }.brief-intro + .brief-section { padding-top:40px; }
+.brief-intro { border-bottom:1px solid rgba(28,26,25,.3); padding-bottom:48px; }.brief-intro p { font-family:"Source Serif 4",Georgia,serif; font-size:18px; line-height:1.36; margin:0; max-width:760px; }.brief-intro p + p { margin-top:14px; }.dark .brief-intro { border-bottom-color:#e3442f; }.brief-intro + .brief-section { padding-top:40px; }
 .brief-cells + .brief-section { border-top:1px solid rgba(28,26,25,.3); padding-top:40px; }.dark .brief-cells + .brief-section { border-top-color:#e3442f; }
 .brief-shot { margin:20px 0 24px; }.brief-shot img { display:block; height:auto; max-width:100%; }
 .brief-manual-link { border-bottom:1px solid #e3442f; color:inherit; display:inline-block; font-family:"Noto Serif Mono","DM Mono",ui-monospace,monospace; font-size:10px; font-weight:700; letter-spacing:.09em; padding-bottom:3px; text-decoration:none; text-transform:uppercase; transition:color .16s cubic-bezier(.23,1,.32,1); }.brief-manual-link:hover { color:#e3442f; }
@@ -279,7 +279,7 @@
 .slide-track-backward { animation:slide-track-backward 650ms cubic-bezier(.77,0,.175,1) both; }
 @keyframes slide-track-forward { from { transform:translateX(0); } to { transform:translateX(-100%); } }
 @keyframes slide-track-backward { from { transform:translateX(-100%); } to { transform:translateX(0); } }
-.artwork-view-frame { align-items:stretch; display:grid; grid-template-rows:minmax(0,1fr) auto; justify-content:stretch; }.artwork-view-image-viewport { align-items:flex-end; display:flex; justify-content:center; min-height:0; overflow:hidden; padding-bottom:18px; }.artwork-view-image-viewport img { display:block; height:auto; max-height:calc(100% - 24px); max-width:calc(100% - 48px); object-fit:contain; width:auto; }.artwork-view-controls { align-items:center; border-top:2px solid #e3442f; display:flex; flex:0 0 auto; justify-content:space-between; min-height:58px; padding-top:12px; }.artwork-view-meta { bottom:auto; left:auto; position:static; right:auto; }.artwork-view-frame > .artwork-view-controls > button { position:static; flex:0 0 auto; }
+.artwork-view-frame { align-items:stretch; display:grid; grid-template-rows:minmax(0,1fr) auto; justify-content:stretch; }.artwork-view-image-viewport { align-items:center; container-type:size; display:flex; justify-content:center; min-height:0; overflow:hidden; padding-bottom:18px; }.artwork-view-image-viewport img { display:block; height:auto; max-height:calc(100% - 24px); max-width:calc(100% - 48px); object-fit:contain; width:auto; }.artwork-view-controls { align-items:center; border-top:2px solid #e3442f; display:flex; flex:0 0 auto; justify-content:space-between; min-height:58px; padding-top:12px; }.artwork-view-meta { bottom:auto; left:auto; position:static; right:auto; }.artwork-view-frame > .artwork-view-controls > button { position:static; flex:0 0 auto; }
 .dark .stage-corner,.dark .artwork-view-control { border-color:#e3442f; }.dark .artwork-view-control { color:#f7efe0; }.dark .artwork-view-control:hover { background:#e3442f; color:#000; }.dark .artwork-view-controls { border-top-color:#e3442f; }
 .image-only .stage-metadata { pointer-events:none; visibility:hidden; }
 @media (max-width:560px) { .stage-display-tools { align-items:center !important; width:100%; }.artwork-view-controls { align-items:flex-start; gap:12px; }.artwork-view-meta { display:flex; flex-direction:column; gap:4px; line-height:1.3; }.artwork-view-frame > .artwork-view-controls > button { height:34px; width:34px; } }
@@ -297,13 +297,17 @@
 .two-sided-object,.object-face,.object-face-inverse { background:transparent; box-shadow:none; }.object-face .object-image,.object-face-inverse .object-image { background:transparent; }
 .palette-mosaic-host { background:#f4efe1; height:100%; overflow:hidden; position:relative; width:100%; }
 .palette-mosaic-host canvas { display:block; height:100% !important; width:100% !important; }
-.artwork-view-image-viewport .palette-mosaic-host { height:100%; max-width:calc(100% - 48px); width:100%; }
 .dark .palette-mosaic-host { background:#000; }
 .swatch-matrix-host { background:#f4efe1; height:100%; overflow:hidden; position:relative; width:100%; }
 .swatch-matrix-host canvas { display:block; height:100% !important; width:100% !important; }
-.artwork-view-image-viewport .swatch-matrix-host { height:100%; max-width:calc(100% - 48px); width:100%; }
 .dark .swatch-matrix-host { background:#000; }
-.reverse-face-frame { border:1px solid rgba(28,26,25,.45); box-sizing:border-box; height:100%; padding:0; width:100%; }
+/* RULE: the reverse is the same dimensions as the obverse. The viewing
+ * window is fixed, so the reverse face contain-fits to the canonical source
+ * aspect — the artwork occupies exactly the rect object-fit:contain gives
+ * the obverse image on the other face. */
+.object-face { container-type: size; }
+.object-face-inverse { align-items: center; display: flex; justify-content: center; }
+.reverse-face-frame { aspect-ratio: var(--obverse-w, 4) / var(--obverse-h, 3); border:1px solid rgba(28,26,25,.45); box-sizing:border-box; height:min(100cqh, calc(100cqw * var(--obverse-h, 3) / var(--obverse-w, 4))); padding:0; width:auto; }
 .dark .reverse-face-frame { border-color:#e3442f; }
 .swatch-seed-line { color:#a89e91; font-family:"Noto Serif Mono","DM Mono",ui-monospace,monospace; font-size:8px; letter-spacing:.1em; margin:10px 0 13px; text-transform:uppercase; }
 .swatch-seed-line strong { color:#f4efe1; font-weight:700; }
