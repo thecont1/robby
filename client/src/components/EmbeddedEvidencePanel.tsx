@@ -21,9 +21,9 @@ export default function EmbeddedEvidencePanel({ analysis, onAnalyze, running }: 
       <EvidenceRow label="C2PA" state={analysis.evidence.c2pa} note="Credential state is distinct from authorship or ownership." />
     </dl>
     {analysis.terrain ? <div className="terrain-evidence-block">
-      <div className="ingredient-section-heading"><strong>GENERALIZED TERRAIN</strong><span>coarse GPS representation</span></div>
+      <div className="ingredient-section-heading"><strong>GENERALIZED TERRAIN</strong><span>coarse source-seeded surface</span></div>
       {consentedSourceDigest !== analysis.source.byte_sha256 ? <>
-        <p className="terrain-evidence-note">A deliberately generalized terrain surface can be derived from the embedded GPS evidence. Raw coordinates remain private and are never rendered.</p>
+        <p className="terrain-evidence-note">A deliberately generalized terrain surface is unlocked by the embedded GPS evidence but seeded by the source bytes. Raw coordinates remain private and are never rendered.</p>
         <button type="button" className="ingredient-analyze-button" onClick={() => setConsentedSourceDigest(analysis.source.byte_sha256)}>Show generalized terrain</button>
       </> : <>
         <GeneralizedTerrain terrain={analysis.terrain} />

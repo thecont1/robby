@@ -127,6 +127,22 @@ fn rejects_unknown_modules_invalid_k_and_invalid_images() {
 }
 
 #[test]
+fn rejects_oversized_measured_source() {
+    // No declared canvas — the measured source size alone must trip the
+    // render-dimension limit.
+    let wide = bmp(4097, 16, 9);
+    assert!(render_reverse(&wide, &settings(8))
+        .unwrap_err()
+        .to_string()
+        .contains("between 1 and 4096"));
+    let tall = bmp(16, 4097, 9);
+    assert!(render_reverse(&tall, &settings(8))
+        .unwrap_err()
+        .to_string()
+        .contains("between 1 and 4096"));
+}
+
+#[test]
 fn registry_exposes_negative_as_the_v1_backend() {
     assert!(robby_compiler::render::render_module_names().contains(&"negative"));
 }

@@ -161,7 +161,7 @@ pub fn analyze_image_json(bytes: &[u8], requested_k: u8) -> CompileResult<String
         identity: IdentityIngredients {
             perceptual_hash: average_hash(&analysis_pixels, analysis_width, analysis_height),
         },
-        terrain: crate::intake::generalized_gps_seed(bytes, format).map(generalized_terrain),
+        terrain: gps_gated_terrain(bytes, format),
         structure,
     };
     serde_json::to_string(&analysis).map_err(|error| {
@@ -178,10 +178,24 @@ pub fn generalized_terrain_json(bytes: &[u8]) -> CompileResult<String> {
         .map_err(|error| CompilerError::plain(error.to_string()))?
         .format()
         .ok_or_else(|| CompilerError::plain("Unsupported image format"))?;
-    let terrain = crate::intake::generalized_gps_seed(bytes, format).map(generalized_terrain);
+    let terrain = gps_gated_terrain(bytes, format);
     serde_json::to_string(&terrain).map_err(|error| {
         CompilerError::plain(format!("Unable to serialize generalized terrain: {error}"))
     })
+}
+
+/// GPS evidence gates whether a terrain is published at all, but the field is
+/// seeded by the source bytes — never by coordinates. Seeding it from the
+/// coarse GPS band would let anyone enumerate the ~648 possible bands and
+/// recover the photograph's 10° cell from the published heights.
+fn gps_gated_terrain(bytes: &[u8], format: image::ImageFormat) -> Option<TerrainIngredients> {
+    crate::intake::generalized_gps_seed(bytes, format)
+        .map(|_| generalized_terrain(source_terrain_seed(bytes)))
+}
+
+fn source_terrain_seed(bytes: &[u8]) -> u64 {
+    let digest = Sha256::digest(bytes);
+    u64::from_be_bytes(digest[..8].try_into().expect("sha256 is 32 bytes"))
 }
 
 /// Reduce only expensive visual measurements to a deterministic bounded sample.
@@ -200,7 +214,7 @@ fn generalized_terrain(seed: u64) -> TerrainIngredients {
         })
         .collect();
     TerrainIngredients {
-        representation: "coarse-gps-seeded-terrain".to_string(),
+        representation: "gps-gated-source-seeded-terrain".to_string(),
         grid_size,
         heights,
     }

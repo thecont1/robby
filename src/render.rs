@@ -628,6 +628,11 @@ pub fn render_reverse(
     // pixel_sha256, dimensions and layout consistent across both paths;
     // without it a rotated source renders transposed against its own manifest.
     let (pixels, source_width, source_height) = source_pixels(source_bytes)?;
+    if source_width == 0 || source_width > 4096 || source_height == 0 || source_height > 4096 {
+        return Err(RenderError(
+            "render dimensions must be between 1 and 4096".into(),
+        ));
+    }
     // RULE: the reverse is the same dimensions as the obverse, always.
     // `base(width:, height:)` declares the expected canvas; a declaration that
     // disagrees with the measured source is a mis-declaration, not a resize —

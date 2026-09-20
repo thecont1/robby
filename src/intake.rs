@@ -651,7 +651,14 @@ fn gps_extraction_state(bytes: &[u8], format: ImageFormat) -> ExtractionState {
 /// 1..=8 range, or unreadable header) is `Err`.
 fn parse_orientation(bytes: &[u8]) -> Result<Option<u16>, ()> {
     let (little, ifd) = tiff_header(bytes).ok_or(())?;
-    if tiff_u16(bytes, little, ifd).is_none() {
+    let count = usize::from(tiff_u16(bytes, little, ifd).ok_or(())?);
+    // The declared entry table must fit inside the payload — a count that
+    // runs past the bytes is a corrupt IFD, not an absent tag.
+    let entries_start = ifd.checked_add(2).ok_or(())?;
+    let entries_end = entries_start
+        .checked_add(count.checked_mul(12).ok_or(())?)
+        .ok_or(())?;
+    if entries_end > bytes.len() {
         return Err(());
     }
     let Some((kind, count, value_at)) = tiff_entry(bytes, little, ifd, 0x0112) else {

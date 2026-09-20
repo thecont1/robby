@@ -129,8 +129,18 @@ export default function Faqs() {
     };
     const onKey = (e: KeyboardEvent) => {
       if (!mq.matches) return;
-      const tag = (e.target as HTMLElement | null)?.tagName;
-      if (tag === "INPUT" || tag === "TEXTAREA") return;
+      // Keys targeted at any interactive or editable element — SiteHeader
+      // buttons, FAQ links, form fields — belong to that element: Space must
+      // still activate a focused control and arrows must not navigate the
+      // scrolly while a link or button holds focus.
+      const target = e.target as HTMLElement | null;
+      if (
+        target?.isContentEditable ||
+        target?.closest(
+          "a, button, input, textarea, select, [role='button'], [role='link'], [role='tab'], [role='menuitem']",
+        )
+      )
+        return;
       if (e.key === "ArrowDown" || e.key === "ArrowRight" || e.key === "PageDown" || e.key === " ") {
         e.preventDefault();
         step(1);
@@ -203,7 +213,9 @@ export default function Faqs() {
                   aria-current={wide && index === activeIndex ? "location" : undefined}
                   className={wide && index === activeIndex ? "is-active" : undefined}
                   onClick={(e) => {
-                    e.preventDefault();
+                    // Only the wide scrolly hijacks fragment navigation; on
+                    // narrow screens the href="#qN" jump is the navigation.
+                    if (wide) e.preventDefault();
                     setActiveIndex(index);
                   }}
                 >{entry.index} · {entry.rail}</a>
