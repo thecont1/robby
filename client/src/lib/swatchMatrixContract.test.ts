@@ -17,11 +17,13 @@ describe("swatch matrix reverse artwork contract", () => {
     expect(matrixSource).not.toContain("swapColumns");
   });
 
-  it("anchors a square matrix to the left and composes GPS-seeded terrain on the right", () => {
+  it("renders a square matrix surface with the GPS terrain in a separate right panel", () => {
     expect(matrixSource).toContain("Math.min(width, height)");
-    expect(matrixSource).toContain("instance.WEBGL");
-    expect(matrixSource).toContain("instance.TRIANGLE_STRIP");
-    expect(matrixSource).toContain("instance.image(terrainBuffer, side, 0)");
+    expect(matrixSource).toContain("instance.createCanvas(side, side)");
+    expect(matrixSource).toContain("sketch.resizeCanvas(side, side)");
+    expect(matrixSource).toContain("--matrix-side");
+    expect(matrixSource).toContain("<GeneralizedTerrain terrain={terrain} />");
+    expect(matrixSource).toContain("swatch-matrix-terrain");
     expect(matrixSource).toContain("terrain?: Terrain | null");
   });
 

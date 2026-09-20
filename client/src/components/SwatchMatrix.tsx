@@ -1,6 +1,7 @@
 import gsap from "gsap";
 import p5 from "p5";
 import { useEffect, useMemo, useRef } from "react";
+import GeneralizedTerrain from "@/components/GeneralizedTerrain";
 import { splitMix32 } from "@/lib/swatchSeed";
 import type { IngredientAnalysis } from "@/lib/robbyCompiler";
 
@@ -30,7 +31,7 @@ type MatrixController = {
 };
 
 function hasTerrainLabel(terrain: Terrain | null | undefined) {
-  return terrain ? " · GPS-seeded terrain panel" : "";
+  return terrain ? " · GPS-gated terrain panel" : "";
 }
 
 function hexToRgb(value: string): Rgb {
@@ -52,7 +53,9 @@ export default function SwatchMatrix({ swatches, seed, active, resetKey, alt, te
   const controllerRef = useRef<MatrixController | null>(null);
   const paletteKey = swatches.join("|");
   const colours = useMemo(() => swatches.map(hexToRgb), [paletteKey, swatches]);
-  const terrainKey = terrain ? `${terrain.grid_size}:${terrain.heights.join(",")}` : "";
+  const hasTerrain = Boolean(
+    terrain && terrain.grid_size > 1 && terrain.heights.length >= terrain.grid_size * terrain.grid_size,
+  );
 
   useEffect(() => {
     controllerRef.current?.setActive(active);
@@ -74,7 +77,6 @@ export default function SwatchMatrix({ swatches, seed, active, resetKey, alt, te
     let cellSize = 1;
     const choreography = splitMix32(seed ^ 0x6d2b79f5);
     const k = colours.length;
-    const hasTerrain = Boolean(terrain && terrain.grid_size > 1 && terrain.heights.length >= terrain.grid_size * terrain.grid_size);
 
     const killAnimation = () => {
       schedule?.kill();
@@ -95,6 +97,7 @@ export default function SwatchMatrix({ swatches, seed, active, resetKey, alt, te
       // paper when the source carries no GPS evidence).
       side = Math.min(width, height);
       cellSize = side / k;
+      host.style.setProperty("--matrix-side", `${side}px`);
       const tiles = Array.from({ length: k * k }, (_, index) => index % k);
       const random = splitMix32(seed);
       for (let index = tiles.length - 1; index > 0; index -= 1) {
@@ -182,64 +185,18 @@ export default function SwatchMatrix({ swatches, seed, active, resetKey, alt, te
       else if (activeState) scheduleNext();
     };
 
-    // The GPS-seeded heightfield draws into a WEBGL graphics buffer so the
-    // 3D surface can be composited beside the 2D matrix on one canvas.
-    let terrainBuffer: p5.Graphics | null = null;
-    let rebuildTerrainBuffer = () => {};
-    let frame = 0;
-
+    // The canvas IS the matrix surface — a square of `side` pixels. The
+    // terrain panel lives in its own element to the right, so the matrix
+    // element itself measures square at any viewport width.
     const sketch = new p5(instance => {
-      rebuildTerrainBuffer = () => {
-        terrainBuffer?.remove();
-        terrainBuffer = null;
-        const region = width - side;
-        if (!hasTerrain || region < 8) return;
-        const buffer = instance.createGraphics(region, height, instance.WEBGL);
-        buffer.pixelDensity(Math.min(2, window.devicePixelRatio || 1));
-        terrainBuffer = buffer;
-      };
-
-      const drawTerrain = () => {
-        const g = terrainBuffer;
-        const field = terrain;
-        if (!g || !field) return;
-        const grid = field.grid_size;
-        const extent = Math.min(g.width, g.height) * 0.82;
-        const step = extent / (grid - 1);
-        const amplitude = extent * 0.3;
-        const darkMode = document.documentElement.classList.contains("dark");
-        g.clear();
-        g.push();
-        g.rotateY(Math.sin(frame / 340) * 0.16);
-        g.rotateX(instance.radians(58));
-        g.noFill();
-        if (darkMode) g.stroke(232, 163, 148);
-        else g.stroke(227, 68, 47);
-        g.strokeWeight(1);
-        const elevation = (row: number, column: number) =>
-          -((field.heights[row * grid + column] ?? 0) / 255) * amplitude;
-        for (let row = 0; row < grid - 1; row += 1) {
-          g.beginShape(instance.TRIANGLE_STRIP);
-          for (let column = 0; column < grid; column += 1) {
-            const x = column * step - extent / 2;
-            g.vertex(x, elevation(row, column), row * step - extent / 2);
-            g.vertex(x, elevation(row + 1, column), (row + 1) * step - extent / 2);
-          }
-          g.endShape();
-        }
-        g.pop();
-      };
-
       instance.setup = () => {
-        instance.createCanvas(Math.max(1, host.clientWidth), Math.max(1, host.clientHeight));
+        buildSlots();
+        instance.createCanvas(side, side);
         instance.pixelDensity(Math.min(2, window.devicePixelRatio || 1));
         instance.noStroke();
-        buildSlots();
-        rebuildTerrainBuffer();
       };
 
       instance.draw = () => {
-        frame += 1;
         const darkMode = document.documentElement.classList.contains("dark");
         instance.background(darkMode ? 0 : 244, darkMode ? 0 : 239, darkMode ? 0 : 225);
         slots.forEach(row => row.forEach(cell => {
@@ -247,10 +204,6 @@ export default function SwatchMatrix({ swatches, seed, active, resetKey, alt, te
           instance.fill(...colour);
           instance.rect(cell.x, cell.y, cellSize + 0.5, cellSize + 0.5);
         }));
-        if (terrainBuffer) {
-          drawTerrain();
-          instance.image(terrainBuffer, side, 0);
-        }
       };
     }, host);
 
@@ -258,10 +211,7 @@ export default function SwatchMatrix({ swatches, seed, active, resetKey, alt, te
       killAnimation();
       buildSlots();
       if (activeState && !reducedMotion) scheduleNext();
-      const nextWidth = Math.max(1, host.clientWidth);
-      const nextHeight = Math.max(1, host.clientHeight);
-      if (sketch.width !== nextWidth || sketch.height !== nextHeight) sketch.resizeCanvas(nextWidth, nextHeight);
-      rebuildTerrainBuffer();
+      if (sketch.width !== side || sketch.height !== side) sketch.resizeCanvas(side, side);
     });
     resizeObserver.observe(host);
 
@@ -277,10 +227,13 @@ export default function SwatchMatrix({ swatches, seed, active, resetKey, alt, te
       media?.removeEventListener?.("change", onMotionPreferenceChange);
       resizeObserver?.disconnect();
       killAnimation();
-      terrainBuffer?.remove();
       sketch.remove();
     };
-  }, [colours, paletteKey, resetKey, seed, terrain, terrainKey]);
+  }, [colours, paletteKey, resetKey, seed]);
 
-  return <div ref={hostRef} className="swatch-matrix-host" role="img" aria-label={`${alt} · ${colours.length} by ${colours.length} swatch matrix${hasTerrainLabel(terrain)}`} />;
+  return (
+    <div ref={hostRef} className="swatch-matrix-host" role="img" aria-label={`${alt} · ${colours.length} by ${colours.length} swatch matrix${hasTerrainLabel(terrain)}`}>
+      {hasTerrain && terrain ? <div className="swatch-matrix-terrain"><GeneralizedTerrain terrain={terrain} /></div> : null}
+    </div>
+  );
 }
