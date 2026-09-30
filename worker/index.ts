@@ -5,14 +5,15 @@ import { Container, getContainer } from "@cloudflare/containers";
  * Robby demo host: the gallery JPEGs and every other static file are served
  * from Workers Static Assets at the edge, so a sleeping container never
  * stands between a visitor and the site. Only /api/* (the compiler itself)
- * and non-asset paths reach the single named container instance.
+ * reaches the single named container instance; every other asset miss —
+ * SPA deep links, crawler probes — is answered by ASSETS and never wakes it.
  *
  * Gallery obverses are immutable repo specimens, so they get a long-lived
  * Cache-Control; generated reverses stay on the no-store /api/ paths.
  */
 export class RobbyContainer extends Container {
   defaultPort = 3000;
-  sleepAfter = "30m";
+  sleepAfter = "400s";
   enableInternet = true;
 }
 
@@ -74,7 +75,21 @@ export default {
       return new Response(response.body, { status: response.status, headers });
     }
 
-    const container = getContainer(env.ROBBY, "demo");
-    return container.fetch(request);
+    // Only real API routes may wake the container — a bogus /api/* probe
+    // gets the same 404 JSON the server would send, but at the edge.
+    const isApiRoute =
+      pathname === "/api/reverse" ||
+      pathname === "/api/gallery" ||
+      pathname === "/api/gallery/events" ||
+      pathname.startsWith("/api/c2pa/");
+    if (isApiRoute) {
+      const container = getContainer(env.ROBBY, "demo");
+      return container.fetch(request);
+    }
+    if (pathname.startsWith("/api/")) {
+      return Response.json({ error: "Not found" }, { status: 404 });
+    }
+
+    return env.ASSETS.fetch(request);
   },
 };
